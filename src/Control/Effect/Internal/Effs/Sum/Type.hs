@@ -12,6 +12,7 @@ Stability   : experimental
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 
 module Control.Effect.Internal.Effs.Sum.Type
   ( Effs (..)
@@ -22,57 +23,70 @@ module Control.Effect.Internal.Effs.Sum.Type
 
 import Data.Kind ( Type )
 import Data.HFunctor
-import Data.List.Kind
-
-import GHC.TypeLits
+import Data.Coproduct.Fancy
 
 -- | The type of higher-order effects.
 type Effect = (Type -> Type) -> (Type -> Type)
 
--- | A higher-order algebra for the union of effects @effs@ with
--- carrier being the functor @f@.
-type Algebra effs f =
-  forall x . Effs effs f x -> f x
-
--- | @Effs effs f a@ creates a union of the effect signatures in the list @effs@.
+-- | The coproduct of a list of effects.
 type Effs :: [Effect] -> Effect
-data Effs sigs f a where
-  Eff  :: !(sig f a) -> Effs (sig ': sigs) f a
-  Effs :: !(Effs sigs f a) -> Effs (sig ': sigs) f a
+newtype Effs sigs  f a = Effs' { unEffs :: Coprod (f ~$~ a) sigs }
 
-instance Functor f => Functor (Effs '[] f) where
+-- | It is slightly annoying that we have to define a newtype @Effs@ so that
+-- we can give it instances of @Functor@ and @HFunctor@, while @Coprod@ itself
+-- is already a newtype wrapper. To simplify the notation we define a pattern
+-- synonym to strip away two layers of newtype wrappers once.
+pattern Effs g = Effs' (MkCoprod g)
+
+-- | An auxiliary definition for using `Coprod` to take the coproducts of
+-- effects. Too bad in Haskell we have to introduce a layer of @newtype@
+-- wrappers for this to work.
+type (~$~) :: k1 -> k2 -> (k1 -> k2 -> Type) -> Type
+newtype (~$~) f a sig = Apply2 { unApply2 :: sig f a }
+
+-- | A higher-order algebra for the list of effects @effs@ with
+-- carrier being the functor @f@. This type is isomorphic to the type
+-- @forall a . Effs sigs f a -> f a@, but the definition below is more
+-- friendly to static simplification.
+type Algebra sigs f = forall a . Cases (f ~$~ a) sigs (f a)
+
+-- | @Effs sigs f@ is a functor if for every element @sig@ of @sigs@, @sig f@
+-- is a functor. We need an auxiliary class `FunctorEffsAux` to do induction
+-- on @sigs@.
+instance FunctorEffsAux sigs f => Functor (Effs sigs f) where
   {-# INLINE fmap #-}
-  fmap f x = case x of {}
+  fmap f (Effs g) = Effs (\cs -> g (fmapCases f cs))
 
-instance (Functor f, Functor (eff f), Functor (Effs effs f)) => Functor (Effs (eff ': effs) f) where
-  {-# INLINE fmap #-}
-  fmap f (Eff x)  = Eff (fmap f x)
-  fmap f (Effs x) = Effs (fmap f x)
+class FunctorEffsAux sigs f where
+  fmapCases :: (a -> b) -> Cases (f ~$~ b) sigs c -> Cases (f ~$~ a) sigs c
 
-instance HFunctor (Effs '[]) where
+instance FunctorEffsAux '[] f where
+  {-# INLINE fmapCases #-}
+  fmapCases _ _ = EndCases
+
+instance (Functor (sig f), FunctorEffsAux sigs f) => FunctorEffsAux (sig ': sigs) f where
+  {-# INLINE fmapCases #-}
+  fmapCases f (c, cs) = (c . Apply2 . fmap f . unApply2 , fmapCases f cs)
+
+-- | @Effs sigs@ is a higher-order functor if for every element @sig@ of @sigs@ is one
+-- We need an auxiliary class `HFunctorEffsAux` to do induction on @sigs@.
+instance (forall f. FunctorEffsAux sigs f, HFunctorEffsAux sigs) => HFunctor (Effs sigs) where
   {-# INLINE hmap #-}
-  hmap h x = case x of {}
+  hmap tau (Effs g) = Effs $ g . hmapCases tau
 
-instance (HFunctor (Effs effs), HFunctor eff) => HFunctor (Effs (eff ': effs)) where
-  {-# INLINE hmap #-}
-  hmap h (Eff x)  = Eff (hmap h x)
-  hmap h (Effs x) = Effs (hmap h x)
+class HFunctorEffsAux sigs where
+  hmapCases :: (Functor g, Functor f) => (forall x. g x -> f x) -> Cases (f ~$~ a) sigs b -> Cases (g ~$~ a) sigs b
 
--- | @`EffIndex` eff effs@ finds the index of @eff@ in @effs@, where
--- the last element has index @0@, and the head element has index @Length effs - 1@.
-type family EffIndex (eff :: a) (effs :: [a]) :: Nat where
-  EffIndex eff (eff ': effs) = Length effs
-  EffIndex eff (_ ': effs)   = EffIndex eff effs
+instance HFunctorEffsAux '[] where
+  {-# INLINE hmapCases #-}
+  hmapCases _ _ = EndCases
 
--- | Given @xeffs@ which is a subset of effects in @yeffs@, @`EffIndexes` xeffs
--- yeffs@ finds the index @`EffIndex` eff yeffs@ for each @eff@ in @xeffs@, and
--- returns this as a list of indices.
-type family EffIndexes (xeffs :: [a]) (yeffs :: [a]) :: [Nat] where
-  EffIndexes '[] yeffs            = '[]
-  EffIndexes (eff ': xeffs) yeffs = EffIndex eff yeffs ': EffIndexes xeffs yeffs
+instance (HFunctor sig, HFunctorEffsAux sigs) => HFunctorEffsAux (sig ': sigs) where
+  {-# INLINE hmapCases #-}
+  hmapCases tau (c, cs) = (c . Apply2 . hmap tau . unApply2, hmapCases tau cs)
 
 -- | A value of type @Effs '[] f x@ cannot be created, and this is the
 -- absurd destructor for this type.
 {-# INLINE absurdEffs #-}
 absurdEffs :: Effs '[] f x -> a
-absurdEffs x = case x of {}
+absurdEffs (Effs g) = g EndCases
