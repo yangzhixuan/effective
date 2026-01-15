@@ -65,15 +65,14 @@ $(makeGen [e| tell :: forall w. w -> () |])
 
 -- | The algebra transformer for the `writer` handler.
 writerAT :: Monoid w => AlgTrans '[Tell w] '[] '[W.WriterT w] Monad
-writerAT = AlgTrans writerAlg
+writerAT = algTrans' writerAlg
 
 -- | The algebra for the `writer` handler.
 {-# INLINE writerAlg #-}
 writerAlg
   :: (Monad m, Monoid w)
-  => (forall x. oeff m x -> m x)
-  -> (forall x.  Effs '[Tell w] (W.WriterT w m) x -> W.WriterT w m x)
-writerAlg _ eff
+  => (forall x.  Effs '[Tell w] (W.WriterT w m) x -> W.WriterT w m x)
+writerAlg eff
   | Just (Alg (Tell_ w x)) <- prj eff =
       do W.tell w
          return x
@@ -105,7 +104,7 @@ instance U.Unary (Censor_ w) where
 -- @p@ will be censored by the composition @f . f'@, and the `censor` operation
 -- will be consumed.
 censors :: forall w a . (w -> w) -> Handler '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] a a
-censors cipher = handler' run (getAT censorAT) where
+censors cipher = handler (\_ -> run) (getAT censorAT) where
   run :: Monad m => (forall x. ReaderT (w -> w) m x -> m x)
   run (ReaderT mx) = mx cipher
 
@@ -123,4 +122,4 @@ censorAT = AlgTrans alg where
 
 -- | The `uncensors` handler removes any occurrences of `censor`.
 uncensors :: forall w a . Handler '[Censor w] '[] '[] a a
-uncensors = handler' id (\_ (Censor (_ :: w -> w) k) -> k) where
+uncensors = handler' id (\(Censor (_ :: w -> w) k) -> k)

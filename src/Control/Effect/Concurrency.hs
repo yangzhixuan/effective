@@ -84,12 +84,12 @@ jresumpAT = AlgTrans (\_ -> jresumpAlg)
 -- | Resumption-based handler of concurrency. Non-deterministic branches are explored
 -- by backtracking, resulting in a list of all (successful) traces.
 resump :: forall a b . Action a => Handler '[Act a, Par, Res a] '[] '[C.CResT a] b (C.ListActs a b)
-resump = handler' runAll (\_ -> resumpAlg)
+resump = handler' runAll resumpAlg
 
 -- | Resumption-based handler of concurrency. Non-deterministic choices are resolved
 -- with the given list Booleans.
 resumpWith :: forall a b . Action a => [Bool] -> Handler '[Act a, Par, Res a] '[] '[C.CResT a] b (ActsMb a b)
-resumpWith choices = handler' (runWith choices) (\_ -> resumpAlg)
+resumpWith choices = handler' (runWith choices) resumpAlg
 
 -- | Resumption-based handler of concurrency. Non-deterministic choices are resolved
 -- with the given program (of effect @sig@).
@@ -102,12 +102,12 @@ resumpWithM pb = handler (\oalg -> runWithM (eval oalg pb))  (\_ -> resumpAlg)
 -- Non-deterministic branches are explored by backtracking, resulting in a list
 -- of all (successful) traces.
 jresump :: forall a b . Action a => Handler '[Act a, JPar, Res a] '[] '[C.CResT a] b (C.ListActs a b)
-jresump = handler' runAll (\_ -> jresumpAlg)
+jresump = handler' runAll jresumpAlg
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
 -- Non-deterministic choices are resolved with the given list Booleans.
 jresumpWith :: forall a b. Action a => [Bool] -> Handler '[Act a, JPar, Res a] '[] '[C.CResT a] b (ActsMb a b)
-jresumpWith choices = handler' (runWith choices) (\_ -> jresumpAlg)
+jresumpWith choices = handler' (runWith choices) jresumpAlg
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
 -- Non-deterministic choices are resolved with the given program (of effect @sig@).

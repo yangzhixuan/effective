@@ -119,7 +119,7 @@ type HSEffs w = '[Put w, Get w, New w]
 -- effective does not have a world-indexed handdler API. Users of higher-order
 -- store now can only use functions such as `handleHSM` exported by this module.
 hstore :: Handler (HSEffs w) '[] '[St.StateT Mem] a a
-hstore = handler' (flip St.evalStateT M.empty) (\_ -> hstoreAlg)
+hstore = handler' (flip St.evalStateT M.empty) hstoreAlg
 
 hstoreAlg :: forall m w.
      Monad m

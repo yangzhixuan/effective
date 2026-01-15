@@ -12,12 +12,21 @@ Stability   : experimental
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 module Control.Effect.Internal.Effs.Sum.Type
   ( Effs (..)
   , Algebra
   , Effect
   , absurdEffs
+
+  , AlgebraCode (..)
+  , EndAC (..)
+  , Algebra' (..)
+  , NatTrans (..)
+  , type (-.>) (..)
   ) where
 
 import Data.Kind ( Type )
@@ -25,6 +34,7 @@ import Data.HFunctor
 import Data.List.Kind
 
 import GHC.TypeLits
+import Language.Haskell.TH (CodeQ)
 
 -- | The type of higher-order effects.
 type Effect = (Type -> Type) -> (Type -> Type)
@@ -76,3 +86,21 @@ type family EffIndexes (xeffs :: [a]) (yeffs :: [a]) :: [Nat] where
 {-# INLINE absurdEffs #-}
 absurdEffs :: Effs '[] f x -> a
 absurdEffs x = case x of {}
+
+-- Definitions related to staged algebras
+-----------------------------------------
+
+-- | In current GHC, polymorphic functions and Template Haskell don't seem to work
+-- seamlessly together. Newtype wrappers seem necessary in some cases.
+
+newtype Algebra' effs f = Algebra' { runAlg :: Algebra effs f }
+newtype NatTrans f g = NT { at :: forall x. f x -> g x }
+type (-.>) = NatTrans
+
+type family AlgebraCode (effs :: [Effect]) (f :: Type -> Type) = result | result -> effs f where
+  AlgebraCode '[] f = EndAC '[] f
+  AlgebraCode (eff ': effs) f = (CodeQ (eff f -.> f), AlgebraCode effs f)
+
+-- | This is just a unit type, but it has two phantom type variables which are useful
+-- for type inference.
+data EndAC (effs :: [Effect]) (f :: Type -> Type) = EndAC

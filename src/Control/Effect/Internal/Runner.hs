@@ -19,7 +19,7 @@ import Data.Kind
 import Control.Effect.Internal.Effs
 import Control.Effect.Internal.AlgTrans.Type
 import Control.Effect.Internal.Forward
-
+import Language.Haskell.TH (CodeQ)
 
 -- * The primitive types for modular effect handlers
 
@@ -34,6 +34,15 @@ type Runner
 newtype Runner oeffs ts a b cs = Runner {
   getR :: forall m . cs m => Algebra oeffs m -> Apply ts m a -> m b }
 
+type RunnerC
+  :: [Effect]                             -- ^ oeffs : output effects
+  -> [(Type -> Type) -> (Type -> Type)]   -- ^ ts    : carrier transformer
+  -> Type                                 -- ^ a     : input type
+  -> Type                                 -- ^ b     : output type
+  -> ((Type -> Type) -> Constraint)       -- ^ cs    : carrier constraint
+  -> Type
+newtype RunnerC oeffs ts a b cs = RunnerC {
+  getRC :: forall m . cs m => AlgebraCode oeffs m -> CodeQ (Apply ts m a -> m b) }
 
 -- * Building runners
 
@@ -90,6 +99,26 @@ fuseR at2 r1 r2 = Runner \(oalg :: Algebra _ m)  ->
             (weakenAlg @(oeffs1 :\\ effs2) @_ oalg))
           (getAT at2 (weakenAlg @oeffs2 @_ oalg)))
 
+fuseRC :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+          ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
+          , FuseR# effs2 oeffs1 oeffs2 ts1 ts2 )
+       => AlgTransC effs2 oeffs2 ts2 cs2
+       -> RunnerC oeffs1 ts1 a1 a2 cs1
+       -> RunnerC oeffs2 ts2 a2 a3 cs2
+       -> RunnerC ((oeffs1 :\\ effs2) `Union` oeffs2)
+                  (ts1 :++ ts2)
+                  a1 a3
+                  (CompC ts2 cs1 cs2)
+fuseRC at2 r1 r2 = RunnerC \(oalg :: AlgebraCode _ m)  ->
+    [||
+      $$(getRC r2 (weakenAlgC oalg))
+    . $$(getRC r1 (weakenAlgC @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
+        heitherC @(oeffs1 :\\ effs2) @effs2
+          (getATC (fwdsC @(oeffs1 :\\ effs2) @(ts2))
+            (weakenAlgC @(oeffs1 :\\ effs2) @_ oalg))
+          (getATC at2 (weakenAlgC @oeffs2 @_ oalg))))
+    ||]
+
 type PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 =
    ( Injects oeffs1 (oeffs1 `Union` oeffs2)
    , Injects oeffs2 (oeffs1 `Union` oeffs2)
@@ -130,3 +159,9 @@ weakenRC :: forall cs' cs effs ts a b.
         => Runner effs ts a b cs
         -> Runner effs ts a b cs'
 weakenRC r1 = Runner \oalg -> getR r1 oalg
+
+weakenRCC :: forall cs' cs effs ts a b.
+           (forall m. cs' m => cs m)
+        => RunnerC effs ts a b cs
+        -> RunnerC effs ts a b cs'
+weakenRCC r1 = RunnerC \oalg -> getRC r1 oalg

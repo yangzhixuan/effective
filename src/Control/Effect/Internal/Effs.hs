@@ -19,7 +19,7 @@ Stability   : experimental
 
 
 module Control.Effect.Internal.Effs
-  ( Member
+  ( Member (..)
   , Members
   , Effect
   , Effs (Effs, Eff)
@@ -27,15 +27,22 @@ module Control.Effect.Internal.Effs
   , callM, callJM, callKM
   , singAlgIso
   , Injects (..)
-  , Append
+  , Append (..)
   , absurdEffs
-  , inj
-  , prj
   , weakenAlg
-  , heither
   , hcons
+  , hnil
   , hunion
   , (#)
+
+  , AlgebraCode (..)
+  , EndAC (..)
+  , Algebra' (..)
+  , NatTrans (..)
+  , type (-.>) (..)
+  , (#$)
+  , hunionC
+  , GenAlgebra (..)
   )
   where
 

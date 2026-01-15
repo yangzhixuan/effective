@@ -53,15 +53,14 @@ skip = return ()
 -- | The `cutListAlg` function defines the algebra for handling the t`CutListT` monad transformer.
 -- It clears the `cut` at the boundary of a `cutCall`.
 cutListAlg
-  :: Monad m => (forall x. oeff m x -> m x)
-  -> forall x. Effs [Empty, Choose, CutFail, CutCall] (CutListT m) x -> CutListT m x
-cutListAlg oalg Empty          = empty
-cutListAlg oalg (Choose xs ys) = xs <|> ys
-cutListAlg oalg CutFail        = CutListT (\cons nil zero -> zero)
-cutListAlg oalg (CutCall xs)   = CutListT (\cons nil zero -> runCutListT xs cons nil nil)
+  :: Monad m => forall x. Effs [Empty, Choose, CutFail, CutCall] (CutListT m) x -> CutListT m x
+cutListAlg Empty          = empty
+cutListAlg (Choose xs ys) = xs <|> ys
+cutListAlg CutFail        = CutListT (\cons nil zero -> zero)
+cutListAlg (CutCall xs)   = CutListT (\cons nil zero -> runCutListT xs cons nil nil)
 
 cutListAT :: AlgTrans [Empty, Choose, CutFail, CutCall] '[] '[CutListT] Monad
-cutListAT = AlgTrans cutListAlg
+cutListAT = algTrans' cutListAlg
 
 -- | A handler for the t`CutListT` monad transformer.
 cutList :: Handler [Empty, Choose, CutFail, CutCall] '[] '[CutListT] a [a]

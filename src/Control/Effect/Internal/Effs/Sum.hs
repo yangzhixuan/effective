@@ -13,39 +13,60 @@ Stability   : experimental
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 module Control.Effect.Internal.Effs.Sum
   ( module Control.Effect.Internal.Effs.Sum.Type
-  , inj
-  , prj
   , (#)
   , Append (..)
   , weakenAlg
   , hunion
   , hcons
+  , hnil
   , Injects (..)
-  , Member
+  , Member (..)
   , Members
+
+  , (#$)
+  , hunionC
+  , GenAlgebra (..)
   )
   where
 
 import Control.Effect.Internal.Effs.Sum.Type
 import Data.List.Kind
 import GHC.Exts
+import Language.Haskell.TH (CodeQ)
 
 infixr 6 #
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
 {-# INLINE (#) #-}
 (#) :: forall eff1 eff2 m .
   (Monad m, Append eff1 eff2)
-  => (Algebra eff1 m)
-  -> (Algebra eff2 m)
-  -> (Algebra (eff1 :++ eff2) m)
-falg # galg = heither @eff1 @eff2 (falg) (galg)
+  => Algebra eff1 m
+  -> Algebra eff2 m
+  -> Algebra (eff1 :++ eff2) m
+falg # galg = heither @eff1 @eff2 falg galg
 
+infixr 6 #$
+-- | @alg1 #$ alg2@ joins together code of algebras @alg1@ and @alg2@.
+(#$) :: forall eff1 eff2 m .
+    (Monad m, Append eff1 eff2)
+  => AlgebraCode eff1 m
+  -> AlgebraCode eff2 m
+  -> AlgebraCode (eff1 :++ eff2) m
+falg #$ galg = heitherC @eff1 @eff2 falg galg
+
+{- INLINE hcons -}
 hcons :: (x h a -> b) -> (Effs xs h a -> b) -> (Effs (x ': xs) h a -> b)
 hcons alg algs (Eff x)   = alg x
 hcons alg algs (Effs xs) = algs xs
+
+{- INLINE hnil -}
+hnil :: Effs '[] h a -> b
+hnil = absurdEffs
+
 
 -- | This type class provides operations that support appending
 -- two effect lists together.
@@ -54,6 +75,9 @@ class Append xs ys where
   -- | Creates an alebra that can work with either signatures in @xeffs@
   -- or @yeffs@ by using the provided algebras as appropriate.
   heither :: (Effs xs h a -> b) -> (Effs ys h a -> b) -> (Effs (xs :++ ys) h a -> b)
+
+  -- | Concatenating two algebras.
+  heitherC :: AlgebraCode xs m -> AlgebraCode ys m -> AlgebraCode (xs :++ ys) m
 
   -- | Weakens an an operation of type @Effs xeffs f a@ to one of type @Effs (xeffs :++ yeffs) f a@.
   hinl :: Effs xs f a -> Effs (xs :++ ys) f a
@@ -71,6 +95,9 @@ instance Append '[] ys where
   {-# INLINE heither #-}
   heither :: (Effs '[] f a -> b) -> (Effs ys f a -> b) -> (Effs ('[] :++ ys) f a -> b)
   heither xalg yalg = yalg
+
+  heitherC :: AlgebraCode '[] m -> AlgebraCode ys m -> AlgebraCode ('[] :++ ys) m
+  heitherC EndAC cbs = cbs
 
   {-# INLINE hinl #-}
   hinl :: Effs '[] f a -> Effs ys f a
@@ -93,6 +120,9 @@ instance Append xs ys => Append (x ': xs) ys where
   heither :: (Effs (x : xs) f a -> b) -> (Effs ys f a -> b) -> Effs ((x : xs) :++ ys) f a -> b
   heither xalg yalg (Eff x)  = xalg (Eff x)
   heither xalg yalg (Effs x) = heither (xalg . Effs) yalg x
+
+  heitherC :: AlgebraCode (x : xs) m -> AlgebraCode ys m -> AlgebraCode ((x : xs) :++ ys) m
+  heitherC (ca, cas) cbs = (ca, heitherC cas cbs)
 
   {-# INLINE hinl #-}
   hinl :: Effs (x : xs) f a -> Effs ((x : xs) :++ ys) f a
@@ -132,22 +162,36 @@ hunion :: forall xeffs yeffs f a b
   -> (Effs (xeffs `Union` yeffs) f a -> b)
 hunion xalg yalg = heither @xeffs @(yeffs :\\ xeffs) xalg (yalg . injs)
 
+-- | Static version of `hunion`.
+hunionC :: forall xeffs yeffs m a b
+  .  ( Append xeffs (yeffs :\\ xeffs), Injects (yeffs :\\ xeffs) yeffs )
+  => AlgebraCode xeffs m -> AlgebraCode yeffs m
+  -> AlgebraCode (xeffs `Union` yeffs) m
+hunionC xalg yalg = heitherC @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
+
 -- | @Injects xs ys@ means that all of @xs@ is in @xys@.
 -- Some other effects may be in @xys@, so @xs <= xys@.
 type  Injects :: [Effect] -> [Effect] -> Constraint
 class Injects xs xys where
   injs :: Effs xs f a -> Effs xys f a
 
+  weakenAlgC :: AlgebraCode xys m -> AlgebraCode xs m
+
+
 instance Injects '[] xys where
   {-# INLINE injs #-}
   injs :: Effs '[] f a -> Effs xys f a
   injs = absurdEffs
+
+  weakenAlgC _ = EndAC
 
 instance (Member x xys, Injects xs xys)
   => Injects (x ': xs) xys where
   {-# INLINE injs #-}
   injs (Eff x)  = inj x
   injs (Effs x) = injs x
+
+  weakenAlgC cxys = (lookupAlgC @x @xys cxys, weakenAlgC @xs @xys cxys)
 
 -- | @Member' sig sigs n@ holds when @sig@ is contained in @sigs@ at index @n@.
 class Member sig sigs where
@@ -159,6 +203,9 @@ class Member sig sigs where
   -- when @eff@ is in @effs@.
   prj :: Effs sigs f a -> Maybe (sig f a)
 
+  -- | Lookup the algebra code for @sig@ in @AlgebraCode sigs f@.
+  lookupAlgC :: AlgebraCode sigs f -> CodeQ (sig f -.> f)
+
 instance {-# OVERLAPPING #-} Member sig (sig ': sigs) where
   {-# INLINE inj #-}
   inj :: sig f a -> Effs (sig ': sigs) f a
@@ -169,6 +216,8 @@ instance {-# OVERLAPPING #-} Member sig (sig ': sigs) where
   prj (Eff x) = Just x
   prj _       = Nothing
 
+  lookupAlgC (c, _) = c
+
 instance (Member sig sigs) => Member sig (sig' : sigs) where
   {-# INLINE inj #-}
   inj x = Effs . inj $ x
@@ -177,9 +226,33 @@ instance (Member sig sigs) => Member sig (sig' : sigs) where
   prj (Eff _)  = Nothing
   prj (Effs x) = prj x
 
+  lookupAlgC (_, cs) = lookupAlgC @sig @sigs cs
+
 
 -- | @Member sigs sigs'@ holds when every @sig@ which is a 'Member' of in @sigs@
 -- is also a 'Member' of @sigs'@.
 type family Members (xsigs :: [Effect]) (xysigs :: [Effect]) :: Constraint where
   Members '[] xysigs       = ()
   Members (xsig ': xsigs) xysigs = (Member xsig xysigs, Members xsigs xysigs)
+
+-- Definitions related to staged algebras
+-----------------------------------------
+
+class GenAlgebra effs where
+-- Zhixuan: Somehow this function breaks Haskell Language Server...
+  genAlgebra :: AlgebraCode effs f -> CodeQ (Algebra' effs f)
+--  genAlgebra acs = [|| Algebra' $ \op -> $$(genAlgebraAux acs [|| op ||])||]
+
+  genAlgebraAux :: AlgebraCode effs f -> CodeQ (Effs effs f x) -> CodeQ (f x)
+
+instance GenAlgebra '[] where
+  genAlgebraAux :: AlgebraCode '[] f -> CodeQ (Effs '[] f x) -> CodeQ (f x)
+  genAlgebraAux EndAC cx = [|| case $$cx of {} ||]
+
+instance GenAlgebra effs => GenAlgebra (eff ': effs) where
+  genAlgebraAux :: AlgebraCode (eff : effs) f -> CodeQ (Effs (eff ': effs) f x) -> CodeQ (f x)
+  genAlgebraAux (ac, acs) cop = [||
+    case $$cop of
+       Eff (op :: eff f _) -> $$ac `at` op
+       Effs (op :: Effs effs f _) -> $$(genAlgebraAux acs [||op||])
+   ||]

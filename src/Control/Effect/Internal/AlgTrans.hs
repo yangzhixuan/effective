@@ -140,6 +140,12 @@ weakenC :: forall cs' cs effs oeffs ts.
        -> AlgTrans effs oeffs ts cs'
 weakenC at = AlgTrans \oalg x -> getAT at oalg x
 
+weakenCC :: forall cs' cs effs oeffs ts.
+          (forall m. cs' m => cs m)
+       => AlgTransC effs oeffs ts cs
+       -> AlgTransC effs oeffs ts cs'
+weakenCC at = AlgTransC \oalg -> getATC at oalg
+
 -- | Replace the carrier constraint @cs@ of an algebra transformer with the conjunction
 -- of @cs@ and another constraint @cs'@.
 {-# INLINE weakenCAnd #-}
@@ -293,16 +299,26 @@ fuseAT at1 at2 = generalFuseAT (Proxy @effs2) (Proxy @effs2) at1 at2
 {-# INLINE fuseAT' #-}
 fuseAT' :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
           FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
-       => (ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2,
-           forall m. cs2 m => cs1 (Apply ts2 m))
-       => AlgTrans effs1 oeffs1 ts1 cs1
-       -> AlgTrans effs2 oeffs2 ts2 cs2
-       -> AlgTrans (effs1 `Union` effs2)
-                   ((oeffs1 :\\ effs2) `Union` oeffs2)
-                   (ts1 :++ ts2)
-                   cs2
+        => (ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2,
+            forall m. cs2 m => cs1 (Apply ts2 m))
+        => AlgTrans effs1 oeffs1 ts1 cs1
+        -> AlgTrans effs2 oeffs2 ts2 cs2
+        -> AlgTrans (effs1 `Union` effs2)
+                    ((oeffs1 :\\ effs2) `Union` oeffs2)
+                    (ts1 :++ ts2)
+                    cs2
 fuseAT' at1 at2 = weakenC (fuseAT at1 at2)
 
+fuseATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+           FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
+        => (ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2)
+        => AlgTransC effs1 oeffs1 ts1 cs1
+        -> AlgTransC effs2 oeffs2 ts2 cs2
+        -> AlgTransC (effs1 `Union` effs2)
+                    ((oeffs1 :\\ effs2) `Union` oeffs2)
+                    (ts1 :++ ts2)
+                    (CompC ts2 cs1 cs2)
+fuseATC at1 at2 = generalFuseATC (Proxy @effs2) (Proxy @effs2) at1 at2
 
 infixr 9 `pipeAT`
 
@@ -445,3 +461,26 @@ generalFuseAT _ _ at1 at2 = AlgTrans $ \oalg ->
          (getAT (fwds @(oeffs1 :\\ ieffs) @ts2) (weakenAlg oalg))
          (weakenAlg (getAT at2 (weakenAlg oalg)))))
      (getAT (fwds @feffs @ts1) (weakenAlg (getAT at2 (weakenAlg oalg))))
+
+generalFuseATC
+  :: forall feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+     ( Injects feffs effs2
+     , Injects ieffs effs2
+     , ForwardsC cs1 feffs ts1
+     , ForwardsC cs2 (oeffs1 :\\ ieffs) ts2
+     , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 )
+  => Proxy feffs
+  -> Proxy ieffs
+  -> AlgTransC effs1 oeffs1 ts1 cs1
+  -> AlgTransC effs2 oeffs2 ts2 cs2
+  -> AlgTransC (effs1 `Union` feffs)
+               ((oeffs1 :\\ ieffs) `Union` oeffs2)
+               (ts1 :++ ts2)
+               (CompC ts2 cs1 cs2)
+generalFuseATC _ _ at1 at2 = AlgTransC $ \oalg ->
+   hunionC @effs1 @feffs
+     (getATC at1 (weakenAlgC $
+       heitherC @(oeffs1 :\\ ieffs) @ieffs
+         (getATC (fwdsC @(oeffs1 :\\ ieffs) @ts2) (weakenAlgC oalg))
+         (weakenAlgC (getATC at2 (weakenAlgC oalg)))))
+     (getATC (fwdsC @feffs @ts1) (weakenAlgC (getATC at2 (weakenAlgC oalg))))

@@ -48,11 +48,13 @@ module Control.Effect
 
   -- * Handler combinators
   , Handler (..)
+  , HandlerC (..)
   , handler
   , handler'
   , Runner (..)
+  , RunnerC (..)
   , runner'
-  , runner
+  , fromRunner
   , identity
   , comp
   , weaken
@@ -68,12 +70,14 @@ module Control.Effect
 
   -- ** Fusion-based combinators
   , fuse, (|>)
+  , fuseC, (|>$)
   , pipe, (||>)
   , pass
   , generalFuse
 
   -- * Algebra transformers
   , AlgTrans (..)
+  , AlgTransC (..)
   , asAT
   , idAT
   , compAT
@@ -81,6 +85,7 @@ module Control.Effect
   , algTrans1
   , algTrans'
   , fuseAT, fuseAT'
+  , fuseATC
   , pipeAT
   , passAT
   , generalFuseAT
@@ -103,6 +108,16 @@ module Control.Effect
   -- * Auxiliary types
   , Apply
   , Proxy (..)
+
+
+  , AlgebraCode (..)
+  , EndAC (..)
+  , Algebra' (..)
+  , NatTrans (..)
+  , type (-.>) (..)
+  , (#$)
+  , hunionC
+  , GenAlgebra (..)
 
   -- * Template Haskell
   , makeGen

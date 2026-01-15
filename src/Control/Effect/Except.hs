@@ -89,13 +89,12 @@ except = handler' runExceptT exceptAlg
 
 -- | The algebra transformer for the 'except' handler.
 exceptAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
-exceptAT = AlgTrans exceptAlg
+exceptAT = algTrans' exceptAlg
 
 exceptAlg :: Monad m
-  => (forall x. oeff m x -> m x)
-  -> (forall x. Effs [Throw e, Catch e] (ExceptT e m) x -> ExceptT e m x)
-exceptAlg _ (Throw e) = ExceptT (return (Left e))
-exceptAlg _ (Catch p q) = ExceptT $ do
+  => (forall x. Effs [Throw e, Catch e] (ExceptT e m) x -> ExceptT e m x)
+exceptAlg (Throw e) = ExceptT (return (Left e))
+exceptAlg (Catch p q) = ExceptT $ do
   mx <- runExceptT p
   case mx of
     Left e  -> runExceptT (q e)
@@ -110,13 +109,12 @@ retry = handler' runExceptT retryAlg
 
 -- | The algebra transformer for the 'retry' handler.
 retryAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
-retryAT = AlgTrans retryAlg
+retryAT = algTrans' retryAlg
 
 retryAlg :: Monad m
-  => (forall x. Effs oeff m x -> m x)
-  -> (forall x. Effs [Throw e, Catch e] (ExceptT e m) x -> ExceptT e m x)
-retryAlg _ (Throw e) = ExceptT (return (Left e))
-retryAlg _ (Catch p q) = ExceptT $ loop p q where
+  => (forall x. Effs [Throw e, Catch e] (ExceptT e m) x -> ExceptT e m x)
+retryAlg (Throw e) = ExceptT (return (Left e))
+retryAlg (Catch p q) = ExceptT $ loop p q where
   loop p q =
     do mx <- runExceptT p
        case mx of

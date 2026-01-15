@@ -149,9 +149,8 @@ hstore = handler' (flip St.evalStateT M.empty) hstoreAlg
 
 hstoreAlg
   :: Monad m
-  => (forall x. oeff m x -> m x)
-  -> (forall x.  Effs [Put, Get, New] (St.StateT Mem m) x -> St.StateT Mem m x)
-hstoreAlg _ op
+  => (forall x.  Effs [Put, Get, New] (St.StateT Mem m) x -> St.StateT Mem m x)
+hstoreAlg op
   | Just (Put r a p) <- prj op =
       do St.modify (\mem -> M.insert (unRef r) (unsafeCoerce a) mem)
          return p

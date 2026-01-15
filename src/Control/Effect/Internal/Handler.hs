@@ -15,6 +15,7 @@ Stability   : experimental
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 module Control.Effect.Internal.Handler where
 
@@ -31,6 +32,7 @@ import Data.List.Kind
 import Data.Functor.Identity
 import Data.HFunctor
 import Data.Proxy
+import Language.Haskell.TH (CodeQ)
 
 -- | A t'Handler' will process input effects @effs@ and produce output effects
 -- @oeffs@, while working with a list of monad transformers @ts@. The final value
@@ -54,6 +56,32 @@ data Handler effs oeffs ts a b =
   , halg :: AlgTrans effs oeffs ts Monad
   }
 
+type HandlerC
+  :: [Effect]                             -- ^ effs  : input effects
+  -> [Effect]                             -- ^ oeffs : output effects
+  -> [(Type -> Type) -> (Type -> Type)]   -- ^ ts    : a list of carrier transformers
+  -> Type                                 -- ^ a     : input type
+  -> Type                                 -- ^ b     : output type
+  -> Type
+
+data HandlerC effs oeffs ts a b =
+  HandlerC
+  { -- | Given @oeffs@-effects on any monad @m@, running the monad transformer stack
+    -- @ts m x@ into @m (fs x)@.
+    hrunC :: RunnerC oeffs ts a b Monad
+
+    -- | Transforming @oeffs@-effects on any monad @m@ to @effs@-effects on @ts m@.
+  , halgC :: AlgTransC effs oeffs ts Monad
+  }
+
+-- genHandler :: GenAlgebra effs => HandlerC effs oeffs ts a b -> CodeQ (Handler effs oeffs ts a b)
+-- genHandler (HandlerC r a) = _
+
+-- genHandler' :: GenAlgebra effs => HandlerC effs '[] ts a b -> CodeQ (Handler effs '[] ts a b)
+-- genHandler' (HandlerC r a) = [||
+--      handler' _ (\op -> $$(genAlgebraAux (getATC a EndAC) [|| op ||]))
+--   ||]
+
 
 -- * Building handlers
 
@@ -67,19 +95,20 @@ handler
 handler run alg = Handler (Runner run) (AlgTrans alg)
 
 -- | Given @hrun@ and @halg@ will construct a @Handler effs oeffs ts fs@. This
--- is a simplified version of the @Handler@ constructor where @run@ does
--- not need to be a modular runner.
+-- is a simplified version of the @Handler@ constructor where @run@ and @alg@ do
+-- not need output effects.
 {-# INLINE handler' #-}
 handler'
   :: (forall m . Monad m => Apply ts m a -> m b)
-  -> (forall m . Monad m => Algebra oeffs m -> Algebra effs (Apply ts m))
+  -> (forall m . Monad m => Algebra effs (Apply ts m))
   -> Handler effs oeffs ts a b
-handler' run alg = Handler (Runner (\_ -> run)) (AlgTrans (\oalg -> alg oalg))
+handler' run alg = Handler (Runner (\_ -> run)) (AlgTrans (\(_ :: Algebra _ m) -> alg @m))
 
-runner
+{-# INLINE fromRunner #-}
+fromRunner
   :: forall ts a b. (forall m . Monad m => Apply ts m a -> m b)
   -> Handler '[] '[] ts a b
-runner run = Handler (Runner (\_ -> run)) (AlgTrans (const absurdEffs))
+fromRunner run = Handler (Runner (\_ -> run)) (AlgTrans (const absurdEffs))
 
 infixr #:
 
@@ -292,6 +321,28 @@ fuse (Handler run1 malg1) (Handler run2 malg2)
 
 -- | A synonym for `fuse`.
 (|>) = fuse
+
+infixr 9 `fuseC`, |>$
+
+fuseC, (|>$)
+  :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3
+  . ( forall m . Monad m => MonadApply ts1 m
+    , forall m . Monad m => MonadApply ts2 m
+    , ForwardsM effs2 ts1
+    , ForwardsM (oeffs1 :\\ effs2) ts2
+    , LL.FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
+    , LL.FuseR# effs2 oeffs1 oeffs2 ts1 ts2
+    )
+  => HandlerC effs1 oeffs1 ts1 a1 a2   -- ^ @h1@
+  -> HandlerC effs2 oeffs2 ts2 a2 a3   -- ^ @h2@
+  -> HandlerC (effs1 `Union` effs2)
+              ((oeffs1 :\\ effs2) `Union` oeffs2)
+              (ts1 :++ ts2)
+              a1 a3
+fuseC (HandlerC run1 malg1) (HandlerC run2 malg2)
+  = HandlerC (weakenRCC (LL.fuseRC malg2 run1 run2)) (weakenCC (LL.fuseATC malg1 malg2))
+
+(|>$) = fuseC
 
 
 infixr 9 `pipe`, ||>

@@ -45,6 +45,10 @@ module Control.Effect.Reader (
 
   -- ** Underlying monad transformers
   R.ReaderT(..),
+
+  readerC,
+  askerC,
+  readerATC,
 ) where
 
 import Control.Effect
@@ -52,6 +56,7 @@ import Control.Effect.Internal.AlgTrans
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 import Data.Functor.Unary
+import Language.Haskell.TH
 
 import qualified Control.Monad.Trans.Reader as R
 
@@ -74,8 +79,7 @@ instance Unary (Local_ r) where
 -- that can be accessed with `ask`, and locally transformed with `local`.
 {-# INLINE reader #-}
 reader :: r -> Handler [Ask r, Local r] '[] '[R.ReaderT r] a a
-reader r = handler' (flip R.runReaderT r) (\_ -> readerAlg)
---       = (\_ -> readerAlg) #: runner (flip R.runReaderT r)
+reader r = handler' (flip R.runReaderT r) readerAlg
 
 -- | The `reader'` handler supplies an environment @r@ computed using the
 -- output effects to the program that can be accessed with `ask`, and
@@ -104,7 +108,26 @@ readerAskAT :: AlgTrans '[Ask r] '[] '[R.ReaderT r] Monad
 readerAskAT = weakenIEffs readerAT
 
 readerAsk :: r -> Handler '[Ask r] '[] '[R.ReaderT r] a a
-readerAsk r = handler' (flip R.runReaderT r) (getAT readerAskAT)
+readerAsk r = handler (\_ -> flip R.runReaderT r) (getAT readerAskAT)
 
 asker :: r -> Handler '[Ask r] '[] '[] a a
 asker r = interpret (\(Ask k) -> return (k r))
+
+
+-- Lightweight staging
+
+readerATC :: AlgTransC '[Ask r, Local r] '[] '[R.ReaderT r] Monad
+readerATC = AlgTransC $ \_ -> ([|| NT askAlg ||],  ([|| NT localAlg ||], EndAC))
+
+askAlg :: Monad m => Ask r (R.ReaderT r m) b -> R.ReaderT r m b
+askAlg (Alg (Ask_ p)) = do r <- R.ask; return (p r)
+
+localAlg :: Local r (R.ReaderT r m) a -> R.ReaderT r m a
+localAlg (Scp (Local_ f p)) = R.local f p
+
+readerC :: CodeQ r -> HandlerC [Ask r, Local r] '[] '[R.ReaderT r] a a
+readerC r = HandlerC (RunnerC $ \_ -> [|| flip R.runReaderT $$r ||]) readerATC
+
+askerC :: CodeQ r -> HandlerC '[Ask r] '[] '[] a a
+askerC r = HandlerC (RunnerC $ \_ -> [|| id ||])
+  (AlgTransC $ \_ -> ([|| NT $ \(Alg (Ask_ p)) -> return (p $$r) ||], EndAC))

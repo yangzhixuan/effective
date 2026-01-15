@@ -84,22 +84,22 @@ alternative'
   .  (forall m . Monad m => Alternative (t m))
   => (forall m . Monad m => (forall a . t m a -> m (f a)))
   -> Handler '[Empty, Choose] '[] '[t] a (f a)
-alternative' run =  emptyAlgT #: chooseAlgT #: runner run
+alternative' run =  emptyAlgT #: chooseAlgT #: fromRunner run
 
 -- | The algebra transformer underlying the 'alternative' handler. This uses an
 -- underlying 'Alternative' instance for @t m@ given by a transformer @t@.
 alternativeAT
   :: forall t. (forall m . Monad m => Alternative (t m))
   => AlgTrans '[Empty, Choose] '[] '[t] Monad
-alternativeAT = AlgTrans alternativeAlg
+alternativeAT = algTrans' alternativeAlg
 
 {-# INLINE alternativeAlg #-}
 alternativeAlg
-  :: forall oeffs t . (forall m . Monad m => Alternative (t m))
+  :: forall t . (forall m . Monad m => Alternative (t m))
   => forall m. Monad m
-  => Algebra oeffs m -> Algebra [Empty, Choose] (t m)
-alternativeAlg oalg Empty          = Ap.empty
-alternativeAlg oalg (Choose xs ys) = xs <|> ys
+  => Algebra [Empty, Choose] (t m)
+alternativeAlg Empty          = Ap.empty
+alternativeAlg (Choose xs ys) = xs <|> ys
 
 emptyAlgT :: forall t. (forall m . Monad m => Alternative (t m))
   => AlgTrans '[Empty] '[] '[t] Monad
