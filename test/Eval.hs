@@ -41,7 +41,7 @@ exprAT env = AlgTrans $ \oalg op ->
     Add x y  -> ContT $ \k -> do x' <- k x; y' <- k y; return (x' + y')
 
 expr :: [(String, Int)] -> Handler '[Var, Add] '[Throw] '[ContT Int] Int Int
-expr choices = exprAT choices #: fromRunner (\t -> runContT t return)
+expr choices = exprAT choices <: fromRunner (\t -> runContT t return)
 
 evalExpr :: Prog [Var, Add] Int -> Maybe Int
 evalExpr p = runIdentity . runMaybeT . flip runContT return $

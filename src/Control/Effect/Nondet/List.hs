@@ -42,7 +42,7 @@ list :: Handler [Empty, Choose] '[] '[ListT] a [a]
 list = alternative runListT'
 
 list' :: Handler [Search, Empty, Choose] '[] '[ListT] a [a]
-list' = searchListAlg #: list
+list' = searchListAlg <: list
 
 searchListAlg :: AlgTrans '[Search] '[] '[ListT] Monad
 searchListAlg = algTrans1 $ \oalg (Scp (Search_ xs)) -> xs

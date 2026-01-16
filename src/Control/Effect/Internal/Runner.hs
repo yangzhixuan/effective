@@ -42,7 +42,7 @@ type RunnerC
   -> ((Type -> Type) -> Constraint)       -- ^ cs    : carrier constraint
   -> Type
 newtype RunnerC oeffs ts a b cs = RunnerC {
-  getRC :: forall m . cs m => AlgebraCode oeffs m -> CodeQ (Apply ts m a -> m b) }
+  getRC :: forall m . cs m => AlgebraC oeffs m -> CodeQ (Apply ts m a -> m b) }
 
 -- * Building runners
 
@@ -109,7 +109,7 @@ fuseRC :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
                   (ts1 :++ ts2)
                   a1 a3
                   (CompC ts2 cs1 cs2)
-fuseRC at2 r1 r2 = RunnerC \(oalg :: AlgebraCode _ m)  ->
+fuseRC at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
     [||
       $$(getRC r2 (weakenAlgC oalg))
     . $$(getRC r1 (weakenAlgC @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $

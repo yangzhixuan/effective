@@ -39,16 +39,15 @@ module Control.Effect.Reader (
   readerAsk,
   asker,
 
+  readerC,
+  askerC,
+
   -- ** Algebras
   readerAT,
   readerAskAT,
 
   -- ** Underlying monad transformers
   R.ReaderT(..),
-
-  readerC,
-  askerC,
-  readerATC,
 ) where
 
 import Control.Effect
@@ -94,12 +93,18 @@ reader' mr = handler run (\_ -> readerAlg) where
                     x <- R.runReaderT rmx r
                     return x
 
+{-# INLINE askAlg #-}
+askAlg :: Monad m => Ask r (R.ReaderT r m) b -> R.ReaderT r m b
+askAlg (Ask' p) = do r <- R.ask; return (p r)
+
+{-# INLINE localAlg #-}
+localAlg :: Local r (R.ReaderT r m) a -> R.ReaderT r m a
+localAlg (Local' f p) = R.local f p
+
 -- | The algebra for the 'reader' handler.
 {-# INLINE readerAlg #-}
-readerAlg
-  :: Monad m => Algebra [Ask r, Local r] (R.ReaderT r m)
-readerAlg (Ask p)     = do r <- R.ask; return (p r)
-readerAlg (Local f p) = R.local f p
+readerAlg :: Monad m => Algebra [Ask r, Local r] (R.ReaderT r m)
+readerAlg = askAlg #: localAlg #: hnil
 
 readerAT :: AlgTrans '[Ask r, Local r] '[] '[R.ReaderT r] Monad
 readerAT = AlgTrans (\_ -> readerAlg)
@@ -113,20 +118,12 @@ readerAsk r = handler (\_ -> flip R.runReaderT r) (getAT readerAskAT)
 asker :: r -> Handler '[Ask r] '[] '[] a a
 asker r = interpret (\(Ask k) -> return (k r))
 
-
--- Lightweight staging
-
-readerATC :: AlgTransC '[Ask r, Local r] '[] '[R.ReaderT r] Monad
-readerATC = AlgTransC $ \_ -> ([|| NT askAlg ||],  ([|| NT localAlg ||], EndAC))
-
-askAlg :: Monad m => Ask r (R.ReaderT r m) b -> R.ReaderT r m b
-askAlg (Alg (Ask_ p)) = do r <- R.ask; return (p r)
-
-localAlg :: Local r (R.ReaderT r m) a -> R.ReaderT r m a
-localAlg (Scp (Local_ f p)) = R.local f p
+-- Handlers for lightweight staging
 
 readerC :: CodeQ r -> HandlerC [Ask r, Local r] '[] '[R.ReaderT r] a a
-readerC r = HandlerC (RunnerC $ \_ -> [|| flip R.runReaderT $$r ||]) readerATC
+readerC r = HandlerC
+  (RunnerC $ \_ -> [|| flip R.runReaderT $$r ||])
+  (AlgTransC $ \_ -> ([|| NT askAlg ||],  ([|| NT localAlg ||], EndAC)))
 
 askerC :: CodeQ r -> HandlerC '[Ask r] '[] '[] a a
 askerC r = HandlerC (RunnerC $ \_ -> [|| id ||])

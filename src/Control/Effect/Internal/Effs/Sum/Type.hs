@@ -22,9 +22,8 @@ module Control.Effect.Internal.Effs.Sum.Type
   , Effect
   , absurdEffs
 
-  , AlgebraCode (..)
+  , AlgebraC (..)
   , EndAC (..)
-  , Algebra' (..)
   , NatTrans (..)
   , type (-.>) (..)
   ) where
@@ -97,9 +96,9 @@ newtype Algebra' effs f = Algebra' { runAlg :: Algebra effs f }
 newtype NatTrans f g = NT { at :: forall x. f x -> g x }
 type (-.>) = NatTrans
 
-type family AlgebraCode (effs :: [Effect]) (f :: Type -> Type) = result | result -> effs f where
-  AlgebraCode '[] f = EndAC '[] f
-  AlgebraCode (eff ': effs) f = (CodeQ (eff f -.> f), AlgebraCode effs f)
+type family AlgebraC (effs :: [Effect]) (f :: Type -> Type) = result | result -> effs f where
+  AlgebraC '[] f = EndAC '[] f
+  AlgebraC (eff ': effs) f = (CodeQ (eff f -.> f), AlgebraC effs f)
 
 -- | This is just a unit type, but it has two phantom type variables which are useful
 -- for type inference.

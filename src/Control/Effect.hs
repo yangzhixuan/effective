@@ -38,13 +38,14 @@ module Control.Effect
   , Algebra
   , singAlgIso
   , (#)
+  , hcons, hnil, (#:)
   , weakenAlg
   , Forward (..)
   , Forwards (..)
   , ForwardsM (..)
   , ForwardsC (..)
   , absurdEffs
-  , (#:)
+  , (<:)
 
   -- * Handler combinators
   , Handler (..)
@@ -111,11 +112,9 @@ module Control.Effect
   , Proxy (..)
 
 
-  , AlgebraCode (..)
+  -- * Lightweight staging
+  , AlgebraC (..)
   , EndAC (..)
-  , Algebra' (..)
-  , NatTrans (..)
-  , type (-.>) (..)
   , (#$)
   , hunionC
   , GenAlgebra (..)

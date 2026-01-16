@@ -30,14 +30,12 @@ module Control.Effect.Internal.Effs
   , Append (..)
   , absurdEffs
   , weakenAlg
-  , hcons
-  , hnil
+  , hcons, hnil, (#:)
   , hunion
   , (#)
 
-  , AlgebraCode (..)
+  , AlgebraC (..)
   , EndAC (..)
-  , Algebra' (..)
   , NatTrans (..)
   , type (-.>) (..)
   , (#$)

@@ -84,7 +84,7 @@ alternative'
   .  (forall m . Monad m => Alternative (t m))
   => (forall m . Monad m => (forall a . t m a -> m (f a)))
   -> Handler '[Empty, Choose] '[] '[t] a (f a)
-alternative' run =  emptyAlgT #: chooseAlgT #: fromRunner run
+alternative' run =  emptyAlgT <: chooseAlgT <: fromRunner run
 
 -- | The algebra transformer underlying the 'alternative' handler. This uses an
 -- underlying 'Alternative' instance for @t m@ given by a transformer @t@.

@@ -115,6 +115,7 @@ data FunPieces = FunPieces
 data AlgPieces = AlgPieces
   { apTySyn       :: Dec
   , apPat         :: Dec
+  , apPat'        :: Dec
   , apSmart       :: FunPieces
   , apProxySmart  :: FunPieces
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
@@ -132,7 +133,7 @@ instance ToDecs FunPieces where
   toDecs (FunPieces {..}) = [pPragma, pSig, pFun]
 
 instance ToDecs AlgPieces where
-  toDecs (AlgPieces {..}) = [apTySyn] ++ [apPat] ++ toDecs apSmart ++ toDecs apProxySmart
+  toDecs (AlgPieces {..}) = [apTySyn] ++ [apPat, apPat'] ++ toDecs apSmart ++ toDecs apProxySmart
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
     ++ toDecs apNamedSmart
 #endif
@@ -215,6 +216,9 @@ makeGenPiecesFromDec baseName dec = do
       patDir  = ExplBidir [Clause (map VarP (xVars ++ [kVar])) builder []]
       patDecl = PatSynD (mkName effStr) patArgs patDir pat
 
+      patDecl' = PatSynD (mkName (effStr ++ "'")) patArgs ImplBidir
+        (conPCompat 'Alg [conPCompat conName (map VarP xVars ++ [VarP kVar])])
+
   argNames <- mapM (\i -> newName ("a" ++ show i)) [1 .. length prefixTys']
   nName <- newName "n"
   let smartLhs = Clause (map VarP argNames)
@@ -248,7 +252,7 @@ makeGenPiecesFromDec baseName dec = do
 #endif
 
 
-  pure AlgPieces{ apTySyn      = effTySyn, apPat = patDecl
+  pure AlgPieces{ apTySyn      = effTySyn, apPat = patDecl, apPat' = patDecl'
                 , apSmart      = FunPieces pragma smartSig smartFun
                 , apProxySmart = FunPieces proxyPragma proxySmartSig proxySmartFun
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
@@ -313,7 +317,7 @@ makeGenTypeFrom baseName = do
 makeGenPatternFrom :: Name -> Q [Dec]
 makeGenPatternFrom baseName = do
   AlgPieces{..} <- makeGenPieces baseName
-  pure [apPat]
+  pure [apPat, apPat']
 
 -- | Generate only the smart constructors (with @INLINE@ and explicit type) for a generic operation.
 makeGenSmartFrom :: Name -> Q [Dec]
@@ -497,6 +501,7 @@ makeAlgPiecesFromDec baseName dec = do
   let effStr  = dropTrailingUnderscore baseStr
       effName = mkName effStr
       patName = effName
+      patName' = mkName (effStr ++ "'")
       smartName = mkName (lowerHead effStr)
       proxySmartName = mkName (lowerHead effStr ++ "P")
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
@@ -572,9 +577,13 @@ makeAlgPiecesFromDec baseName dec = do
       patDir  = ExplBidir [Clause (map VarP argNames) builder []]
       patDecl = PatSynD patName patArgs patDir pat
 
+      patDecl' = PatSynD patName' patArgs ImplBidir (conPCompat 'Alg
+                  [conPCompat conName (map VarP argNames)])
+
   return $ AlgPieces
       { apTySyn      = effTySyn
       , apPat        = patDecl
+      , apPat'       = patDecl'
       , apSmart      = smart
       , apProxySmart = proxySmart
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
@@ -592,7 +601,7 @@ makeAlgTypeFrom baseName = do
 makeAlgPatternFrom :: Name -> Q [Dec]
 makeAlgPatternFrom baseName = do
   AlgPieces{..} <- makeAlgPieces baseName
-  pure [apPat]
+  pure [apPat, apPat']
 
 -- | Generate only the smart constructors (with @INLINE@ and explicit type).
 -- for an algebraic operation.
@@ -613,6 +622,7 @@ makeAlgSmartFrom baseName = do
 data ScpPieces = ScpPieces
   { spTySyn  :: Dec
   , spPat    :: Dec
+  , spPat'    :: Dec
   , spSmart  :: FunPieces
   , spSmartM :: FunPieces
   , spProxySmart :: FunPieces
@@ -624,7 +634,7 @@ data ScpPieces = ScpPieces
 instance ToDecs ScpPieces where
   toDecs (ScpPieces{..}) =
        [spTySyn]
-    ++ [spPat]
+    ++ [spPat, spPat']
     ++ toDecs spSmart
     ++ toDecs spSmartM
     ++ toDecs spProxySmart
@@ -664,6 +674,7 @@ makeScpPiecesFromDec baseName dec = do
   let effStr  = dropTrailingUnderscore baseStr
       effName = mkName effStr
       patName = effName
+      patName' = mkName (effStr ++ "'")
       smartName = mkName (lowerHead effStr)
       proxySmartName = mkName (lowerHead effStr ++ "P")
       smartMName = mkName (lowerHead effStr ++ "M")
@@ -759,9 +770,12 @@ makeScpPiecesFromDec baseName dec = do
       patDir  = ExplBidir [Clause (map VarP argNames) builder []]
       patDecl = PatSynD patName patArgs patDir pat
 
+      patDecl' = PatSynD patName' patArgs ImplBidir
+                   (conPCompat 'Scp [conPCompat conName (map VarP argNames)])
   return $ ScpPieces
       { spTySyn      = effTySyn
       , spPat        = patDecl
+      , spPat'       = patDecl'
       , spSmart      = smart
       , spProxySmart = proxySmart
       , spSmartM     = smartM
@@ -814,7 +828,7 @@ makeScpTypeFrom baseName = do
 makeScpPatternFrom :: Name -> Q [Dec]
 makeScpPatternFrom baseName = do
   ScpPieces{..} <- makeScpPieces baseName
-  pure [spPat]
+  pure [spPat, spPat']
 
 -- | Generate only the Scp-style smart constructors (plain + monadic),
 -- each with @INLINE@ and explicit types.

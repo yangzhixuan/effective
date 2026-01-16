@@ -36,7 +36,7 @@ type AlgTransC
   -> ((Type -> Type) -> Constraint)       -- ^ cs    : carrier constraint
   -> Type
 newtype AlgTransC effs oeffs ts cs = AlgTransC {
-   getATC :: forall m . cs m => AlgebraCode oeffs m -> AlgebraCode effs (Apply ts m) }
+   getATC :: forall m . cs m => AlgebraC oeffs m -> AlgebraC effs (Apply ts m) }
 
 -- * Constraints
 

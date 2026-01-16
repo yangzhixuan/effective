@@ -147,7 +147,7 @@ instance (ForwardEffs effs t, Forwards effs ts) => Forwards effs (t ': ts) where
     getAT (fwdEffs @_ @t) (getAT (fwds @_ @ts) alg)
 
   fwdsC :: AlgTransC effs effs (t ': ts) (FwdsConstraint effs (t ': ts))
-  fwdsC = AlgTransC $ \(calg :: AlgebraCode effs m) ->
+  fwdsC = AlgTransC $ \(calg :: AlgebraC effs m) ->
     getATC (fwdEffsC @_ @t) (getATC (fwdsC @_ @ts) calg)
 
 -- | @ForwardsC cs effs ts@ if and only if effects @effs@ on @m@ can be transformed along

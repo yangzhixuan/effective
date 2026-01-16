@@ -113,12 +113,13 @@ fromRunner
   -> Handler '[] '[] ts a b
 fromRunner run = Handler (Runner (\_ -> run)) (AlgTrans (const absurdEffs))
 
-infixr #:
+{-# INLINE (<:) #-}
+infixr <:
 
-(#:) :: forall effs oeffs effs' oeffs' ts a b . UnionAT# effs effs' oeffs oeffs'
+(<:) :: forall effs oeffs effs' oeffs' ts a b . UnionAT# effs effs' oeffs oeffs'
       => AlgTrans effs oeffs ts Monad
       -> Handler effs' oeffs' ts a b -> Handler (effs `Union` effs') (oeffs `Union` oeffs') ts a b
-algs #: Handler hrun halg = Handler (weakenREffs hrun) (weakenC (algs `unionAT` halg))
+algs <: Handler hrun halg = Handler (weakenREffs hrun) (weakenC (algs `unionAT` halg))
 
 -- | The identity handler that doesn't transform the effects.
 {-# INLINE identity #-}
