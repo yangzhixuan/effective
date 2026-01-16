@@ -73,8 +73,8 @@ stage :: forall m effs oeffs ts cs a.
          , Apply ts Gen $~> m
          , EvalGen# effs oeffs )
       => AlgTrans effs oeffs ts cs
-      -> Prog (effs `Union` GenEffects) (Up a)
-      -> Up (m a)
+      -> Prog (effs `Union` GenEffects) (CodeQ a)
+      -> CodeQ (m a)
 stage alg = down . evalGen alg
 
 type EvalGenM# effs oeffs m =
@@ -103,6 +103,6 @@ stageM :: forall m m' effs oeffs ts cs a.
             , EvalGenM# effs oeffs m )
          => Proxy m
          -> AlgTrans effs oeffs ts cs
-         -> Prog (effs `Union` GenMEffects m) (Up a)
-         -> Up (m' a)
+         -> Prog (effs `Union` GenMEffects m) (CodeQ a)
+         -> CodeQ (m' a)
 stageM _ at = down . evalGenM @m at

@@ -21,11 +21,11 @@ import Control.Effect.State.Type
 -- * The code-generation monads and their operations
 
 -- | The code-generation monad, which is the codensity monad transformer applied to
--- the type constructor @`Up` :: Type -> Type@ for code.
-newtype Gen a = Gen { unGen :: forall r. (a -> Up r) -> Up r }
+-- the type constructor @`CodeQ` :: Type -> Type@ for code.
+newtype Gen a = Gen { unGen :: forall r. (a -> CodeQ r) -> CodeQ r }
 
 -- | The code-generation monad restricted to generate @m@-values.
-newtype GenM m a = GenM { unGenM :: forall r. (a -> Up (m r)) -> Up (m r) }
+newtype GenM m a = GenM { unGenM :: forall r. (a -> CodeQ (m r)) -> CodeQ (m r) }
 
 -- | The final answer type of @t`GenM` m a@ must be some @m r@ while @t`Gen` a@ doesn't
 -- have this restriction, so @Gen a@ can be specialised to @GenM m a@.
@@ -56,24 +56,24 @@ instance Monad m => Monad (GenM m) where
   m >>= k = GenM (\k' -> unGenM m (\a -> unGenM (k a) k'))
 
 -- | Generate a let-binding.
-genLet_ :: Up a -> Gen (Up a)
+genLet_ :: CodeQ a -> Gen (CodeQ a)
 genLet_ c = Gen (\k -> [|| let x = $$c in $$(k [||x||]) ||])
 
 -- | Generate a recursive let-binding.
-genLetRec_ :: (Up a -> Up a) -> Gen (Up a)
+genLetRec_ :: (CodeQ a -> CodeQ a) -> Gen (CodeQ a)
 genLetRec_ c = Gen (\k -> [||let x = $$(c [||x||]) in $$(k [||x||])||])
 
 -- | Generate a do-binding.
-genDo_ :: Monad m => Up (m a) -> GenM m (Up a)
+genDo_ :: Monad m => CodeQ (m a) -> GenM m (CodeQ a)
 genDo_ c = GenM (\k -> [|| do x <- $$c; $$(k [||x||]) ||])
 
 -- | Execute a code-generating computation. For example, if
 --
--- > g :: Up Bool -> Gen (Up Bool)
+-- > g :: CodeQ Bool -> Gen (CodeQ Bool)
 -- > g b = Gen $ \k -> [|| if $$b then $$(k [||True||]) else $$(k [||False||]) ||]
 --
 -- Then @runGen (g b)@ evaluates to the code @if $$b then True else False@.
-runGen :: Gen (Up a) -> Up a
+runGen :: Gen (CodeQ a) -> CodeQ a
 runGen g = unGen g id
 
 -- | Reset code generation. For example, let @g@ be the function above, then
@@ -82,23 +82,23 @@ runGen g = unGen g id
 --
 -- This is different from @g b@ because @g b@ invokes the continuation @k@ in both
 -- branches of the @if@ while @resetGen (g b)@ invokes @k@ only once.
-resetGen :: Gen (Up a) -> Gen (Up a)
+resetGen :: Gen (CodeQ a) -> Gen (CodeQ a)
 resetGen = return . runGen
 
 -- | Capture the current continuation.
-shiftGen :: (forall r. (a -> Up r) -> Gen (Up r)) -> Gen a
+shiftGen :: (forall r. (a -> CodeQ r) -> Gen (CodeQ r)) -> Gen a
 shiftGen f = Gen $ runGen . f
 
 -- | `runGen` for `GenM`.
-runGenM :: Monad m => GenM m (Up a) -> Up (m a)
+runGenM :: Monad m => GenM m (CodeQ a) -> CodeQ (m a)
 runGenM g = unGenM g (\x -> [|| return $$x ||])
 
 -- | `resetGen` for `GenM`.
-resetGenM :: Monad m => GenM m (Up a) -> GenM m (Up a)
+resetGenM :: Monad m => GenM m (CodeQ a) -> GenM m (CodeQ a)
 resetGenM = genDo_ . runGenM
 
 -- | `shiftGen` for `GenM`.
-shiftGenM :: Monad m => (forall r. (a -> Up (m r)) -> GenM m (Up (m r))) -> GenM m a
+shiftGenM :: Monad m => (forall r. (a -> CodeQ (m r)) -> GenM m (CodeQ (m r))) -> GenM m a
 shiftGenM f = GenM $ (\g -> unGenM g id) . f
 
 
@@ -114,11 +114,11 @@ liftGen :: Member CodeGen sig => Gen a -> Prog sig a
 liftGen o = call (Alg o)
 
 -- | Generate a let-binding.
-genLet :: Member CodeGen sig => Up a -> Prog sig (Up a)
+genLet :: Member CodeGen sig => CodeQ a -> Prog sig (CodeQ a)
 genLet = liftGen . genLet_
 
 -- | Generate a recursive let-binding.
-genLetRec :: Member CodeGen sig => (Up a -> Up a) -> Prog sig (Up a)
+genLetRec :: Member CodeGen sig => (CodeQ a -> CodeQ a) -> Prog sig (CodeQ a)
 genLetRec = liftGen . genLetRec_
 
 -- | Perform code generation on a monad @m@.
@@ -127,12 +127,12 @@ liftGenA alg o = callM alg (Alg o)
 
 -- | Generate a let-binding on a monad @m@.
 genLetM :: forall sig m a . Member CodeGen sig
-        => Algebra sig m -> Up a -> m (Up a)
+        => Algebra sig m -> CodeQ a -> m (CodeQ a)
 genLetM alg = callM alg . Alg .  genLet_
 
 -- | Generate a recursive let-binding on a monad @m@.
 genLetRecM :: forall sig n a . Member CodeGen sig
-           => Algebra sig n -> (Up a -> Up a) -> n (Up a)
+           => Algebra sig n -> (CodeQ a -> CodeQ a) -> n (CodeQ a)
 genLetRecM alg = callM alg . Alg .  genLetRec_
 
 -- | The effect of generating code of type @m a@.
@@ -143,7 +143,7 @@ liftGenM :: forall m sig a. Member (CodeGenM m) sig => GenM m a -> Prog sig a
 liftGenM o = call (Alg o)
 
 -- | Generate a do-binding.
-genDo :: (Monad m, Member (CodeGenM m) sig) => Up (m a) -> Prog sig (Up a)
+genDo :: (Monad m, Member (CodeGenM m) sig) => CodeQ (m a) -> Prog sig (CodeQ a)
 genDo = liftGenM . genDo_
 
 -- | Whenever we have an effect @CodeGenM m@, we can use the effect `CodeGen` as
@@ -152,6 +152,6 @@ specialiseGen :: forall m . AlgTrans '[CodeGen] '[CodeGenM m] '[] Monad
 specialiseGen = interpretAT1 $ \(Alg g) -> liftGenM @m (specialise g)
 
 -- | Insert a let-binding for every put operation.
-letPut :: forall s. AlgTrans '[Put (Up s)] '[Put (Up s), CodeGen] '[] Monad
+letPut :: forall s. AlgTrans '[Put (CodeQ s)] '[Put (CodeQ s), CodeGen] '[] Monad
 -- letPut = interpretAT1 (\(Alg (Put_ s k)) -> do s' <- genLet s; put s'; return k)
-letPut = interpretAT (\(Put (s :: Up s) k) -> do s' <- genLet s; put s'; return k)
+letPut = interpretAT (\(Put (s :: CodeQ s) k) -> do s' <- genLet s; put s'; return k)

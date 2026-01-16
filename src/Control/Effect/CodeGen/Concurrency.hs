@@ -16,7 +16,7 @@ and recursion, such as @parL@ in "Control.Monad.Trans.CResT". These operations c
 be implemented on @ResUpT@ because @ResUpT@ doesn't support pattern matching.
 
 An imperfect workaround is to have /restricted version/ of these operations at the meta
-level, such as @`parUp` :: m (Up x) -> m (Up x) -> m (Up x)@ where the return value
+level, such as @`parUp` :: m (CodeQ x) -> m (CodeQ x) -> m (CodeQ x)@ where the return value
 must be code, and `ResUpT` supports operations like this by downing
 the arguments to the object level and invoke the object-level algebra, and then up
 the result back to the meta level. This is of course very unsatisfactory but currently
@@ -48,12 +48,12 @@ import Data.Kind (Type)
 import Data.HFunctor
 import Data.Iso
 
--- TODO: Operations of the form @sig (m (Up a)) -> m (Up a)@ should probably be a new
+-- TODO: Operations of the form @sig (m (CodeQ a)) -> m (CodeQ a)@ should probably be a new
 -- operation family.
 
 -- | Signature for the restricted par operation
 data ParUp (f :: Type -> Type) x where
-  ParUp :: forall y x f. f (Up y) -> f (Up y) -> (Up y -> x) -> ParUp f x
+  ParUp :: forall y x f. f (CodeQ y) -> f (CodeQ y) -> (CodeQ y -> x) -> ParUp f x
 
 instance Functor (ParUp f) where
   fmap f (ParUp p q k) = ParUp p q (f . k)
@@ -62,16 +62,16 @@ instance HFunctor ParUp where
   hmap f (ParUp p q k) = ParUp (f p) (f q) k
 
 -- | Restricted par operation
-parUp :: Member ParUp sig => Prog sig (Up x) -> Prog sig (Up x) -> Prog sig (Up x)
+parUp :: Member ParUp sig => Prog sig (CodeQ x) -> Prog sig (CodeQ x) -> Prog sig (CodeQ x)
 parUp p q = call (ParUp p q id)
 
 -- | The operation `par` on `CResT` needs to perform pattern matching on the resumption
 -- monad, but `CResUpT` can't be pattern matched. Therefore here we simply
 -- `down` the two processes and perform `par` at the object level. As a result,
--- the two processes have to return an Up-type.
+-- the two processes have to return an CodeQ-type.
 parResUp :: forall n m a x. (n $~> m, Monad n, Monad m, Action a)
          => Algebra '[UpOp m, CodeGen] n
-         -> CResUpT (Up a) n (Up x) -> CResUpT (Up a) n (Up x) -> CResUpT (Up a) n (Up x)
+         -> CResUpT (CodeQ a) n (CodeQ x) -> CResUpT (CodeQ a) n (CodeQ x) -> CResUpT (CodeQ a) n (CodeQ x)
 parResUp oalg p q =
   do lhs <- lift (genLetM oalg (down @_ @(CResT a m) p))
      rhs <- lift (genLetM oalg (down @_ @(CResT a m) q))
@@ -79,22 +79,22 @@ parResUp oalg p q =
 
 -- | Algebra transformer for the resumption monad transformer for concurrency.
 cResUpAT :: forall m a . (Action a, Monad m)
-         => AlgTrans '[UpOp (CResT a m), Empty, Choose, ParUp, Act (Up a)]
+         => AlgTrans '[UpOp (CResT a m), Empty, Choose, ParUp, Act (CodeQ a)]
                      '[UpOp m, CodeGen]
-                     '[CResUpT (Up a)]
+                     '[CResUpT (CodeQ a)]
                       (MonadDown m)
 cResUpAT = AlgTrans $ \oalg -> \case
   (prj -> Just (Alg (UpOp o k)))     -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))
   (prj -> Just (Alg Empty_))         -> empty
   (prj -> Just (Scp (Choose_ x y)))  -> x <|> y
   (prj -> Just (ParUp p q k))        -> fmap k (parResUp oalg p q)
-  (Act (a :: (Up a)) p)              -> RUp.prefix a (return p)
+  (Act (a :: (CodeQ a)) p)              -> RUp.prefix a (return p)
 
 -- | Algebra transformer for the resumption monad transformer for yielding.
 yResUpAT :: forall m a b . (Monad m)
-         => AlgTrans '[UpOp (YResT a b m), Yield (Up a) (Up b), MapYield (Up a) (Up b)]
+         => AlgTrans '[UpOp (YResT a b m), Yield (CodeQ a) (CodeQ b), MapYield (CodeQ a) (CodeQ b)]
                      '[UpOp m, CodeGen]
-                     '[YResUpT (Up a) (Up b)]
+                     '[YResUpT (CodeQ a) (CodeQ b)]
                       (MonadDown m)
 yResUpAT = AlgTrans $ \oalg -> \case
   (prj -> Just (Alg (UpOp o k)))        -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))

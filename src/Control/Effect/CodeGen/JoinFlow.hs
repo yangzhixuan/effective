@@ -71,7 +71,7 @@ instance Functor (JoinFlow f) where
 instance HFunctor JoinFlow where
   hmap f (JoinFlow o k) = JoinFlow (f o) k
 
--- | If @x@ is a type isomorphic to @(Up a11, ..., a1n1) + .. + (Up an1, ... , Up amn_m)@,
+-- | If @x@ is a type isomorphic to @(CodeQ a11, ..., a1n1) + .. + (CodeQ an1, ... , CodeQ amn_m)@,
 -- @joinFlow p@ creates a join point for each of the summand (each receiving a value of
 -- the corresponding product type) and resumes the code generation from these join points.
 joinFlow :: forall x sig. (Member JoinFlow sig, IsSOP x)
@@ -87,7 +87,7 @@ joinFlowM alg p = callM alg (JoinFlow p id)
 joinGenAlg :: Algebra '[JoinFlow] Gen
 joinGenAlg = Iso.bwd singAlgIso (\(JoinFlow p k) -> fmap k (joinGen p)) where
   joinGen :: forall a. IsSOP a => Gen a -> Gen a
-  joinGen p = shiftGen (\(k :: a -> Up r) ->
+  joinGen p = shiftGen (\(k :: a -> CodeQ r) ->
     let fsu = tabulate (singRep @a) (k . decode @a)
     in do f <- genFunSU @_ @r (singRep @a) fsu
           a <- p
@@ -97,7 +97,7 @@ joinGenAlg = Iso.bwd singAlgIso (\(JoinFlow p k) -> fmap k (joinGen p)) where
 joinGenMAlg :: forall m. Monad m => Algebra '[JoinFlow] (GenM m)
 joinGenMAlg = Iso.bwd singAlgIso (\(JoinFlow p k) -> fmap k (joinGenM p)) where
   joinGenM :: forall m a. Monad m => IsSOP a => GenM m a -> GenM m a
-  joinGenM p = shiftGenM (\(k :: a -> Up (m r)) ->
+  joinGenM p = shiftGenM (\(k :: a -> CodeQ (m r)) ->
     let fsu = tabulate (singRep @a) (k . decode @a)
     in do f <- specialise (genFunSU @_ @(m r) (singRep @a) fsu)
           a <- p
@@ -105,7 +105,7 @@ joinGenMAlg = Iso.bwd singAlgIso (\(JoinFlow p k) -> fmap k (joinGenM p)) where
 
 -- | Algebra transformer for the join operation on `PushT`.
 joinPush :: forall m . AlgTrans '[JoinFlow] '[UpOp m, CodeGen] '[PushT] (MonadDown m)
-joinPush = algTrans1 $ \oalg (JoinFlow (p :: PushT n y) kV) -> PushT $ \kC (kN :: n (Up t)) ->
+joinPush = algTrans1 $ \oalg (JoinFlow (p :: PushT n y) kV) -> PushT $ \kC (kN :: n (CodeQ t)) ->
  do kn <- genLetM oalg [|| $$(down @n @m kN) ||]
     let fsu cy = [|| \rest -> $$(down @n @m (kC (kV (decode @y cy)) (upM @m oalg [||rest||]))) ||]
     kc <- liftGenA oalg (genFunSU @_ @(m t -> m t) (singRep @y) (tabulate (singRep @y) fsu))
@@ -114,17 +114,17 @@ joinPush = algTrans1 $ \oalg (JoinFlow (p :: PushT n y) kV) -> PushT $ \kC (kN :
       (upM oalg kn)
 
 -- | Algebra transformer for the join operation on `ResT`.
-joinRes :: forall m s l. (Functor l, forall x. Split (s x) (l (Up x)), l $~> s)
+joinRes :: forall m s l. (Functor l, forall x. Split (s x) (l (CodeQ x)), l $~> s)
         => AlgTrans '[JoinFlow] '[UpOp m, CodeGen] '[ResUpT l] (MonadDown m)
 joinRes = algTrans1 $ \oalg (JoinFlow (p :: ResUpT l n y) kV) ->
-  ResUpT $ \(kD :: x -> n (Up t)) (kM :: l (n (Up t)) -> n (Up t)) ->
+  ResUpT $ \(kD :: x -> n (CodeQ t)) (kM :: l (n (CodeQ t)) -> n (CodeQ t)) ->
     let sy = singRep @y
 
         fsu cy = [|| $$(down @n @m (kD (kV (decode @y cy)))) ||]
 
-        aux :: Up (s (m t)) -> Up (m t)
+        aux :: CodeQ (s (m t)) -> CodeQ (m t)
         aux csmt = down @n @m $
-          do lcmt <- liftGenA oalg (genSplit @(s (m t)) @(l (Up (m t))) csmt)
+          do lcmt <- liftGenA oalg (genSplit @(s (m t)) @(l (CodeQ (m t))) csmt)
              kM (fmap (upM oalg) lcmt)
     in do kd <- liftGenA oalg (genFunSU @_ @(m t) sy (tabulate sy fsu))
           km <- genLetM oalg [||\sm -> $$(aux [||sm||]) ||]
@@ -142,24 +142,24 @@ instance Forward JoinFlow MaybeT where
   type FwdConstraint JoinFlow MaybeT = TruthC
   fwd oalg (JoinFlow p k) = MaybeT $ oalg (JoinFlow (runMaybeT p) (fmap k))
 
-instance Forward JoinFlow (ExceptT (Up e)) where
-  type FwdConstraint JoinFlow (ExceptT (Up e))= TruthC
+instance Forward JoinFlow (ExceptT (CodeQ e)) where
+  type FwdConstraint JoinFlow (ExceptT (CodeQ e))= TruthC
   fwd oalg (JoinFlow p k) = ExceptT $ oalg (JoinFlow (runExceptT p) (fmap k))
 
-instance Forward JoinFlow (StateT (Up s)) where
-  type FwdConstraint JoinFlow (StateT (Up s))= TruthC
+instance Forward JoinFlow (StateT (CodeQ s)) where
+  type FwdConstraint JoinFlow (StateT (CodeQ s))= TruthC
   fwd oalg (JoinFlow p k) = StateT $ \s -> oalg (JoinFlow (runStateT p s) (\(a,b) -> (k a, b)))
 
-instance Forward JoinFlow (L.StateT (Up s)) where
-  type FwdConstraint JoinFlow (L.StateT (Up s))= TruthC
+instance Forward JoinFlow (L.StateT (CodeQ s)) where
+  type FwdConstraint JoinFlow (L.StateT (CodeQ s))= TruthC
   fwd oalg (JoinFlow p k) = L.StateT $ \s -> oalg (JoinFlow (L.runStateT p s) (\(a,b) -> (k a, b)))
 
-instance Forward JoinFlow (ReaderT (Up s)) where
-  type FwdConstraint JoinFlow (ReaderT (Up s))= TruthC
+instance Forward JoinFlow (ReaderT (CodeQ s)) where
+  type FwdConstraint JoinFlow (ReaderT (CodeQ s))= TruthC
   fwd oalg (JoinFlow p k) = ReaderT $ \s -> oalg (JoinFlow (runReaderT p s) k)
 
-instance Forward JoinFlow (WriterT (Up s)) where
-  type FwdConstraint JoinFlow (WriterT (Up s))= TruthC
+instance Forward JoinFlow (WriterT (CodeQ s)) where
+  type FwdConstraint JoinFlow (WriterT (CodeQ s))= TruthC
   fwd oalg (JoinFlow p k) = WriterT $ oalg (JoinFlow (runWriterT p) (\(a,b) -> (k a, b)))
 
 instance Forward JoinFlow (CacheT m) where

@@ -18,6 +18,7 @@ Stability   : experimental
 
 module Control.Effect.Internal.Effs.Sum
   ( module Control.Effect.Internal.Effs.Sum.Type
+  , CodeQ (..)
   , (#)
   , (#:)
   , Append (..)

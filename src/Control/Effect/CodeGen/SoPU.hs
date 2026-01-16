@@ -1,11 +1,11 @@
 {-|
 Module      : Control.Effect.CodeGen.SoPU
-Description : Sum of products of Up-types
+Description : Sum of products of CodeQ-types
 License     : MIT
 Author      : András Kovács
 Stability   : experimental
 
-This file is András Kovács's implementation for sum of products of Up-types,
+This file is András Kovács's implementation for sum of products of CodeQ-types,
 released under MIT license (copied below). The original file can be found at
 https://github.com/AndrasKovacs/staged/blob/c0cf3a58dcc8919aff7fb21391a860f9e8e7df64/icfp24paper/supplement/haskell-cftt/CFTT/Up.hs
 
@@ -71,7 +71,7 @@ type Uₛ = [Uₚ]
 
 data Elₚ ∷ Uₚ → Type where
   Nil  ∷ Elₚ '[]
-  Cons ∷ ∀ a as. Up a → Elₚ as → Elₚ (a ': as)
+  Cons ∷ ∀ a as. CodeQ a → Elₚ as → Elₚ (a ': as)
 
 data Elₛ ∷ Uₛ → Type where
   Here  ∷ ∀ as ass. Elₚ as  → Elₛ (as ': ass)
@@ -165,7 +165,7 @@ unpairₛ a (b ∷ Sing b) xs = case a of
     Left x  → case unpairₚₛ as' b x of (x, y) → (Here x, y)
     Right x → case unpairₛ a' b x   of (x, y) → (There x, y)
 
--- Functions from P to Up
+-- Functions from P to CodeQ
 --------------------------------------------------------------------------------
 
 type family Funₚₜ (as ∷ Uₚ) (b ∷ Type) ∷ Type where
@@ -173,12 +173,12 @@ type family Funₚₜ (as ∷ Uₚ) (b ∷ Type) ∷ Type where
   Funₚₜ (a ': '[])      b = a → b
   Funₚₜ (a ': a2 ': as) b = a → Funₚₜ (a2 ': as) b
 
-lamₚₜ ∷ ∀ a b. Sing a → (Elₚ a → Up b) → Up (Funₚₜ a b)
+lamₚₜ ∷ ∀ a b. Sing a → (Elₚ a → CodeQ b) → CodeQ (Funₚₜ a b)
 lamₚₜ SNil                   f = [|| \_ -> $$(f Nil) ||]
 lamₚₜ (SCons a SNil)         f = [|| \x -> $$(f (Cons [||x||] Nil)) ||]
 lamₚₜ (SCons a as@(SCons{})) f = [|| \x -> $$(lamₚₜ @_ @b as \xs -> f (Cons [||x||] xs)) ||]
 
-appₚₜ ∷ ∀ a b. Up (Funₚₜ a b) → Elₚ a → Up b
+appₚₜ ∷ ∀ a b. CodeQ (Funₚₜ a b) → Elₚ a → CodeQ b
 appₚₜ f Nil                  = [|| $$f () ||]
 appₚₜ f (Cons x Nil)         = [|| $$f $$x ||]
 appₚₜ f (Cons x xs@(Cons{})) = [|| $$(appₚₜ [|| $$f $$x ||] xs) ||]
@@ -191,8 +191,8 @@ class IsSOP (a ∷ Type) where
   encode  ∷ a → Elₛ (Rep a)
   decode  ∷ Elₛ (Rep a) → a
 
-instance IsSOP (Up a) where
-  type Rep (Up a) = '[ '[ a ]]
+instance IsSOP (CodeQ a) where
+  type Rep (CodeQ a) = '[ '[ a ]]
   singRep = sing
   encode x = Here (Cons x Nil)
   decode (Here (Cons x Nil)) = x
@@ -255,17 +255,17 @@ instance IsSOP Bool where
   decode _          = False
 
 
--- Functions from Elₛ to Up
+-- Functions from Elₛ to CodeQ
 
 type family FunSU (a ∷ Uₛ) (b ∷ Type) ∷ Type where
   FunSU '[]       b = ()
-  FunSU (a ': as) b = (Up (Funₚₜ a b), FunSU as b)
+  FunSU (a ': as) b = (CodeQ (Funₚₜ a b), FunSU as b)
 
-tabulate ∷ ∀ a b. Sing a → (Elₛ a → Up b) → FunSU a b
+tabulate ∷ ∀ a b. Sing a → (Elₛ a → CodeQ b) → FunSU a b
 tabulate SNil           f = ()
 tabulate (SCons as ass) f = (lamₚₜ as (f . Here), tabulate ass (f . There))
 
-index ∷ FunSU a b → Elₛ a → Up b
+index ∷ FunSU a b → Elₛ a → CodeQ b
 index fs (Here x)  = appₚₜ (fst fs) x
 index fs (There x) = index (snd fs) x
 

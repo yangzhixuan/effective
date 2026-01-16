@@ -33,6 +33,7 @@ module Control.Effect.Internal.Effs
   , hunion
   , (#)
 
+  , CodeQ (..)
   , AlgebraC (..)
   , EndAC (..)
   , NatTrans (..)

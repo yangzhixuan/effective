@@ -113,6 +113,7 @@ module Control.Effect
 
 
   -- * Lightweight staging
+  , CodeQ (..)
   , AlgebraC (..)
   , EndAC (..)
   , NatTrans (..)

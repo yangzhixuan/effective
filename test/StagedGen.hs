@@ -24,8 +24,8 @@ If you are puzzled by the general case, having a look at the special version may
 be helpful. I will keep it here for a while for playing.
 -}
 
-newtype LG a  = LG {runLG :: forall t. (a -> Gen (Up t) -> Gen (Up t))
-                          -> Gen (Up t) -> Gen (Up t)}
+newtype LG a  = LG {runLG :: forall t. (a -> Gen (CodeQ t) -> Gen (CodeQ t))
+                          -> Gen (CodeQ t) -> Gen (CodeQ t)}
 
 instance Functor LG where
   fmap f lg = do x <- lg; return (f x)
@@ -36,24 +36,24 @@ instance Applicative LG where
 instance Monad LG where
   lg >>= k = LG $ \c n -> runLG lg (\a as -> runLG (k a) c as) n
 
-upLG :: Up [a] -> LG (Up a)
+upLG :: CodeQ [a] -> LG (CodeQ a)
 upLG cl = LG $ \c n -> upGen [||
   foldr (\a ms -> $$(downGen (c [||a||] (upGen [||ms||]))))
         $$(downGen n)
         $$cl
   ||]
 
-downLG :: LG (Up a) -> Up [a]
+downLG :: LG (CodeQ a) -> CodeQ [a]
 downLG lg = downGen (runLG lg (\a gas -> fmap (\as -> [|| $$a : $$as ||]) gas) (upGen [||[]||]))
 
-upGen :: forall a. Up a -> Gen (Up a)
+upGen :: forall a. CodeQ a -> Gen (CodeQ a)
 upGen c = return c
 
-downGen :: forall a. Gen (Up a) -> Up a
+downGen :: forall a. Gen (CodeQ a) -> CodeQ a
 downGen g = unGen g id
 
 choiceGen :: forall sig m. Members '[CodeGen, UpOp m, Choose, Empty] sig
-          => Up Int -> Up (Int -> m Int) -> Prog sig (Up Int)
+          => CodeQ Int -> CodeQ (Int -> m Int) -> Prog sig (CodeQ Int)
 choiceGen cN self =
   do b <- split [|| $$cN > 0 ||]
      if b
@@ -61,7 +61,7 @@ choiceGen cN self =
       else empty
 
 
-mergeMb :: MaybeT Gen (Up a) -> MaybeT Gen (Up a)
+mergeMb :: MaybeT Gen (CodeQ a) -> MaybeT Gen (CodeQ a)
 mergeMb ma = shiftMb \kj kn -> runGen $
   do kN <- genLet_ [|| $$kn ||]
      kJ <- genLet_ [|| \a -> $$(kj ([||a||])) ||]
@@ -70,76 +70,76 @@ mergeMb ma = shiftMb \kj kn -> runGen $
        Nothing -> return kN
        Just a  -> return ([|| $$kJ $$a ||])
 
-shiftMb :: (forall r. (a -> Up r) -> Up r -> Up r)
+shiftMb :: (forall r. (a -> CodeQ r) -> CodeQ r -> CodeQ r)
         -> MaybeT Gen a
 shiftMb f = MaybeT $ shiftGen \k -> return (f (k . Just) (k Nothing))
 
-resetMb :: forall a. MaybeT Gen (Up a) -> MaybeT Gen (Up a)
+resetMb :: forall a. MaybeT Gen (CodeQ a) -> MaybeT Gen (CodeQ a)
 resetMb g =
-  let act :: Up (MaybeT Identity a)
+  let act :: CodeQ (MaybeT Identity a)
       act = down g
   in MaybeT do genSplit [|| runIdentity (runMaybeT $$act) ||]
 
 {-
-shift :: (forall r. (a -> Up r) -> Gen (Up r)) -> Gen a
+shift :: (forall r. (a -> CodeQ r) -> Gen (CodeQ r)) -> Gen a
 shift f = Gen $ runGen . f
 -}
 
-mergeST :: StateT (Up s) Gen (Up a) -> StateT (Up s) Gen (Up a)
+mergeST :: StateT (CodeQ s) Gen (CodeQ a) -> StateT (CodeQ s) Gen (CodeQ a)
 mergeST ma = StateT \s -> shiftGen \k ->
   do k' <- genLet_ [|| \a s -> $$(k ([||a||], [||s||])) ||]
      (a, s) <- runStateT ma s
      return [|| $$k' $$a $$s ||]
 
 
-mergePS :: PushT Gen (Up a) -> PushT Gen (Up a)
+mergePS :: PushT Gen (CodeQ a) -> PushT Gen (CodeQ a)
 mergePS ma = PushT \kc kn ->
   do kn' <- genLet_ [|| runIdentity $$(down kn) ||]
      kc' <- genLet_ [|| \a t -> runIdentity $$(down (kc [||a||] (return [||runIdentity t||]))) ||]
      runPushT ma (\ca mas -> return [|| $$kc' $$ca $$(down mas) ||]) (return kn')
 
-noJoinProg :: (Members '[Put (Up Int), Get (Up Int), Mb.Throw, Mb.Catch, CodeGen] sig)
-         => Up Bool -> Prog sig (Up ())
+noJoinProg :: (Members '[Put (CodeQ Int), Get (CodeQ Int), Mb.Throw, Mb.Catch, CodeGen] sig)
+         => CodeQ Bool -> Prog sig (CodeQ ())
 noJoinProg b =
   do genCase b (\case
-         True  -> putUp [|| 10 :: Int ||]
-         False -> putUp [|| 20 :: Int ||])
-     s <- getUp @Int
+         True  -> putC [|| 10 :: Int ||]
+         False -> putC [|| 20 :: Int ||])
+     s <- getC @Int
      put [|| $$s + $$s ||]
      return [|| () ||]
 
-resetProg :: (Members '[Put (Up Int), Get (Up Int), Mb.Throw, Mb.Catch, CodeGen, Reset] sig)
-         => Up Bool -> Prog sig (Up ())
+resetProg :: (Members '[Put (CodeQ Int), Get (CodeQ Int), Mb.Throw, Mb.Catch, CodeGen, Reset] sig)
+         => CodeQ Bool -> Prog sig (CodeQ ())
 resetProg b =
   do reset $ genCase b (\case
-         True  -> putUp [|| 10 :: Int ||] >> return [||()||]
-         False -> putUp [|| 20 :: Int ||] >> return [||()||])
-     s <- getUp @Int
+         True  -> putC [|| 10 :: Int ||] >> return [||()||]
+         False -> putC [|| 20 :: Int ||] >> return [||()||])
+     s <- getC @Int
      put [|| $$s + $$s ||]
      return [|| () ||]
 
-joinProg :: (Members '[Put (Up Int), Get (Up Int), Mb.Throw, CodeGen, JoinFlow] sig)
-         => Up Bool -> Prog sig (Up ())
+joinProg :: (Members '[Put (CodeQ Int), Get (CodeQ Int), Mb.Throw, CodeGen, JoinFlow] sig)
+         => CodeQ Bool -> Prog sig (CodeQ ())
 joinProg b =
   do joinFlow $ genCase b (\case
-         True  -> putUp [|| 10 :: Int ||]
-         False -> putUp [|| 20 :: Int ||])
-     s <- getUp @Int
+         True  -> putC [|| 10 :: Int ||]
+         False -> putC [|| 20 :: Int ||])
+     s <- getC @Int
      put [|| $$s + $$s ||]
      return [|| () ||]
 
 
-ioProg :: Members '[UpOp IO, UpOp m, CodeGen, Put (Up Int), Get (Up Int)] sig
-       => Up (m ()) -> Prog sig (Up ())
+ioProg :: Members '[UpOp IO, UpOp m, CodeGen, Put (CodeQ Int), Get (CodeQ Int)] sig
+       => CodeQ (m ()) -> Prog sig (CodeQ ())
 ioProg self =
   do up [|| putStrLn "Hello" ||]
-     s <- get @(Up Int)
+     s <- get @(CodeQ Int)
      b <- split [|| $$s > 0 ||]
      if b then put [|| $$s - 1||] >> up self
           else return [||()||]
 
-yieldGen :: Members '[Yield (Up Int) (Up Int), CodeGen, UpOp m] sig
-         => Up (Int -> m Int) -> Up Int -> Prog sig (Up Int)
+yieldGen :: Members '[Yield (CodeQ Int) (CodeQ Int), CodeGen, UpOp m] sig
+         => CodeQ (Int -> m Int) -> CodeQ Int -> Prog sig (CodeQ Int)
 yieldGen self i =
   do i' <- split [|| even $$i ||] >>= \case
         True -> genLet [|| $$i `div` 2 ||]
@@ -150,32 +150,32 @@ yieldGen self i =
 
 -- The following programs are the tests from the heftia benchmark
 --
-catchGen :: forall sig m. Members '[CodeGen, UpOp m, Catch (Up ()), Throw (Up ())] sig 
-         => Up Int -> Up (Int -> m ()) -> Prog sig (Up ())
+catchGen :: forall sig m. Members '[CodeGen, UpOp m, Catch (CodeQ ()), Throw (CodeQ ())] sig 
+         => CodeQ Int -> CodeQ (Int -> m ()) -> Prog sig (CodeQ ())
 catchGen cN self = 
   do b <- split [|| $$cN > 0 ||]
      if b 
-      then catch (up [|| $$self ($$cN - 1)||]) (\(_ :: Up ()) -> throw @(Up ()) [||()||])
-      else throw @(Up ()) [|| () ||]
+      then catch (up [|| $$self ($$cN - 1)||]) (\(_ :: CodeQ ()) -> throw @(CodeQ ()) [||()||])
+      else throw @(CodeQ ()) [|| () ||]
 
-countdownGen :: Members '[CodeGen, UpOp m, Put (Up Int), Get (Up Int)] sig 
-             => Up (m ()) -> Prog sig (Up ())
+countdownGen :: Members '[CodeGen, UpOp m, Put (CodeQ Int), Get (CodeQ Int)] sig 
+             => CodeQ (m ()) -> Prog sig (CodeQ ())
 countdownGen self = 
-  do cs <- get @(Up Int)
+  do cs <- get @(CodeQ Int)
      b <- split [|| $$cs > 0 ||]
      if b then do put [|| $$cs - 1 ||]; up self
           else return [|| () ||]
 
-localGen :: forall sig m. Members '[CodeGen, UpOp m, Ask (Up Int), Local (Up Int)] sig
-         => Up Int -> Up (Int -> m Int) -> Prog sig (Up Int)
+localGen :: forall sig m. Members '[CodeGen, UpOp m, Ask (CodeQ Int), Local (CodeQ Int)] sig
+         => CodeQ Int -> CodeQ (Int -> m Int) -> Prog sig (CodeQ Int)
 localGen cN self =
   do b <- split [|| $$cN > 0 ||]
      if b
-       then local @(Up Int) (\r -> [|| $$r + 1 ||]) (up [|| $$self ($$cN - 1) ||])
-       else ask @(Up Int)
+       then local @(CodeQ Int) (\r -> [|| $$r + 1 ||]) (up [|| $$self ($$cN - 1) ||])
+       else ask @(CodeQ Int)
 
 pythGen :: forall sig m. Members '[CodeGen, Choose, Empty, UpOp m] sig
-        => Up Int -> Up (Int -> m Int) -> Prog sig (Up (Int, Int, Int))
+        => CodeQ Int -> CodeQ (Int -> m Int) -> Prog sig (CodeQ (Int, Int, Int))
 pythGen cN cChoose = 
   do x <- up ([|| $$cChoose $$cN||])
      y <- up ([|| $$cChoose $$cN||])
@@ -185,24 +185,24 @@ pythGen cN cChoose =
        empty
 
 chooseGen :: forall sig m. Members '[CodeGen, Choose, Empty, UpOp m] sig
-        => Up Int -> Up (Int -> m Int) -> Prog sig (Up Int)
+        => CodeQ Int -> CodeQ (Int -> m Int) -> Prog sig (CodeQ Int)
 chooseGen cN self =
   genIf [|| $$cN > 0 ||]
     (up [|| $$self ($$cN - 1) ||] <|> return cN)
-    empty 
-    
-coroutine1Gen :: forall sig m. Members '[CodeGen, Yield (Up Int) (Up Int), UpOp m] sig
-              => Up [Int] -> Up ([Int] -> m [Int]) -> Prog sig (Up [Int])
+    empty
+
+coroutine1Gen :: forall sig m. Members '[CodeGen, Yield (CodeQ Int) (CodeQ Int), UpOp m] sig
+              => CodeQ [Int] -> CodeQ ([Int] -> m [Int]) -> Prog sig (CodeQ [Int])
 coroutine1Gen cXs self =
   do genCase cXs \case
        Nothing         -> return [|| [] ||]
-       Just (cX, cXs') -> 
-         do cY <- yield @(Up Int) @(Up Int) cX
+       Just (cX, cXs') ->
+         do cY <- yield @(CodeQ Int) @(CodeQ Int) cX
             rs <- up [|| $$self $$cXs' ||]
             return [|| $$cY : $$rs ||]
 
-coroutine2Gen :: forall sig m a. Members '[CodeGen, Yield (Up Int) (Up Int), UpOp m] sig
-              => Up Int -> Up (Int -> m a) -> Prog sig (Up a)
-coroutine2Gen cA self = 
+coroutine2Gen :: forall sig m a. Members '[CodeGen, Yield (CodeQ Int) (CodeQ Int), UpOp m] sig
+              => CodeQ Int -> CodeQ (Int -> m a) -> Prog sig (CodeQ a)
+coroutine2Gen cA self =
   do cB <- yield [|| $$cA + 100 ||]
      up [|| $$self $$cB ||]
