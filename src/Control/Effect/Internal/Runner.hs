@@ -20,6 +20,7 @@ import Control.Effect.Internal.Effs
 import Control.Effect.Internal.AlgTrans.Type
 import Control.Effect.Internal.Forward
 import Language.Haskell.TH hiding (Type)
+import Language.Haskell.TH.Syntax (TExp (..))
 
 -- * The primitive types for modular effect handlers
 
@@ -99,7 +100,8 @@ fuseR at2 r1 r2 = Runner \(oalg :: Algebra _ m)  ->
             (weakenAlg @(oeffs1 :\\ effs2) @_ oalg))
           (getAT at2 (weakenAlg @oeffs2 @_ oalg)))
 
-fuseRC :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+fuseRC, fuseRC' 
+       :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
           ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
           , FuseR# effs2 oeffs1 oeffs2 ts1 ts2 )
        => AlgTransC effs2 oeffs2 ts2 cs2
@@ -109,7 +111,7 @@ fuseRC :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
                   (ts1 :++ ts2)
                   a1 a3
                   (CompC ts2 cs1 cs2)
-fuseRC at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
+fuseRC' at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
     [||
       $$(getRC r2 (weakenAlgC oalg))
     . $$(getRC r1 (weakenAlgC @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
@@ -118,6 +120,29 @@ fuseRC at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
             (weakenAlgC @(oeffs1 :\\ effs2) @_ oalg))
           (getATC at2 (weakenAlgC @oeffs2 @_ oalg))))
     ||]
+
+-- In template Haskell we can cheat a bit by examining the runners and
+-- if one of them is the identity function then we do nothing.
+fuseRC at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
+    [|| $$(getRC r2 (weakenAlgC oalg)) ||]
+    `circCode`
+    [|| $$(getRC r1 (weakenAlgC @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
+        heitherC @(oeffs1 :\\ effs2) @effs2
+          (getATC (fwdsC @(oeffs1 :\\ effs2) @(ts2))
+            (weakenAlgC @(oeffs1 :\\ effs2) @_ oalg))
+          (getATC at2 (weakenAlgC @oeffs2 @_ oalg))))
+    ||]
+    where
+      circCode :: CodeQ (b -> c) -> CodeQ (a -> b) -> CodeQ (a -> c)
+      circCode (Code qG) (Code qF) = Code $
+        do (TExp f) <- qF
+           (TExp g) <- qG
+           idCode <- [| Prelude.id |]
+           if f == idCode
+             then return (TExp g)
+             else if g == idCode
+                    then return (TExp f)
+                    else fmap TExp [| $(pure g) . $(pure f)|]
 
 type PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 =
    ( Injects oeffs1 (oeffs1 `Union` oeffs2)
