@@ -474,6 +474,31 @@ handle :: forall effs ts fs a b .
 handle (Handler run halg)
   = runIdentity . LL.getR run absurdEffs . eval (getAT halg (absurdEffs @Identity))
 
+-- handleC :: GenAlgebra effs => HandlerC effs '[] ts a b -> CodeQ (Algebra' effs (Apply ts Identity))
+-- handleC (HandlerC r (AlgTransC a)) = [|| Algebra' $ \op -> $$(genAlgebraAux (a @Identity EndAC) [||op||]) ||]
+
+{-# INLINE eval' #-}
+eval'
+  :: forall effs ts a . (Monad (Apply ts Identity), HFunctor (Effs effs))
+  => AlgId effs ts
+  -> Prog effs a -> (Apply ts Identity) a
+eval' (AlgId (Algebra' alg)) p = eval alg p
+
+newtype AlgId effs ts = AlgId { unAlgId :: Algebra' effs (Apply ts Identity) }
+
+-- Zhixuan: Question: how to make type variables work across stages.
+handleC = undefined
+{-
+handleC :: forall effs ts fs a b . (Monad (Apply ts Identity), HFunctor (Effs effs), GenAlgebra effs)
+        => HandlerC effs '[] ts a b -> CodeQ (Prog effs a) -> CodeQ b
+handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
+  [||
+      let alg :: AlgId effs ts
+          alg =  AlgId $ Algebra' $ \op -> $$(genAlgebraAux (a @Identity EndAC) [||op||])
+      in runIdentity ($$(r EndAC) (eval' alg $$p))
+  ||]
+-}
+
 type HandleM# effs xeffs =
   ( Injects (xeffs :\\ effs) xeffs
   , Append effs (xeffs :\\ effs)

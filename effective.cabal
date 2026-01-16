@@ -179,6 +179,7 @@ test-suite staged
   main-is:       Staged.hs
   default-language: GHC2021
   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+  ghc-options: -ddump-to-file -ddump-splices
   hs-source-dirs:  test
   build-depends:
     base               >= 4.16 && < 4.22,

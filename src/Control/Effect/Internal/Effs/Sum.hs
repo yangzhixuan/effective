@@ -38,6 +38,7 @@ import Control.Effect.Internal.Effs.Sum.Type
 import Data.List.Kind
 import GHC.Exts
 import Language.Haskell.TH (CodeQ)
+import Unsafe.Coerce
 
 infixr 6 #
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
@@ -241,7 +242,7 @@ type family Members (xsigs :: [Effect]) (xysigs :: [Effect]) :: Constraint where
 class GenAlgebra effs where
 -- Zhixuan: Somehow this function breaks Haskell Language Server...
   genAlgebra :: AlgebraCode effs f -> CodeQ (Algebra' effs f)
---  genAlgebra acs = [|| Algebra' $ \op -> $$(genAlgebraAux acs [|| op ||])||]
+  genAlgebra acs = [|| Algebra' $ \op -> $$(genAlgebraAux acs [|| op ||])||]
 
   genAlgebraAux :: AlgebraCode effs f -> CodeQ (Effs effs f x) -> CodeQ (f x)
 
@@ -253,6 +254,6 @@ instance GenAlgebra effs => GenAlgebra (eff ': effs) where
   genAlgebraAux :: AlgebraCode (eff : effs) f -> CodeQ (Effs (eff ': effs) f x) -> CodeQ (f x)
   genAlgebraAux (ac, acs) cop = [||
     case $$cop of
-       Eff (op :: eff f _) -> $$ac `at` op
-       Effs (op :: Effs effs f _) -> $$(genAlgebraAux acs [||op||])
+       Eff op  -> $$ac `at` unsafeCoerce op
+       Effs op' -> $$(genAlgebraAux acs (unsafeCoerce ([||op'||] :: CodeQ _)))
    ||]

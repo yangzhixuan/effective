@@ -94,6 +94,7 @@ module Control.Effect
   -- * Evaluation
   , eval
   , handle
+  , handleC
   , handleM
   , handleP
   , handleM'
