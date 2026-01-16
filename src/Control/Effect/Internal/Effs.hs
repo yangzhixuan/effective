@@ -29,7 +29,6 @@ module Control.Effect.Internal.Effs
   , Injects (..)
   , Append (..)
   , absurdEffs
-  , weakenAlg
   , hcons, hnil, (#:)
   , hunion
   , (#)

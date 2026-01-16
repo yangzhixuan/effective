@@ -21,7 +21,6 @@ module Control.Effect.Internal.Effs.Sum
   , (#)
   , (#:)
   , Append (..)
-  , weakenAlg
   , hunion
   , hcons
   , hnil
@@ -151,15 +150,6 @@ instance Append xs ys => Append (x ': xs) ys where
   houtr (Eff x)  = Nothing
   houtr (Effs x) = houtr @xs @ys x
 
--- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
--- every effect in @xeffs@ is in @xyeffs@.
-{-# INLINE weakenAlg #-}
-weakenAlg
-  :: forall xeffs xyeffs m x . (Injects xeffs xyeffs)
-  => (Effs xyeffs m x -> m x)
-  -> (Effs xeffs  m x -> m x)
-weakenAlg alg = alg . injs
-
 -- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
 -- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
 -- If an effect is in both @xeffs@ and @yeffs@, the algebra for @xeffs@ is used.
@@ -183,8 +173,14 @@ type  Injects :: [Effect] -> [Effect] -> Constraint
 class Injects xs xys where
   injs :: Effs xs f a -> Effs xys f a
 
-  weakenAlgC :: AlgebraC xys m -> AlgebraC xs m
+  -- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
+  -- every effect in @xeffs@ is in @xyeffs@.
+  {-# INLINE weakenAlg #-}
+  weakenAlg :: forall m x . (Effs xys m x -> m x) -> (Effs xs  m x -> m x)
+  weakenAlg alg = alg . injs
 
+  -- | Weakens an static algebra.
+  weakenAlgC :: AlgebraC xys m -> AlgebraC xs m
 
 instance Injects '[] xys where
   {-# INLINE injs #-}

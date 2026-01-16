@@ -115,6 +115,8 @@ module Control.Effect
   -- * Lightweight staging
   , AlgebraC (..)
   , EndAC (..)
+  , NatTrans (..)
+  , type (-.>)
   , (#$)
   , hunionC
   , GenAlgebra (..)
