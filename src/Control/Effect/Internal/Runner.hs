@@ -19,7 +19,7 @@ import Data.Kind
 import Control.Effect.Internal.Effs
 import Control.Effect.Internal.AlgTrans.Type
 import Control.Effect.Internal.Forward
-import Language.Haskell.TH (CodeQ)
+import Language.Haskell.TH hiding (Type)
 
 -- * The primitive types for modular effect handlers
 

@@ -32,7 +32,10 @@ import Data.List.Kind
 import Data.Functor.Identity
 import Data.HFunctor
 import Data.Proxy
-import Language.Haskell.TH (CodeQ)
+import Language.Haskell.TH hiding (Type)
+import LiftType
+import Type.Reflection ( Typeable ) 
+
 
 -- | A t'Handler' will process input effects @effs@ and produce output effects
 -- @oeffs@, while working with a list of monad transformers @ts@. The final value
@@ -474,30 +477,16 @@ handle :: forall effs ts fs a b .
 handle (Handler run halg)
   = runIdentity . LL.getR run absurdEffs . eval (getAT halg (absurdEffs @Identity))
 
--- handleC :: GenAlgebra effs => HandlerC effs '[] ts a b -> CodeQ (Algebra' effs (Apply ts Identity))
--- handleC (HandlerC r (AlgTransC a)) = [|| Algebra' $ \op -> $$(genAlgebraAux (a @Identity EndAC) [||op||]) ||]
-
-{-# INLINE eval' #-}
-eval'
-  :: forall effs ts a . (Monad (Apply ts Identity), HFunctor (Effs effs))
-  => AlgId effs ts
-  -> Prog effs a -> (Apply ts Identity) a
-eval' (AlgId (Algebra' alg)) p = eval alg p
-
-newtype AlgId effs ts = AlgId { unAlgId :: Algebra' effs (Apply ts Identity) }
-
--- Zhixuan: Question: how to make type variables work across stages.
-handleC = undefined
-{-
-handleC :: forall effs ts fs a b . (Monad (Apply ts Identity), HFunctor (Effs effs), GenAlgebra effs)
+handleC :: forall effs ts fs a b .
+           ( Monad (Apply ts Identity), HFunctor (Effs effs), GenAlgebra effs
+           , Typeable effs, Typeable ts)
         => HandlerC effs '[] ts a b -> CodeQ (Prog effs a) -> CodeQ b
-handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
-  [||
-      let alg :: AlgId effs ts
-          alg =  AlgId $ Algebra' $ \op -> $$(genAlgebraAux (a @Identity EndAC) [||op||])
-      in runIdentity ($$(r EndAC) (eval' alg $$p))
-  ||]
--}
+handleC (HandlerC (RunnerC r) (AlgTransC a)) p = unsafeCodeCoerce $
+  [|
+      let alg :: Algebra $(liftTypeQ @effs) (Apply $(liftTypeQ @ts) Identity)
+          alg = $(genAlgebra' (a @Identity EndAC))
+      in runIdentity ($(unTypeCode $ r @(Apply ts Identity) EndAC) (eval alg $(unTypeCode p)))
+  |]
 
 type HandleM# effs xeffs =
   ( Injects (xeffs :\\ effs) xeffs

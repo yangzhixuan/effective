@@ -119,6 +119,7 @@ library
     ghc-prim           >= 0.8    && < 0.14,
     logict             >= 0.8.2  && < 0.9,
     template-haskell   >= 2.18   && < 2.24,
+    lift-type,
     ghc
 
 test-suite readme

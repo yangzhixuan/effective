@@ -37,8 +37,9 @@ module Control.Effect.Internal.Effs.Sum
 import Control.Effect.Internal.Effs.Sum.Type
 import Data.List.Kind
 import GHC.Exts
-import Language.Haskell.TH (CodeQ)
-import Unsafe.Coerce
+import Language.Haskell.TH hiding (Type)
+import Type.Reflection (Typeable)
+import LiftType
 
 infixr 6 #
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
@@ -239,10 +240,13 @@ type family Members (xsigs :: [Effect]) (xysigs :: [Effect]) :: Constraint where
 -- Definitions related to staged algebras
 -----------------------------------------
 
-class GenAlgebra effs where
+class Typeable effs => GenAlgebra effs where
 -- Zhixuan: Somehow this function breaks Haskell Language Server...
-  genAlgebra :: AlgebraCode effs f -> CodeQ (Algebra' effs f)
-  genAlgebra acs = [|| Algebra' $ \op -> $$(genAlgebraAux acs [|| op ||])||]
+  genAlgebra :: AlgebraCode effs f -> CodeQ (Algebra effs f)
+  genAlgebra acs = unsafeCodeCoerce (genAlgebra' acs)
+
+  genAlgebra' :: AlgebraCode effs f -> Q Exp
+  genAlgebra' acs = [| \op -> $(unTypeCode $ genAlgebraAux acs (unsafeCodeCoerce [| op |])) |]
 
   genAlgebraAux :: AlgebraCode effs f -> CodeQ (Effs effs f x) -> CodeQ (f x)
 
@@ -250,10 +254,10 @@ instance GenAlgebra '[] where
   genAlgebraAux :: AlgebraCode '[] f -> CodeQ (Effs '[] f x) -> CodeQ (f x)
   genAlgebraAux EndAC cx = [|| case $$cx of {} ||]
 
-instance GenAlgebra effs => GenAlgebra (eff ': effs) where
+instance (Typeable (eff ': effs), Typeable eff, GenAlgebra effs) => GenAlgebra (eff ': effs) where
   genAlgebraAux :: AlgebraCode (eff : effs) f -> CodeQ (Effs (eff ': effs) f x) -> CodeQ (f x)
-  genAlgebraAux (ac, acs) cop = [||
-    case $$cop of
-       Eff op  -> $$ac `at` unsafeCoerce op
-       Effs op' -> $$(genAlgebraAux acs (unsafeCoerce ([||op'||] :: CodeQ _)))
-   ||]
+  genAlgebraAux (ac, acs) cop = unsafeCodeCoerce $ [|
+    case $(unTypeCode cop) of
+       Eff (op :: $(liftTypeQ @eff) _ _)  -> $(unTypeCode ac) `at` op
+       Effs (op' :: Effs $(liftTypeQ @effs) _ _) -> $(unTypeCode $ genAlgebraAux acs (unsafeCodeCoerce [|op'|]))
+   |]
