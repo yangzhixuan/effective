@@ -21,6 +21,7 @@ module Control.Effect.State.Strict
     -- * Semantics
     -- ** Handlers
   , state, state_
+  , stateC, stateC_
 
     -- ** Algebras
   , stateAT
@@ -51,6 +52,24 @@ state_ s = Handler (runner' $ flip Strict.evalStateT s) stateAT
 -- | An algebra transformer that interprets t'Get' and t'Put' using the strict t'Strict.StateT'.
 {-# INLINE stateAT #-}
 stateAT :: AlgTrans [Put s, Get s] '[] '[Strict.StateT s] Monad
-stateAT = algTrans' $ \case
-  Put s p -> do Strict.put s; return p
-  Get   p -> do s <- Strict.get; return (p s)
+stateAT = algTrans' $ putAlg #: getAlg #: hnil
+
+{-# INLINE putAlg #-}
+putAlg :: Monad m => Put s f b -> Strict.StateT s m b
+putAlg (Put' s p) = do Strict.put s; return p
+
+{-# INLINE getAlg #-}
+getAlg :: Monad m => Get s f b -> Strict.StateT s m b
+getAlg (Get' p) = do s <- Strict.get; return (p s)
+
+-- Handlers for lightweight staging
+
+stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a (s, a)
+stateC cs = HandlerC
+  (RunnerC $ \_ -> [|| fmap swap . flip Strict.runStateT $$cs ||])
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] #:$ [|| NT $ getAlg ||] #:$ EndAC)
+
+stateC_ :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a a
+stateC_ cs = HandlerC
+  (RunnerC $ \_ -> [|| flip Strict.evalStateT $$cs ||])
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] #:$ [|| NT $ getAlg ||] #:$ EndAC)

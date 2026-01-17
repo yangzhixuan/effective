@@ -91,8 +91,6 @@ absurdEffs x = case x of {}
 
 -- | In current GHC, polymorphic functions and Template Haskell don't seem to work
 -- seamlessly together. Newtype wrappers seem necessary in some cases.
-
-newtype Algebra' effs f = Algebra' { runAlg :: Algebra effs f }
 newtype NatTrans f g = NT { at :: forall x. f x -> g x }
 type (-.>) = NatTrans
 

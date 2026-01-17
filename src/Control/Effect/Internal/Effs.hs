@@ -39,6 +39,7 @@ module Control.Effect.Internal.Effs
   , NatTrans (..)
   , type (-.>) (..)
   , (#$)
+  , (#:$)
   , hunionC
   , GenAlgebra (..)
   )

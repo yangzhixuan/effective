@@ -30,6 +30,7 @@ module Control.Effect.Internal.Effs.Sum
   , Members
 
   , (#$)
+  , (#:$)
   , hunionC
   , GenAlgebra (..)
   )
@@ -61,20 +62,23 @@ infixr 6 #$
   -> AlgebraC (eff1 :++ eff2) m
 falg #$ galg = heitherC @eff1 @eff2 falg galg
 
-infixr 6 `hcons`, #:
+infixr 6 `hcons`, #:, #:$
 {- INLINE hcons -}
-hcons :: (x h a -> b) -> (Effs xs h a -> b) -> (Effs (x ': xs) h a -> b)
+hcons :: (eff m a -> b) -> (Effs effs m a -> b) -> Effs (eff : effs) m a -> b
 hcons alg algs (Eff x)   = alg x
 hcons alg algs (Effs xs) = algs xs
 
 {- INLINE #: -}
-(#:) :: (x h a -> b) -> (Effs xs h a -> b) -> Effs (x : xs) h a -> b
+(#:) :: (eff m a -> b) -> (Effs effs m a -> b) -> Effs (eff : effs) m a -> b
 (#:) = hcons
 
 {- INLINE hnil -}
 hnil :: Effs '[] h a -> b
 hnil = absurdEffs
 
+{- INLINE #:$ -}
+(#:$) :: CodeQ (eff m -.> m) -> AlgebraC effs m -> AlgebraC (eff ': effs) m
+a #:$ as = (a, as)
 
 -- | This type class provides operations that support appending
 -- two effect lists together.
