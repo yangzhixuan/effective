@@ -66,6 +66,9 @@ pattern Catch :: Member (Catch e) sigs => f a -> (e -> f a) -> Effs sigs f a
 pattern Catch p q <- (prj -> Just (Scp (Catch_ p q))) where
   Catch p q = inj (Scp (Catch_ p q))
 
+pattern Catch' :: f k -> (e -> f k) -> Scp (Catch_ e) f k
+pattern Catch' p q = Scp (Catch_ p q)
+
 {-# INLINE catchM #-}
 catchM :: forall e sig m a . Member (Catch e) sig => Algebra sig m -> m a -> (e -> m a) -> m a
 catchM alg p q = alg (inj (Scp (Catch_ p q)))
@@ -85,16 +88,19 @@ catchN n p q = callN n (Scp (Catch_ p q))
 -- | The 'except' handler will interpret @catch p q@ by first trying @p@.
 -- If it fails, then @q@ is executed.
 except :: Handler '[Throw e, Catch e] '[] '[ExceptT e] a (Either e a)
-except = handler' runExceptT exceptAlg
+except = Handler (runner' runExceptT) exceptAT
 
 -- | The algebra transformer for the 'except' handler.
 exceptAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
-exceptAT = algTrans' exceptAlg
+exceptAT = algTrans' (throwAlg #: catchAlg #: hnil)
 
-exceptAlg :: Monad m
-  => (forall x. Effs [Throw e, Catch e] (ExceptT e m) x -> ExceptT e m x)
-exceptAlg (Throw e) = ExceptT (return (Left e))
-exceptAlg (Catch p q) = ExceptT $ do
+{-# INLINE throwAlg #-}
+throwAlg :: Monad m => Throw e f k -> ExceptT e m a
+throwAlg (Throw' e) = ExceptT (return (Left e))
+
+{-# INLINE catchAlg #-}
+catchAlg :: Monad m => Catch e (ExceptT e m) a -> ExceptT e m a
+catchAlg (Catch' p q) = ExceptT $ do
   mx <- runExceptT p
   case mx of
     Left e  -> runExceptT (q e)
@@ -123,3 +129,10 @@ retryAlg (Catch p q) = ExceptT $ loop p q where
                         Left e' -> return (Left e')
                         Right y  -> loop p q
          Right x  -> return (Right x)
+
+-- Handlers for lightweight staging
+
+exceptC :: HandlerC '[Throw e, Catch e] '[] '[ExceptT e] a (Either e a)
+exceptC = HandlerC
+  (RunnerC $ \_ -> [|| runExceptT ||] )
+  (AlgTransC $ \_ -> [|| NT throwAlg ||] #:$ [|| NT catchAlg ||] #:$ EndAC)

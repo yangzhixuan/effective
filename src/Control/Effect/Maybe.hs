@@ -58,13 +58,19 @@ except = Handler (runner' runMaybeT) exceptAT
 
 -- | The algebra transformer for the 'except' handler.
 exceptAT :: AlgTrans [Throw, Catch] '[] '[MaybeT] Monad
-exceptAT = AlgTrans $ \oalg op -> case op of
-    Throw -> MaybeT (return Nothing)
-    (Catch p q) -> MaybeT $ do
-       mx <- runMaybeT p
-       case mx of
-         Nothing -> runMaybeT q
-         Just x  -> return (Just x)
+exceptAT = algTrans' $ throwAlg #: catchAlg #: hnil
+
+{-# INLINE throwAlg #-}
+throwAlg :: Monad m => Throw f k -> MaybeT m a
+throwAlg (Throw') = MaybeT (return Nothing)
+
+{-# INLINE catchAlg #-}
+catchAlg :: Monad m => Catch (MaybeT m) a -> MaybeT m a
+catchAlg (Catch' p q) = MaybeT $ do
+  mx <- runMaybeT p
+  case mx of
+    Nothing  -> runMaybeT q
+    Just x -> return (Just x)
 
 -- | The 'retry' handler will interpet @catch p q@  by first trying @p@.
 -- If it fails, then @q@ is executed as a recovering clause.
@@ -86,3 +92,10 @@ retryAT = algTrans' $ \case
                            Nothing -> return Nothing
                            Just y  -> loop p q
            Just x  -> return (Just x)
+
+-- Handlers for lightweight staging
+
+exceptC :: HandlerC '[Throw, Catch] '[] '[MaybeT] a (Maybe a)
+exceptC = HandlerC
+  (RunnerC $ \_ -> [|| runMaybeT ||] )
+  (AlgTransC $ \_ -> [|| NT throwAlg ||] #:$ [|| NT catchAlg ||] #:$ EndAC)
