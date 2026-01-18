@@ -17,22 +17,9 @@ Stability   : experimental
 {-# LANGUAGE PartialTypeSignatures #-}
 
 module Control.Effect.Internal.Effs.Sum
-  ( module Control.Effect.Internal.Effs.Sum.Type
-  , CodeQ (..)
-  , (#)
-  , (#:)
-  , Append (..)
-  , hunion
-  , hcons
-  , hnil
-  , Injects (..)
-  , Member (..)
-  , Members
-
-  , (#$)
-  , (#:$)
-  , hunionC
-  , GenAlgebra (..)
+  ( module Control.Effect.Internal.Effs.Sum
+  , module Control.Effect.Internal.Effs.Sum.Type
+  , CodeQ
   )
   where
 
@@ -71,6 +58,12 @@ hcons alg algs (Effs xs) = algs xs
 {- INLINE #: -}
 (#:) :: (eff m a -> b) -> (Effs effs m a -> b) -> Effs (eff : effs) m a -> b
 (#:) = hcons
+
+-- | A value of type @Effs '[] f x@ cannot be created, and this is the
+-- absurd destructor for this type.
+{-# INLINE absurdEffs #-}
+absurdEffs :: Effs '[] f x -> a
+absurdEffs x = case x of {}
 
 {- INLINE hnil -}
 hnil :: Effs '[] h a -> b

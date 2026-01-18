@@ -16,17 +16,7 @@ Stability   : experimental
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
-module Control.Effect.Internal.Effs.Sum.Type
-  ( Effs (..)
-  , Algebra
-  , Effect
-  , absurdEffs
-
-  , AlgebraC (..)
-  , EndAC (..)
-  , NatTrans (..)
-  , type (-.>) (..)
-  ) where
+module Control.Effect.Internal.Effs.Sum.Type where
 
 import Data.Kind ( Type )
 import Data.HFunctor
@@ -79,12 +69,6 @@ type family EffIndex (eff :: a) (effs :: [a]) :: Nat where
 type family EffIndexes (xeffs :: [a]) (yeffs :: [a]) :: [Nat] where
   EffIndexes '[] yeffs            = '[]
   EffIndexes (eff ': xeffs) yeffs = EffIndex eff yeffs ': EffIndexes xeffs yeffs
-
--- | A value of type @Effs '[] f x@ cannot be created, and this is the
--- absurd destructor for this type.
-{-# INLINE absurdEffs #-}
-absurdEffs :: Effs '[] f x -> a
-absurdEffs x = case x of {}
 
 -- Definitions related to staged algebras
 -----------------------------------------
