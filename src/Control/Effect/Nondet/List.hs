@@ -70,9 +70,15 @@ nondet = handler' runListT' nondetAlg
 nondetAlg
   :: forall m. Monad m
   => Algebra [Empty, Nondet] (ListT m)
-nondetAlg eff
-  | (Just (Alg Empty_))          <- prj eff = empty
-  | (Just (Alg (Choose_ xs ys))) <- prj eff = pure xs <|> pure ys
+nondetAlg = emptyAlg #: nondetOpAlg #: hnil
+
+{-# INLINE emptyAlg #-}
+emptyAlg :: forall m a. Monad m => Empty (ListT m) a -> ListT m a
+emptyAlg Empty' = empty
+
+{-# INLINE nondetOpAlg #-}
+nondetOpAlg :: forall m a. Monad m => Alg Choose_ (ListT m) a -> ListT m a
+nondetOpAlg (Alg (Choose_ xs ys)) = pure xs <|> pure ys
 
 {-# INLINE nondetAT #-}
 -- | The algebra transformer underlying the 'alternative' handler. This uses an
@@ -135,3 +141,9 @@ backtrackOnceAlg op
                case mx of
                  Nothing       -> return Nothing
                  Just (x, mxs) -> return (Just (x, empty))
+
+-- Handlers for lightweight staging
+
+nondetC :: HandlerC [Empty, Nondet] '[] '[ListT] a [a]
+nondetC = HandlerC (RunnerC $ \_ -> [|| runListT' ||])
+  (AlgTransC $ \_ -> [|| NT emptyAlg ||] #:$ [|| NT nondetOpAlg ||] #:$ EndAC)

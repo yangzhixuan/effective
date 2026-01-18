@@ -30,8 +30,8 @@ module Control.Effect.Alternative (
 #endif
 
   -- ** Signatures
-  Empty, Empty_(..), pattern Empty,
-  Choose, Choose_(..), pattern Choose,
+  Empty, Empty_(..), pattern Empty, pattern Empty',
+  Choose, Choose_(..), pattern Choose, pattern Choose',
 
   -- * Semantics
   -- ** Handlers
