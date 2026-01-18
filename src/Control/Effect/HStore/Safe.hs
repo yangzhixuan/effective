@@ -151,9 +151,6 @@ handleHS = runHS
 -- resulting in an @m@ program.
 handleHSM :: forall effs a m.
           ( forall s. ForwardsM effs '[St.StateT s]
-#ifdef INDEXED
-          , Append (HSEffs ()) effs
-#endif
           , HFunctor (Effs effs)
           , Monad m
           )

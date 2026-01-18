@@ -29,7 +29,6 @@ common common
 
 
   ghc-options:
-  --cpp-options: -DINDEXED
   --cpp-options: -DPROGDIRECT
 
 
@@ -93,10 +92,6 @@ library
     Data.Functor.Unary
 
     Control.Effect.Internal.Effs
-    Control.Effect.Internal.Effs.Indexed
-    Control.Effect.Internal.Effs.Indexed.Array
-    Control.Effect.Internal.Effs.Indexed.Class
-    Control.Effect.Internal.Effs.Indexed.Type
     Control.Effect.Internal.Effs.Sum
     Control.Effect.Internal.Effs.Sum.Type
     Control.Effect.Internal.Prog.ProgImp

@@ -45,11 +45,7 @@ module Control.Effect.Internal.Effs
   )
   where
 
-#ifdef INDEXED
-import Control.Effect.Internal.Effs.Indexed
-#else
 import Control.Effect.Internal.Effs.Sum
-#endif
 
 import Control.Monad
 import Data.Iso
@@ -75,9 +71,6 @@ callKM oalg x k = oalg (inj x) >>= k
 -- | An obvious isomorphism between two representations of an algebra for a single effect @eff@.
 {-# INLINE singAlgIso #-}
 singAlgIso ::
-#ifdef INDEXED
-  forall eff m. HFunctor eff =>
-#endif
   Iso  (Algebra '[eff] m) (forall x. eff m x -> m x)
 
 singAlgIso = Iso fwd bwd where

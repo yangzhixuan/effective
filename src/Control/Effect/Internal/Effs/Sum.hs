@@ -91,18 +91,6 @@ class Append xs ys where
   -- | Concatenating two algebras.
   heitherC :: AlgebraC xs m -> AlgebraC ys m -> AlgebraC (xs :++ ys) m
 
-  -- | Weakens an an operation of type @Effs xeffs f a@ to one of type @Effs (xeffs :++ yeffs) f a@.
-  hinl :: Effs xs f a -> Effs (xs :++ ys) f a
-
-  -- | Weakens an an operation of type @Effs yeffs f a@ to one of type @Effs (xeffs :++ yeffs) f a@.
-  hinr :: Effs ys f a -> Effs (xs :++ ys) f a
-
-  -- | Attempts to project a value of type @Effs xeffs f a@ from a union of type @Effs (xeffs :++ yeffs) f a@.
-  houtl :: Effs (xs :++ ys) f a -> Maybe (Effs xs f a)
-
-  -- | Attempts to project a value of type @Effs yeffs f a@ from a union of type @Effs (xeffs :++ yeffs) f a@.
-  houtr :: Effs (xs :++ ys) f a -> Maybe (Effs ys f a)
-
 instance Append '[] ys where
   {-# INLINE heither #-}
   heither :: (Effs '[] f a -> b) -> (Effs ys f a -> b) -> (Effs ('[] :++ ys) f a -> b)
@@ -110,22 +98,6 @@ instance Append '[] ys where
 
   heitherC :: AlgebraC '[] m -> AlgebraC ys m -> AlgebraC ('[] :++ ys) m
   heitherC EndAC cbs = cbs
-
-  {-# INLINE hinl #-}
-  hinl :: Effs '[] f a -> Effs ys f a
-  hinl = undefined -- absurdEffs
-
-  {-# INLINE hinr #-}
-  hinr :: Effs ys f a -> Effs ys f a
-  hinr = id
-
-  {-# INLINE houtl #-}
-  houtl :: Effs ys f a -> Maybe (Effs '[] f a)
-  houtl = const Nothing
-
-  {-# INLINE houtr #-}
-  houtr :: Effs ys f a -> Maybe (Effs ys f a)
-  houtr = Just
 
 instance Append xs ys => Append (x ': xs) ys where
   {-# INLINE heither #-}
@@ -135,25 +107,6 @@ instance Append xs ys => Append (x ': xs) ys where
 
   heitherC :: AlgebraC (x : xs) m -> AlgebraC ys m -> AlgebraC ((x : xs) :++ ys) m
   heitherC (ca, cas) cbs = (ca, heitherC cas cbs)
-
-  {-# INLINE hinl #-}
-  hinl :: Effs (x : xs) f a -> Effs ((x : xs) :++ ys) f a
-  hinl (Eff x)  = Eff x
-  hinl (Effs x) = Effs (hinl @xs @ys x)
-
-  {-# INLINE hinr #-}
-  hinr :: Effs ys f a -> Effs ((x : xs) :++ ys) f a
-  hinr = Effs . hinr @xs @ys
-
-  {-# INLINE houtl #-}
-  houtl :: Effs ((x ': xs) :++ ys) f a -> Maybe (Effs (x ': xs) f a)
-  houtl (Eff x)  = Just (Eff x)
-  houtl (Effs x) = fmap Effs (houtl @xs @ys x)
-
-  {-# INLINE houtr #-}
-  houtr :: Effs ((x ': xs) :++ ys) f a -> Maybe (Effs ys f a)
-  houtr (Eff x)  = Nothing
-  houtr (Effs x) = houtr @xs @ys x
 
 -- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
 -- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.

@@ -10,10 +10,6 @@ import Data.HFunctor
 import Data.Functor.Unary
 import Data.List.Kind
 import qualified Control.Monad.Trans.YRes as Y
-#ifdef INDEXED
-import GHC.TypeNats
-import Data.List.Kind
-#endif
 
 $(makeGen [e| yield :: forall a b. a -> b |])
 

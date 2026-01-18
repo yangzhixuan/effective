@@ -33,10 +33,6 @@ import Language.Haskell.TH (CodeQ)
 
 import Data.Kind
 import Data.HFunctor
-#ifdef INDEXED
-import GHC.TypeNats
-import Data.List.Kind
-#endif
 
 -- | The class demonstrating that an effect @eff@ on every type constructor satisfying @cs@
 -- can be forwarded through a transformer @t@.
@@ -96,9 +92,6 @@ instance ForwardEffs '[] t where
 instance ( HFunctor eff
          , Forward eff t
          , ForwardEffs effs t
-#ifdef INDEXED
-         , KnownNat (Length effs), KnownNat (1 + Length effs)
-#endif
          )
          => ForwardEffs (eff ': effs) t where
 
