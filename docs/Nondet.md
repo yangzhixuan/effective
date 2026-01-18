@@ -55,7 +55,7 @@ example_Nondet1' = property $ (list' $ knapsack 3 [3, 2, 1] :: [[Int]])
 -- however it requires `choose` to be algebraic.
 
 example_Nondet2 :: Property
-example_Nondet2 = property $ (handle (unscope (Proxy @(Choose_)) |> nondet) $ knapsack 3 [3, 2, 1] :: [[Int]])
+example_Nondet2 = property $ (handle (chooseByNondet |> nondet) $ knapsack 3 [3, 2, 1] :: [[Int]])
   === [[3],[2,1],[1,2],[1,1,1]]
 
 -- `backtrack` is modular, and is furthermore simply

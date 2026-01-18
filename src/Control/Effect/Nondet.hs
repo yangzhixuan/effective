@@ -12,16 +12,17 @@ For an implementation based on @LogicT@, import "Control.Effect.Nondet.Logic" in
 
 module Control.Effect.Nondet
   ( module Control.Effect.Nondet.Type
-  , Choose
-  , Choose_(Choose_)
-  , Empty
-  , Empty_(Empty_)
+  , Choose, Choose_(Choose_)
+  , Empty, Empty_(Empty_)
+
   , ListT (..)
-  , list
+  , list, listC
   , nondet, nondetAT
+  , nondetC
   , nondet'
   , backtrack
   , backtrack'
+  , chooseByNondet
   , Control.Applicative.Alternative(..)
   ) where
 
@@ -33,6 +34,10 @@ import Control.Effect.Alternative
 import Control.Applicative
 import Control.Monad.Trans.List
 import Control.Effect.Alternative
+import Control.Effect
 
 -- import Control.Effect.Nondet.Logic
 import Control.Effect.Nondet.List
+
+chooseByNondet :: Handler '[Choose] '[NondetOr] '[] a a
+chooseByNondet = interpretM1 (\oalg (Choose' p q) -> oalg (NondetOr p q) >>= id )

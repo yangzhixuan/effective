@@ -14,9 +14,9 @@ including choice and failure.
 {-# LANGUAGE UndecidableInstances #-}
 
 module Control.Effect.Nondet.Logic
-  ( Choose, Choose_(Choose_)
+  ( module Control.Effect.Nondet.Type
+  , Choose, Choose_(Choose_)
   , Empty , Empty_(Empty_)  , empty
-  , Once  , Once_ (..)     , once
   , list
   , nondet
   , backtrackAlg
@@ -40,25 +40,25 @@ list = alternative observeAllT
 -- | The `nondet` handler transforms nondeterministic effects t`Empty` and t`Choose`
 -- into the t`LogicT` monad transformer, which collects all possible results.
 {-# INLINE nondet #-}
-nondet :: Handler [Empty, Nondet] '[] '[LogicT] a [a]
+nondet :: Handler [Empty, NondetOr] '[] '[LogicT] a [a]
 nondet = handler' observeAllT nondetAlg
 
 -- | `nondetAlg` defines the semantics of backtracking for the t`Empty`,
 -- t`Choose`, effects in the context of the t`LogicT` monad transformer.
 nondetAlg
-  :: Monad m => (forall x. Effs [Empty, Nondet] (LogicT m) x -> LogicT m x)
+  :: Monad m => (forall x. Effs [Empty, NondetOr] (LogicT m) x -> LogicT m x)
 nondetAlg op
   | Just (Alg Empty_)            <- prj op = empty
-  | Just (Alg (Choose_ xs ys))   <- prj op = pure xs <|> pure ys
+  | Just (Alg (NondetOr_ xs ys))   <- prj op = pure xs <|> pure ys
 
 -- | `backtrackAlg` defines the semantics of backtracking for the t`Empty`,
 -- t`Choose`, and t`Once` effects in the context of the t`LogicT` monad transformer.
 backtrackAlg
   :: Monad m => (forall x. oeff m x -> m x)
-  -> (forall x. Effs [Empty, Nondet, Once] (LogicT m) x -> LogicT m x)
+  -> (forall x. Effs [Empty, NondetOr, Once] (LogicT m) x -> LogicT m x)
 backtrackAlg oalg op
   | Just (Alg Empty_)            <- prj op = empty
-  | Just (Alg (Choose_ xs ys))   <- prj op = pure xs <|> pure ys
+  | Just (Alg (NondetOr_ xs ys))   <- prj op = pure xs <|> pure ys
   | Just (Scp (Once_ p))         <- prj op =
       LogicT (\cons nil -> runLogicT p cons nil)
 

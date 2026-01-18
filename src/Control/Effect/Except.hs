@@ -30,6 +30,7 @@ module Control.Effect.Except (
   -- ** Handlers
   except,
   retry,
+  exceptC,
 
   -- ** Algebras
   exceptAT,

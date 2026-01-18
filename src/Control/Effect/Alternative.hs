@@ -28,6 +28,7 @@ module Control.Effect.Alternative (
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
   emptyN, chooseN,
 #endif
+  select, selects,
 
   -- ** Signatures
   Empty, Empty_(..), pattern Empty, pattern Empty',
@@ -46,13 +47,26 @@ import Control.Effect
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 
-import Control.Applicative
+import Control.Applicative ((<|>), Alternative)
 import Control.Applicative qualified as Ap
 
 
 $(makeAlg [e| empty :: 0 |])
 
 $(makeScp [e| choose :: 2 |])
+
+-- | `select` nondeterministically selects an element from a list.
+-- If the list is empty, the computation fails.
+select :: [a] -> a ! [Choose, Empty]
+select xs = foldr ((<|>) . return) empty xs
+
+-- | `selects` generates all permutations of a list, returning each element
+-- along with the remaining elements of the list.
+selects :: [a] -> (a, [a]) ! [Choose, Empty]
+selects []      =  empty
+selects (x:xs)  =  return (x, xs)  <|> do  (y, ys) <- selects xs
+                                           return (y, x:ys)
+
 
 -- | Instance for 'Alternative' that uses 'Empty' and 'Choose'.
 instance (Member Empty sigs, Member Choose sigs)
