@@ -36,73 +36,74 @@ library
   import: common
 
   exposed-modules:
-    Control.Effect.Plugin
-    Control.Effect
+--    Control.Effect.Plugin
+--    Control.Effect
+--
+--    Control.Effect.Alternative
+--    Control.Effect.Cut
+--    Control.Effect.Except
+--    Control.Effect.IO
+--    Control.Effect.Maybe
+--    Control.Effect.Nondet
+--    Control.Effect.Concurrency
+--    Control.Effect.Concurrency.Type
+--    Control.Effect.Yield
+--    Control.Effect.Nondet.Type
+--    Control.Effect.Nondet.List
+--    Control.Effect.Nondet.Logic
+--    Control.Effect.Reader
+--    Control.Effect.State
+--    Control.Effect.State.Type
+--    Control.Effect.State.Lazy
+--    Control.Effect.State.Strict
+--    Control.Effect.Writer
+--    Control.Effect.Family.Algebraic
+--    Control.Effect.Family.Scoped
+--    Control.Effect.Family.Distributive
+--    Control.Effect.WithName
+--    Control.Effect.HStore.Unsafe
+--    Control.Effect.HStore.Safe
+--
+--    Control.Effect.CodeGen
+--    Control.Effect.CodeGen.Type
+--    Control.Effect.CodeGen.Up
+--    Control.Effect.CodeGen.Down
+--    Control.Effect.CodeGen.Split
+--    Control.Effect.CodeGen.Gen
+--    Control.Effect.CodeGen.Eval
+--    Control.Effect.CodeGen.JoinFlow
+--    Control.Effect.CodeGen.SoPU
+--    Control.Effect.CodeGen.Nondet
+--    Control.Effect.CodeGen.Concurrency
 
-    Control.Effect.Alternative
-    Control.Effect.Cut
-    Control.Effect.Except
-    Control.Effect.IO
-    Control.Effect.Maybe
-    Control.Effect.Nondet
-    Control.Effect.Concurrency
-    Control.Effect.Concurrency.Type
-    Control.Effect.Yield
-    Control.Effect.Nondet.Type
-    Control.Effect.Nondet.List
-    Control.Effect.Nondet.Logic
-    Control.Effect.Reader
-    Control.Effect.State
-    Control.Effect.State.Type
-    Control.Effect.State.Lazy
-    Control.Effect.State.Strict
-    Control.Effect.Writer
-    Control.Effect.Family.Algebraic
-    Control.Effect.Family.Scoped
-    Control.Effect.Family.Distributive
-    Control.Effect.WithName
-    Control.Effect.HStore.Unsafe
-    Control.Effect.HStore.Safe
-
-    Control.Effect.CodeGen
-    Control.Effect.CodeGen.Type
-    Control.Effect.CodeGen.Up
-    Control.Effect.CodeGen.Down
-    Control.Effect.CodeGen.Split
-    Control.Effect.CodeGen.Gen
-    Control.Effect.CodeGen.Eval
-    Control.Effect.CodeGen.JoinFlow
-    Control.Effect.CodeGen.SoPU
-    Control.Effect.CodeGen.Nondet
-    Control.Effect.CodeGen.Concurrency
-
-    Control.Monad.Trans.CutList
-    Control.Monad.Trans.List
-    Control.Monad.Trans.Resump
-    Control.Monad.Trans.CRes
-    Control.Monad.Trans.YRes
-    Control.Monad.Trans.ResumpUp
+--    Control.Monad.Trans.CutList
+--    Control.Monad.Trans.List
+--    Control.Monad.Trans.Resump
+--    Control.Monad.Trans.CRes
+--    Control.Monad.Trans.YRes
+--    Control.Monad.Trans.ResumpUp
     Control.Monad.Trans.Compose
-    Control.Monad.Trans.Push
+--    Control.Monad.Trans.Push
 
     Data.CutList
     Data.Iso
     Data.HFunctor
     Data.List.Kind
     Data.Functor.Unary
+    Data.Sequence.Class
 
     Control.Effect.Internal.Effs
+    Control.Effect.Internal.Algebra
     Control.Effect.Internal.Effs.Sum
     Control.Effect.Internal.Effs.Sum.Type
     Control.Effect.Internal.Prog.ProgImp
-    Control.Effect.Internal.Prog.ProgDirect
     Control.Effect.Internal.Prog
     Control.Effect.Internal.Forward
     Control.Effect.Internal.Handler
     Control.Effect.Internal.Runner
     Control.Effect.Internal.AlgTrans
     Control.Effect.Internal.AlgTrans.Type
-    Control.Effect.Internal.TH
+--    Control.Effect.Internal.TH
   hs-source-dirs:
     src
 
@@ -115,116 +116,120 @@ library
     logict             >= 0.8.2  && < 0.9,
     template-haskell   >= 2.18   && < 2.24,
     lift-type,
+    containers,
+--     for finger trees.
+    primitive,
+--     for SmallArray.
     ghc
 
-test-suite readme
-  type:          exitcode-stdio-1.0
-  ghc-options:   -threaded -pgmL markdown-unlit
-  main-is:       README.lhs
-  default-extensions: DataKinds
-  default-language: GHC2021
-  hs-source-dirs:  .
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-    hedgehog           >= 1.5  && < 1.6,
-  build-tool-depends: markdown-unlit:markdown-unlit
-
-test-suite docs
-  import:        common
-  type:          exitcode-stdio-1.0
-  ghc-options:   -threaded -pgmL markdown-unlit
-  main-is:       Main.hs
-  default-language: GHC2021
-  hs-source-dirs:  docs
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-    hedgehog           >= 1.5  && < 1.6,
-  build-tool-depends: markdown-unlit:markdown-unlit
-  other-modules:
-    Error,
-    Nondet,
-    Parser,
-    State,
-
-test-suite concur
-  type:          exitcode-stdio-1.0
-  ghc-options:   -threaded
-  main-is:       Concur.hs
-  default-language: GHC2021
-  default-extensions: DataKinds
-  hs-source-dirs:  test
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-
-test-suite hostore
-  type:          exitcode-stdio-1.0
-  ghc-options:   -threaded
-  main-is:       HOStore.hs
-  default-language: GHC2021
-  default-extensions: DataKinds
-  hs-source-dirs:  test
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-
-test-suite staged
-  type:          exitcode-stdio-1.0
-  main-is:       Staged.hs
-  default-language: GHC2021
-  default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
-  ghc-options: -ddump-to-file -ddump-splices
-  hs-source-dirs:  test
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-    template-haskell   >= 2.18 && < 2.24,
-    transformers       >= 0.4  && < 0.7,
-
-  other-modules:
-    StagedGen
-
-test-suite plugin
-  type:          exitcode-stdio-1.0
-  ghc-options:   -fplugin Control.Effect.Plugin
-  main-is:       PluginTest.hs
-  default-language: GHC2021
-  default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
-  hs-source-dirs:  test
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-    template-haskell   >= 2.18 && < 2.24,
-    transformers       >= 0.4  && < 0.7,
-
-  other-modules:
-    StagedGen
-
-test-suite misc
-  import: common
-  type:          exitcode-stdio-1.0
-  main-is:       Misc.hs
-  default-language: GHC2021
-  default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
-  hs-source-dirs:  test
-  -- ghc-options: -ddump-splices
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-    hedgehog           >= 1.5  && < 1.6,
-    template-haskell   >= 2.18 && < 2.24,
-
-test-suite eval
-  import:        common
-  type:          exitcode-stdio-1.0
-  ghc-options:   -threaded
-  main-is:       Eval.hs
-  default-language: GHC2021
-  default-extensions: DataKinds
-  hs-source-dirs:  test
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-    transformers       >= 0.4  && < 0.7,
+-- test-suite readme
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -threaded -pgmL markdown-unlit
+--   main-is:       README.lhs
+--   default-extensions: DataKinds
+--   default-language: GHC2021
+--   hs-source-dirs:  .
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+--     hedgehog           >= 1.5  && < 1.6,
+--   build-tool-depends: markdown-unlit:markdown-unlit
+-- 
+-- test-suite docs
+--   import:        common
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -threaded -pgmL markdown-unlit
+--   main-is:       Main.hs
+--   default-language: GHC2021
+--   hs-source-dirs:  docs
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+--     hedgehog           >= 1.5  && < 1.6,
+--   build-tool-depends: markdown-unlit:markdown-unlit
+--   other-modules:
+--     Error,
+--     Nondet,
+--     Parser,
+--     State,
+-- 
+-- test-suite concur
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -threaded
+--   main-is:       Concur.hs
+--   default-language: GHC2021
+--   default-extensions: DataKinds
+--   hs-source-dirs:  test
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+-- 
+-- test-suite hostore
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -threaded
+--   main-is:       HOStore.hs
+--   default-language: GHC2021
+--   default-extensions: DataKinds
+--   hs-source-dirs:  test
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+-- 
+-- test-suite staged
+--   type:          exitcode-stdio-1.0
+--   main-is:       Staged.hs
+--   default-language: GHC2021
+--   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+--   ghc-options: -ddump-to-file -ddump-splices
+--   hs-source-dirs:  test
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+--     template-haskell   >= 2.18 && < 2.24,
+--     transformers       >= 0.4  && < 0.7,
+-- 
+--   other-modules:
+--     StagedGen
+-- 
+-- test-suite plugin
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -fplugin Control.Effect.Plugin
+--   main-is:       PluginTest.hs
+--   default-language: GHC2021
+--   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+--   hs-source-dirs:  test
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+--     template-haskell   >= 2.18 && < 2.24,
+--     transformers       >= 0.4  && < 0.7,
+-- 
+--   other-modules:
+--     StagedGen
+-- 
+-- test-suite misc
+--   import: common
+--   type:          exitcode-stdio-1.0
+--   main-is:       Misc.hs
+--   default-language: GHC2021
+--   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+--   hs-source-dirs:  test
+--   -- ghc-options: -ddump-splices
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+--     hedgehog           >= 1.5  && < 1.6,
+--     template-haskell   >= 2.18 && < 2.24,
+-- 
+-- test-suite eval
+--   import:        common
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -threaded
+--   main-is:       Eval.hs
+--   default-language: GHC2021
+--   default-extensions: DataKinds
+--   hs-source-dirs:  test
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+--     transformers       >= 0.4  && < 0.7,

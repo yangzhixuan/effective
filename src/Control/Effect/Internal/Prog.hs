@@ -33,11 +33,7 @@ module Control.Effect.Internal.Prog
   where
 
 
-#ifdef PROGDIRECT
-import Control.Effect.Internal.Prog.ProgDirect
-#else
 import Control.Effect.Internal.Prog.ProgImp
-#endif
 
 import Control.Effect.Internal.Effs
 
