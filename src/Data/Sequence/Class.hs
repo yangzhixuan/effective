@@ -12,6 +12,10 @@ class Sequence (l :: Type -> Type) where
   append :: l a -> l a -> l a
   index :: l a -> Int -> a
   view :: l a -> Maybe (a, l a)
+  seqToArray :: l a -> A.SmallArray a
+  seqFromArray :: A.SmallArray a -> l a
+  seqToList :: l a -> [a]
+  seqFromList :: [a] -> l a
 
 -- Lists are fast for accessing the head.
 instance Sequence [] where
@@ -21,6 +25,10 @@ instance Sequence [] where
   index = (!!)
   view [] = Nothing
   view (a:as) = Just (a, as)
+  seqToArray = A.smallArrayFromList
+  seqFromArray = toList
+  seqToList = id
+  seqFromList = id
 
 -- Finger trees are reasonably fast for all operations.
 instance Sequence S.Seq where
@@ -31,6 +39,10 @@ instance Sequence S.Seq where
   view x = case S.viewl x of
     S.EmptyL -> Nothing
     a S.:< as -> Just (a, as)
+  seqToArray = A.smallArrayFromList . toList
+  seqFromArray = S.fromList . toList
+  seqToList = toList
+  seqFromList = S.fromList
 
 -- Arrays are very fast for indexing and destruction but very slow for construction.
 instance Sequence A.SmallArray where
@@ -41,3 +53,7 @@ instance Sequence A.SmallArray where
   view as = case length as of
     0 -> Nothing
     n -> Just (A.indexSmallArray as 0, A.cloneSmallArray as 1 (n-1))
+  seqToArray = id
+  seqFromArray = id
+  seqToList = toList
+  seqFromList = A.smallArrayFromList
