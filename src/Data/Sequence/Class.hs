@@ -39,6 +39,7 @@ instance Sequence [] where
   {-# INLINE seqFromList #-}
   seqFromList = id
 
+
 -- Finger trees are reasonably fast for all operations.
 instance Sequence S.Seq where
   {-# INLINE nil#-}

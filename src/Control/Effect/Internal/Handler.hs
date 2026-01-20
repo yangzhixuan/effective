@@ -119,7 +119,7 @@ identity = Handler LL.idRunner LL.idAT
 
 type Comp# effs1 ts1 ts2 =
   ( CompRunner# ts1 ts2
-  , CompAT# ts1 ts2 effs1 Monad)
+  , CompAT# ts1 ts2)
 
 -- | Composing two handlers.
 {-# INLINE comp #-}
@@ -255,8 +255,8 @@ unionHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenC (unionAT
 -- different effects.
 appendHdl :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
           AppendAT# effs1 effs2 oeffs1 oeffs2
-       =>  Handler effs1 oeffs1 ts a1 a2
-       ->  Handler effs2 oeffs2 ts a3 a4
+       => Handler effs1 oeffs1 ts a1 a2
+       -> Handler effs2 oeffs2 ts a3 a4
        -> Handler (effs1 :++ effs2) (oeffs1 :++ oeffs2) ts a1 a2
 appendHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenC (appendAT a1 a2))
 
@@ -317,6 +317,26 @@ fuseC (HandlerC run1 malg1) (HandlerC run2 malg2)
   = HandlerC (weakenRCC (LL.fuseRC malg2 run1 run2)) (weakenCC (LL.fuseATC malg1 malg2))
 
 (|>$) = fuseC
+
+
+{-# INLINE fuseApp #-}
+fuseApp
+  :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3
+  . ( forall m . Monad m => MonadApply ts1 m
+    , forall m . Monad m => MonadApply ts2 m
+    , CompAT# ts1 ts2, Injects oeffs1 (oeffs1 :++ oeffs2), Injects oeffs2 (oeffs1 :++ oeffs2)
+    , ForwardsM effs2 ts1, ForwardsM oeffs1 ts2
+    )
+  => Handler effs1 oeffs1 ts1 a1 a2   -- ^ @h1@
+  -> Handler effs2 oeffs2 ts2 a2 a3   -- ^ @h2@
+  -> Handler (effs1 :++ effs2)
+             (oeffs1 :++ oeffs2)
+             (ts1 :++ ts2)
+             a1 a3
+fuseApp (Handler run1 malg1) (Handler run2 malg2)
+  = Handler (weakenRC (LL.fuseAppR malg2 run1 run2)) (weakenC (LL.fuseAppAT malg1 malg2))
+
+
 
 infixr 9 `pipe`, ||>
 

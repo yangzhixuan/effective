@@ -66,12 +66,12 @@ idAT = AlgTrans \alg -> alg
 -- satisfied matically when the parameters are substituted by concrete values.
 -- Users don't need to care about them.
 
-type CompAT# ts1 ts2 effs1 cs2 = ( forall m . Assoc ts1 ts2 m )
+type CompAT# ts1 ts2 = ( forall m . Assoc ts1 ts2 m )
 
 -- | Composing two algebra transformers.
 {-# INLINE compAT #-}
 compAT :: forall effs1 effs2 effs3 ts1 ts2 cs1 cs2.
-          ( CompAT# ts1 ts2 effs1 cs2 )
+          ( CompAT# ts1 ts2 )
        => AlgTrans effs1 effs2 ts1 cs1
        -> AlgTrans effs2 effs3 ts2 cs2
        -> AlgTrans effs1 effs3 (ts1 :++ ts2) (CompC ts2 cs1 cs2)
@@ -336,6 +336,21 @@ fuseATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
                     (ts1 :++ ts2)
                     (CompC ts2 cs1 cs2)
 fuseATC at1 at2 = generalFuseATC (Proxy @effs2) (Proxy @effs2) at1 at2
+
+{-# INLINE fuseAppAT #-}
+fuseAppAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+          (CompAT# ts1 ts2, Injects oeffs1 (oeffs1 :++ oeffs2), Injects oeffs2 (oeffs1 :++ oeffs2)
+          , ForwardsC cs1 effs2 ts1, ForwardsC cs2 oeffs1 ts2)
+       => AlgTrans effs1 oeffs1 ts1 cs1
+       -> AlgTrans effs2 oeffs2 ts2 cs2
+       -> AlgTrans (effs1 :++ effs2)
+                   (oeffs1 :++ oeffs2)
+                   (ts1 :++ ts2)
+                   (CompC ts2 cs1 cs2)
+fuseAppAT at1 at2 = AlgTrans $ \(oalg :: Algebra _ m) ->
+  appendAlg @effs1 @effs2 @(Apply (ts1 :++ ts2) m)
+    (getAT at1 (getAT (fwds @oeffs1 @ts2) (weakenAlg oalg)))
+    (getAT (fwds @effs2 @ts1) (getAT at2 (weakenAlg oalg)))
 
 infixr 9 `pipeAT`
 
