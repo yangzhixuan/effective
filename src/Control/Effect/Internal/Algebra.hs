@@ -387,9 +387,15 @@ infixr 6 $#
   -> AlgebraC (eff1 :++ eff2) m
 falg $# galg = appendAlgC @eff1 @eff2 falg galg
 
+infixr 5 $:#
 {- INLINE $:# -}
 ($:#) :: CodeQ (eff m -.> m) -> AlgebraC effs m -> AlgebraC (eff ': effs) m
 a $:# as = (a, as)
+
+infixr 5 $:#.
+{- INLINE $:# -}
+($:#.) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff, eff']) m
+a $:#. as = (a, (as, EndAC))
 
 -- | Static version of `hunion`.
 hunionC :: forall xeffs yeffs m a b

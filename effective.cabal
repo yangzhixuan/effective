@@ -56,10 +56,10 @@ library
 --    Control.Effect.Nondet.List
 --    Control.Effect.Nondet.Logic
     Control.Effect.Reader
---    Control.Effect.State
---    Control.Effect.State.Type
---    Control.Effect.State.Lazy
---    Control.Effect.State.Strict
+    Control.Effect.State
+    Control.Effect.State.Type
+    Control.Effect.State.Lazy
+    Control.Effect.State.Strict
 --    Control.Effect.Writer
 --    Control.Effect.HStore.Unsafe
 --    Control.Effect.HStore.Safe

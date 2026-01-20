@@ -37,6 +37,19 @@ import Control.Effect.State.Type
 import qualified Control.Monad.Trans.State.Strict as Strict
 import Data.Tuple (swap)
 
+{-# INLINE putAlg #-}
+putAlg :: Monad m => Put s f b -> Strict.StateT s m b
+putAlg (Put s p) = do Strict.put s; return p
+
+{-# INLINE getAlg #-}
+getAlg :: Monad m => Get s f b -> Strict.StateT s m b
+getAlg (Get p) = do s <- Strict.get; return (p s)
+
+-- | An algebra transformer that interprets t'Get' and t'Put' using the strict t'Strict.StateT'.
+{-# INLINE stateAT #-}
+stateAT :: AlgTrans [Put s, Get s] '[] '[Strict.StateT s] Monad
+stateAT = algTrans' $ putAlg :#. getAlg
+
 -- | The `state` handler deals with stateful operations and
 -- returns the final state @s@.
 {-# INLINE state #-}
@@ -49,27 +62,14 @@ state s = Handler (runner' $ fmap swap . flip Strict.runStateT s) stateAT
 state_ :: s -> Handler [Put s, Get s] '[] '[Strict.StateT s] a a
 state_ s = Handler (runner' $ flip Strict.evalStateT s) stateAT
 
--- | An algebra transformer that interprets t'Get' and t'Put' using the strict t'Strict.StateT'.
-{-# INLINE stateAT #-}
-stateAT :: AlgTrans [Put s, Get s] '[] '[Strict.StateT s] Monad
-stateAT = algTrans' $ putAlg #: getAlg #: endAlg
-
-{-# INLINE putAlg #-}
-putAlg :: Monad m => Put s f b -> Strict.StateT s m b
-putAlg (Put' s p) = do Strict.put s; return p
-
-{-# INLINE getAlg #-}
-getAlg :: Monad m => Get s f b -> Strict.StateT s m b
-getAlg (Get' p) = do s <- Strict.get; return (p s)
-
 -- Handlers for lightweight staging
 
 stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a (s, a)
 stateC cs = HandlerC
   (RunnerC $ \_ -> [|| fmap swap . flip Strict.runStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] #:$ [|| NT $ getAlg ||] #:$ EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] $:# [|| NT $ getAlg ||] $:# EndAC)
 
 stateC_ :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a a
 stateC_ cs = HandlerC
   (RunnerC $ \_ -> [|| flip Strict.evalStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] #:$ [|| NT $ getAlg ||] #:$ EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] $:# [|| NT $ getAlg ||] $:# EndAC)

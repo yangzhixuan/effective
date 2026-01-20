@@ -48,17 +48,15 @@ state_ s = Handler (runner' $ flip Lazy.evalStateT s) stateAT
 
 -- | An algebra transformer that interprets t'Get' and t'Put' using the lazy t'Lazy.StateT'.
 stateAT :: AlgTrans [Put s, Get s] '[] '[Lazy.StateT s] Monad
-stateAT = algTrans' $ \case
-  Put s p -> do Lazy.put s; return p
-  Get   p -> do s <- Lazy.get; return (p s)
+stateAT = algTrans' $ putAlg :#. getAlg
 
 {-# INLINE putAlg #-}
 putAlg :: Monad m => Put s f b -> Lazy.StateT s m b
-putAlg (Put' s p) = do Lazy.put s; return p
+putAlg (Put s p) = do Lazy.put s; return p
 
 {-# INLINE getAlg #-}
 getAlg :: Monad m => Get s f b -> Lazy.StateT s m b
-getAlg (Get' p) = do s <- Lazy.get; return (p s)
+getAlg (Get p) = do s <- Lazy.get; return (p s)
 
 -- Handlers for lightweight staging
 
@@ -68,9 +66,9 @@ stateRun s = runner' $ fmap (\ ~(x, y) -> (y, x)) . flip Lazy.runStateT s
 stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Lazy.StateT s] a (s, a)
 stateC cs = HandlerC
   (RunnerC $ \_ -> [|| fmap (\ ~(x, y) -> (y, x)) . flip Lazy.runStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] #:$ [|| NT $ getAlg ||] #:$ EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] $:# [|| NT $ getAlg ||] $:# EndAC)
 
 stateC_ :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Lazy.StateT s] a a
 stateC_ cs = HandlerC
   (RunnerC $ \_ -> [|| flip Lazy.evalStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] #:$ [|| NT $ getAlg ||] #:$ EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] $:# [|| NT $ getAlg ||] $:# EndAC)

@@ -118,8 +118,7 @@ module Control.Effect
   , EndAC (..)
   , NatTrans (..)
   , type (-.>)
-  , ($#)
-  , ($:#)
+  , ($#), ($:#),  ($:#.)
   , hunionC
   , GenAlgebra (..)
 
