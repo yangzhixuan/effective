@@ -99,7 +99,7 @@ caseAT :: forall effs1 effs2 cs1 cs2 oeffs ts.
        => AlgTrans effs1 oeffs ts cs1
        -> AlgTrans effs2 oeffs ts cs2
        -> AlgTrans (effs1 `Union` effs2) oeffs ts (AndC cs1 cs2)
-caseAT at1 at2 = AlgTrans \oalg -> hunion (getAT at1 oalg) (getAT at2 oalg)
+caseAT at1 at2 = AlgTrans \oalg -> unionAlg (getAT at1 oalg) (getAT at2 oalg)
 
 type CaseTrans'# effs1 effs2 = (Append effs1 effs2)
 
@@ -414,7 +414,7 @@ passAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
                    (ts1 :++ ts2)
                    (CompC ts2 cs1 cs2)
 passAT at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 `Union` oeffs2) m) ->
-  hunion @effs1 @effs2
+  unionAlg @effs1 @effs2
     (getAT at1 @(Apply ts2 m) (getAT (fwds @oeffs1 @ts2) @m (weakenAlg oalg)))
     (getAT (fwds @effs2 @ts1) (getAT at2 (weakenAlg oalg)))
 
@@ -443,7 +443,7 @@ passAT' :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
                     (ts1 :++ ts2)
                     (CompC ts2 cs1 cs2)
 passAT' at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 `Union` oeffs2) m) ->
-   weakenAlg $ hunion @effs2 @effs1
+   weakenAlg $ unionAlg @effs2 @effs1
      (getAT (fwds @effs2 @ts1) (getAT at2 (weakenAlg oalg)))
      (getAT at1 (getAT (fwds @oeffs1 @ts2) (weakenAlg oalg)))
 
@@ -486,7 +486,7 @@ generalFuseAT
               (ts1 :++ ts2)
               (CompC ts2 cs1 cs2)
 generalFuseAT _ _ at1 at2 = AlgTrans $ \oalg ->
-   hunion @effs1 @feffs
+   unionAlg @effs1 @feffs
      (getAT at1 (weakenAlg $
        appendAlg @(oeffs1 :\\ ieffs) @ieffs
          (getAT (fwds @(oeffs1 :\\ ieffs) @ts2) (weakenAlg oalg))

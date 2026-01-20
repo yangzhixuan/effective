@@ -484,7 +484,7 @@ handleM :: forall effs oeffs xeffs m ts fs a b .
   -> m b
 handleM xalg (Handler run halg)
   = getR run @m (weakenAlg xalg)
-  . eval (hunion @effs @xeffs (getAT halg (weakenAlg xalg)) (getAT (fwds @_ @ts) xalg))
+  . eval (unionAlg @effs @xeffs (getAT halg (weakenAlg xalg)) (getAT (fwds @_ @ts) xalg))
 
 -- | A variant of @handleM@ where the program doesn't explictly use the effect
 -- @xeffs@ on the monad @m@, but may output some effects @oeffs@ ⊆ @xeffs@. Therefore
@@ -518,7 +518,7 @@ handleMFwds :: forall yeffs effs oeffs xeffs m ts a b .
   -> m b
 handleMFwds _ xalg (Handler run halg)
   = getR run @m (weakenAlg xalg)
-  . eval (hunion @effs @yeffs (getAT halg (weakenAlg xalg))
+  . eval (unionAlg @effs @yeffs (getAT halg (weakenAlg xalg))
                               (getAT (fwds @_ @ts) (weakenAlg xalg)))
 
 type HandleP# effs xeffs =

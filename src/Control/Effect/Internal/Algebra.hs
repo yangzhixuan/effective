@@ -351,12 +351,12 @@ instance (Member xeff xyeffs, Injects xeffs xyeffs) => Injects (xeff : xeffs) (x
 -- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
 -- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
 -- If an effect is in both @xeffs@ and @yeffs@, the algebra for @xeffs@ is used.
-{-# INLINE hunion #-}
-hunion :: forall xeffs yeffs m s.
+{-# INLINE unionAlg #-}
+unionAlg :: forall xeffs yeffs m s.
      (Injects (yeffs :\\ xeffs) yeffs, Sequence s)
   => Algebra_ s xeffs m -> Algebra_ s yeffs m
   -> Algebra_ s (xeffs `Union` yeffs) m
-hunion xalg yalg = appendAlg @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
+unionAlg xalg yalg = appendAlg @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
 
 -- * | Definitions related to staged algebras
 -----------------------------------------
@@ -393,7 +393,7 @@ infixr 5 $:#.
 ($:#.) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff, eff']) m
 a $:#. as = (a, (as, EndAC))
 
--- | Static version of `hunion`.
+-- | Static version of `unionAlg`.
 hunionC :: forall xeffs yeffs m a b
   .  ( Append xeffs (yeffs :\\ xeffs), Injects (yeffs :\\ xeffs) yeffs )
   => AlgebraC xeffs m -> AlgebraC yeffs m
