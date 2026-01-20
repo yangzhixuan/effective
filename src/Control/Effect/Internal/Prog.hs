@@ -29,7 +29,7 @@ module Control.Effect.Internal.Prog
     weakenProg,
 
     -- * Program eliminator
-    eval,
+    eval, eval'
   )
   where
 

@@ -437,7 +437,7 @@ handleC (HandlerC (RunnerC r) (AlgTransC a)) p = unsafeCodeCoerce $
 handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
   [||
       let alg = $$(genAlgebra (a @Identity EndAC))
-      in runIdentity ($$(r EndAC) (eval alg $$p))
+      in runIdentity ($$(r EndAC) (eval' alg $$p))
   ||]
 
 type HandleM# effs xeffs =

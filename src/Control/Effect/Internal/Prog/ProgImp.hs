@@ -33,7 +33,7 @@ module Control.Effect.Internal.Prog.ProgImp (
   weakenProg,
 
   -- * Program eliminator
-  eval,
+  eval, eval'
   )
   where
 
@@ -157,3 +157,12 @@ eval
   => Algebra_ s effs m
   -> Prog effs a -> m a
 eval alg p = runProg p (toAlgebraArray alg)
+
+-- | A specialised version of @eval@, which can be used for helping
+-- the type checker to infer the sequence parameter @s@.
+{-# INLINE eval' #-}
+eval'
+  :: forall effs m a . (Monad m)
+  => Algebra effs m
+  -> Prog effs a -> m a
+eval' alg p = runProg p (toAlgebraArray alg)

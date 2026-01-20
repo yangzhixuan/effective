@@ -122,10 +122,6 @@ viewAlgebra (Algebra aas) = (headCase aas, Algebra $ tailCase aas)
 toAlgebraArray :: (Sequence s) => Algebra_ s effs m -> AlgebraArray effs m
 toAlgebraArray (Algebra (Case s)) = Algebra (Case (seqToArray s))
 
-{-# INLINE fromAlgebraArray #-}
-fromAlgebraArray :: (Sequence s) => AlgebraArray effs m -> Algebra_ s effs m
-fromAlgebraArray (Algebra (Case s)) = Algebra (Case (seqFromArray s))
-
 infixr 5 :#
 {-# INLINE (:#) #-}
 pattern (:#) :: Sequence s => (forall x. eff m x -> m x) -> Algebra_ s effs m -> Algebra_ s (eff : effs) m
@@ -134,7 +130,7 @@ pattern a :# as <- (viewAlgebra -> (a,as)) where
 
 infixr 5 :#.
 {-# INLINE (:#.) #-}
-pattern (:#.) :: Sequence s => (forall x. eff m x -> m x) -> (forall x. eff' m x -> m x) 
+pattern (:#.) :: Sequence s => (forall x. eff m x -> m x) -> (forall x. eff' m x -> m x)
               -> Algebra_ s ([eff, eff']) m
 pattern a :#. b <- (viewAlgebra -> (a,viewAlgebra -> (b, _))) where
   a :#. b = a :# (b :# endAlg)
