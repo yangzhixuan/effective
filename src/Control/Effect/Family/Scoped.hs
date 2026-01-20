@@ -48,7 +48,6 @@ import Control.Monad.Trans.Identity
 import Control.Effect.Internal.AlgTrans
 import Control.Effect.Internal.Handler
 import Control.Effect.Internal.Forward
-import Control.Effect.Internal.Effs
 import Control.Monad.Trans.CutList
 import Control.Monad.Logic
 import Data.List.Kind
@@ -151,6 +150,10 @@ instance (Functor s, U.Unary sig) => Forward (Scp sig) (ResT s) where
     ualg :: forall y. m y -> m y
     ualg op' = alg (Scp (U.upd op op'))
 
+{-
+-- Zhixuan: I think it's a terrible idea that two operations share the same underlying functor!
+
+
 unscope :: Proxy sig -> Handler '[Scp sig] '[Alg sig] '[] a a
 unscope _ = interpretM1 (\oalg (Scp op) -> oalg (Eff (Alg op)) >>= id)
 
@@ -165,3 +168,4 @@ instance (AppendAT# '[Scp sig] (Map Scp sigs) '[Alg sig] (Map Alg sigs),
    Unscopes sigs) => Unscopes (sig ': sigs) where
   unscopes :: Proxy (sig ': sigs) -> Handler (Map Scp (sig ': sigs)) (Map Alg (sig ': sigs)) '[] a a
   unscopes _ = unscope (Proxy @sig) `appendHdl` unscopes (Proxy @sigs)
+-}

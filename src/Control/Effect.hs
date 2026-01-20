@@ -15,7 +15,7 @@ module Control.Effect
     type (!)
   , Progs
   , Prog
-  , Effs (Eff, Effs)
+--  , Effs (Eff, Effs)
   , WithName, (:@)
   , call,  callJ,  callK
   , callM, callJM, callKM
@@ -31,21 +31,20 @@ module Control.Effect
   -- * Operations
   , Member(..)
   , Members(..)
-  , Injects( injs )
+  , Injects(..)
   , Append (..)
 
   -- * Algebras
-  , Algebra
+  , Algebra, Algebra_, AlgebraArray
+  , Case, Case_
   , singAlgIso
   , (#)
-  , hcons, hnil, (#:)
-  , weakenAlg
+  , hnil, pattern (:#)
+  , pattern (:%)
   , Forward (..)
   , Forwards (..)
   , ForwardsM (..)
   , ForwardsC (..)
-  , absurdEffs
-  , (<:)
 
   -- * Handler combinators
   , Handler (..)
@@ -55,6 +54,7 @@ module Control.Effect
   , Runner (..)
   , RunnerC (..)
   , runner'
+  , (<:)
   , fromRunner
   , identity
   , comp
@@ -66,8 +66,8 @@ module Control.Effect
   , interpret1, interpretAT1, interpretM1
   , caseHdl
   , unionHdl
-  , unscope
-  , unscopes
+--  , unscope
+--  , unscopes
 
   -- ** Fusion-based combinators
   , fuse, (|>)
@@ -113,13 +113,13 @@ module Control.Effect
 
 
   -- * Lightweight staging
-  , CodeQ (..)
+  , CodeQ
   , AlgebraC (..)
   , EndAC (..)
   , NatTrans (..)
   , type (-.>)
-  , (#$)
-  , (#:$)
+  , ($#)
+  , ($:#)
   , hunionC
   , GenAlgebra (..)
 
@@ -130,7 +130,7 @@ module Control.Effect
   ) where
 
 import Control.Effect.Internal.Prog
-import Control.Effect.Internal.Effs
+import Control.Effect.Internal.Algebra
 import Control.Effect.Internal.Handler
 import Control.Effect.Internal.Runner
 import Control.Effect.Internal.AlgTrans

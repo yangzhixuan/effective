@@ -2,7 +2,7 @@
 Module      : Control.Effect.Internal.Handler
 Description : Handlers and handler combinators
 License     : BSD-3-Clause
-Maintainer  : Nicolas Wu
+Maintainer  : Nicolas Wu, Zhixuan Yang
 Stability   : experimental
 -}
 
