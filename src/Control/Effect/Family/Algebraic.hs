@@ -75,4 +75,4 @@ algOpIso = Iso
 
 -- | Algebra for the generic algebraic effect
 nativeAlg :: Algebra '[Alg m] m
-nativeAlg = (\(Alg op) -> op) :# hnil
+nativeAlg = (\(Alg op) -> op) :# endAlg

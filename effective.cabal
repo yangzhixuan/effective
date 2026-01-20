@@ -55,7 +55,7 @@ library
 --    Control.Effect.Nondet.Type
 --    Control.Effect.Nondet.List
 --    Control.Effect.Nondet.Logic
---    Control.Effect.Reader
+    Control.Effect.Reader
 --    Control.Effect.State
 --    Control.Effect.State.Type
 --    Control.Effect.State.Lazy

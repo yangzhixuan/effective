@@ -52,7 +52,7 @@ state_ s = Handler (runner' $ flip Strict.evalStateT s) stateAT
 -- | An algebra transformer that interprets t'Get' and t'Put' using the strict t'Strict.StateT'.
 {-# INLINE stateAT #-}
 stateAT :: AlgTrans [Put s, Get s] '[] '[Strict.StateT s] Monad
-stateAT = algTrans' $ putAlg #: getAlg #: hnil
+stateAT = algTrans' $ putAlg #: getAlg #: endAlg
 
 {-# INLINE putAlg #-}
 putAlg :: Monad m => Put s f b -> Strict.StateT s m b

@@ -58,7 +58,7 @@ except = Handler (runner' runMaybeT) exceptAT
 
 -- | The algebra transformer for the 'except' handler.
 exceptAT :: AlgTrans [Throw, Catch] '[] '[MaybeT] Monad
-exceptAT = algTrans' $ throwAlg #: catchAlg #: hnil
+exceptAT = algTrans' $ throwAlg #: catchAlg #: endAlg
 
 {-# INLINE throwAlg #-}
 throwAlg :: Monad m => Throw f k -> MaybeT m a

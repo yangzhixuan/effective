@@ -45,7 +45,7 @@ evalAT' :: forall m effs ts cs a.
         => AlgTrans effs '[] ts cs
         -> Prog effs a
         -> Apply ts m a
-evalAT' alg = eval (getAT alg (hnil @m))
+evalAT' alg = eval (getAT alg (endAlg @m))
 
 -- * Building algebra transformers
 
@@ -110,7 +110,7 @@ caseAT' :: forall effs1 effs2 cs1 cs2 oeffs ts.
         => AlgTrans effs1 oeffs ts cs1
         -> AlgTrans effs2 oeffs ts cs2
         -> AlgTrans (effs1 :++ effs2) oeffs ts (AndC cs1 cs2)
-caseAT' at1 at2 = AlgTrans \oalg -> heither (getAT at1 oalg) (getAT at2 oalg)
+caseAT' at1 at2 = AlgTrans \oalg -> appendAlg (getAT at1 oalg) (getAT at2 oalg)
 
 
 -- ** Derived combinators of algebra transformers
@@ -120,7 +120,7 @@ caseAT' at1 at2 = AlgTrans \oalg -> heither (getAT at1 oalg) (getAT at2 oalg)
 algTrans1 :: forall eff oeffs ts cs
           .  (forall m. cs m => Algebra oeffs m -> forall x. eff (Apply ts m) x -> Apply ts m x)
           -> AlgTrans '[eff] oeffs ts cs
-algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) -> at oalg :# hnil
+algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) -> at oalg :# endAlg
 
 -- | Algebra transformer that doesn't need an output effect.
 {-# INLINE algTrans' #-}
@@ -193,7 +193,7 @@ interpretAT1
   .  ( HFunctor eff )
   => (forall m x . eff m x -> Prog oeffs x)
   -> AlgTrans '[eff] oeffs '[] Monad
-interpretAT1 rephrase = interpretAT (rephrase :% endCases)
+interpretAT1 rephrase = interpretAT (rephrase :% endCase)
 
 type HideAT# effs effs' = (Injects (effs :\\ effs') effs)
 
@@ -369,7 +369,7 @@ pipeAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
 
 pipeAT at1 at2 = AlgTrans $ \oalg ->
   getAT at1 (weakenAlg $
-    heither @(oeffs1 :\\ effs2) @effs2
+    appendAlg @(oeffs1 :\\ effs2) @effs2
       (getAT (fwds @(oeffs1 :\\ effs2) @ts2) (weakenAlg oalg))
       (getAT at2 (weakenAlg oalg)))
 
@@ -473,7 +473,7 @@ generalFuseAT
 generalFuseAT _ _ at1 at2 = AlgTrans $ \oalg ->
    hunion @effs1 @feffs
      (getAT at1 (weakenAlg $
-       heither @(oeffs1 :\\ ieffs) @ieffs
+       appendAlg @(oeffs1 :\\ ieffs) @ieffs
          (getAT (fwds @(oeffs1 :\\ ieffs) @ts2) (weakenAlg oalg))
          (weakenAlg (getAT at2 (weakenAlg oalg)))))
      (getAT (fwds @feffs @ts1) (weakenAlg (getAT at2 (weakenAlg oalg))))
@@ -496,7 +496,7 @@ generalFuseATC
 generalFuseATC _ _ at1 at2 = AlgTransC $ \oalg ->
    hunionC @effs1 @feffs
      (getATC at1 (weakenAlgC $
-       heitherC @(oeffs1 :\\ ieffs) @ieffs
+       appendAlgC @(oeffs1 :\\ ieffs) @ieffs
          (getATC (fwdsC @(oeffs1 :\\ ieffs) @ts2) (weakenAlgC oalg))
          (weakenAlgC (getATC at2 (weakenAlgC oalg)))))
      (getATC (fwdsC @feffs @ts1) (weakenAlgC (getATC at2 (weakenAlgC oalg))))

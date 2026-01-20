@@ -12,7 +12,9 @@ Stability   : experimental
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Control.Effect.Reader (
+module Control.Effect.Reader ()
+  {-
+  (
   -- * Syntax
   -- ** Operations
 -- | Read the value of the environment
@@ -48,7 +50,8 @@ module Control.Effect.Reader (
 
   -- ** Underlying monad transformers
   R.ReaderT(..),
-) where
+  )
+  -}where
 
 import Control.Effect
 import Control.Effect.Internal.AlgTrans
@@ -74,6 +77,21 @@ $(makeScp [e| local :: forall r. (r -> r) -> 1 |])
 instance Unary (Local_ r) where
   get (Local_ _ x) = x
 
+{-# INLINE askAlg #-}
+askAlg :: Monad m => Ask r (R.ReaderT r m) b -> R.ReaderT r m b
+askAlg (Ask p) = do r <- R.ask; return (p r)
+
+{-# INLINE localAlg #-}
+localAlg :: Local r (R.ReaderT r m) a -> R.ReaderT r m a
+localAlg (Local f p) = R.local f p
+
+-- | The algebra for the 'reader' handler.
+{-# INLINE readerAlg #-}
+readerAlg :: Monad m => Algebra [Ask r, Local r] (R.ReaderT r m)
+readerAlg = askAlg :# localAlg :# endAlg
+
+
+{-
 -- | The `reader` handler supplies a static environment @r@ to the program
 -- that can be accessed with `ask`, and locally transformed with `local`.
 {-# INLINE reader #-}
@@ -92,19 +110,6 @@ reader' mr = handler run (\_ -> readerAlg) where
   run oalg rmx = do r <- mr oalg
                     x <- R.runReaderT rmx r
                     return x
-
-{-# INLINE askAlg #-}
-askAlg :: Monad m => Ask r (R.ReaderT r m) b -> R.ReaderT r m b
-askAlg (Ask' p) = do r <- R.ask; return (p r)
-
-{-# INLINE localAlg #-}
-localAlg :: Local r (R.ReaderT r m) a -> R.ReaderT r m a
-localAlg (Local' f p) = R.local f p
-
--- | The algebra for the 'reader' handler.
-{-# INLINE readerAlg #-}
-readerAlg :: Monad m => Algebra [Ask r, Local r] (R.ReaderT r m)
-readerAlg = askAlg #: localAlg #: hnil
 
 readerAT :: AlgTrans '[Ask r, Local r] '[] '[R.ReaderT r] Monad
 readerAT = AlgTrans (\_ -> readerAlg)
@@ -128,3 +133,4 @@ readerC r = HandlerC
 askerC :: CodeQ r -> HandlerC '[Ask r] '[] '[] a a
 askerC r = HandlerC (RunnerC $ \_ -> [|| id ||])
   (AlgTransC $ \_ -> ([|| NT $ \(Alg (Ask_ p)) -> return (p $$r) ||], EndAC))
+-}

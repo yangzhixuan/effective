@@ -82,41 +82,41 @@ type Case effs f x y = Case_ FT.Seq effs f x y
 unsafeAlgebra :: s Any -> Algebra_ s effs m
 unsafeAlgebra cs = Algebra (Case cs)
 
-{-# INLINE endCases #-}
-endCases :: Sequence s => Case_ s '[] f x y
-endCases = Case $ nil
+{-# INLINE endCase #-}
+endCase :: Sequence s => Case_ s '[] f x y
+endCase = Case $ nil
 
-{-# INLINE consCases #-}
-consCases :: Sequence s => (eff f x -> y) -> Case_ s effs f x y -> Case_ s (eff ': effs) f x y
-consCases f (Case fs) = Case $ cons (unsafeCoerce @_ @Any f) fs
+{-# INLINE consCase #-}
+consCase :: Sequence s => (eff f x -> y) -> Case_ s effs f x y -> Case_ s (eff ': effs) f x y
+consCase f (Case fs) = Case $ cons (unsafeCoerce @_ @Any f) fs
 
-{-# INLINE tailCases #-}
-tailCases :: Sequence s => Case_ s (eff:effs) f x y -> Case_ s effs f x y
-tailCases (Case aas) = case view aas of Just (_, as) -> Case as
+{-# INLINE tailCase #-}
+tailCase :: Sequence s => Case_ s (eff:effs) f x y -> Case_ s effs f x y
+tailCase (Case aas) = case view aas of Just (_, as) -> Case as
 
-{-# INLINE headCases #-}
-headCases :: Sequence s => Case_ s (eff:effs) f x y -> (eff f x -> y)
-headCases (Case aas) = case view aas of Just (a, _) -> unsafeCoerce @Any @_ a
+{-# INLINE headCase #-}
+headCase :: Sequence s => Case_ s (eff:effs) f x y -> (eff f x -> y)
+headCase (Case aas) = case view aas of Just (a, _) -> unsafeCoerce @Any @_ a
 
-{-# INLINE hnil #-}
-hnil :: forall f s. Sequence s => Algebra_ s '[] f
-hnil = Algebra $ endCases
+{-# INLINE endAlg #-}
+endAlg :: forall f s. Sequence s => Algebra_ s '[] f
+endAlg = Algebra $ endCase
 
-{-# INLINE htail #-}
-htail :: forall eff effs f s. Sequence s => Algebra_ s (eff ': effs) f -> Algebra_ s effs f
-htail (Algebra cs) = Algebra $ tailCases cs
+{-# INLINE tailAlg #-}
+tailAlg :: forall eff effs f s. Sequence s => Algebra_ s (eff ': effs) f -> Algebra_ s effs f
+tailAlg (Algebra cs) = Algebra $ tailCase cs
 
 {-# INLINE viewCase #-}
 viewCase :: forall eff effs m x y s. Sequence s
          => Case_ s (eff : effs) m x y
          -> (eff m x -> y, Case_ s effs m x y)
-viewCase cs = (headCases cs, tailCases cs)
+viewCase cs = (headCase cs, tailCase cs)
 
 {-# INLINE viewAlgebra #-}
 viewAlgebra :: forall eff effs m s. Sequence s
             => Algebra_ s (eff : effs) m
             -> (forall x. eff m x -> m x, Algebra_ s effs m)
-viewAlgebra (Algebra aas) = (headCases aas, Algebra $ tailCases aas)
+viewAlgebra (Algebra aas) = (headCase aas, Algebra $ tailCase aas)
 
 {-# INLINE toAlgebraArray #-}
 toAlgebraArray :: (Sequence s) => Algebra_ s effs m -> AlgebraArray effs m
@@ -126,15 +126,31 @@ toAlgebraArray (Algebra (Case s)) = Algebra (Case (seqToArray s))
 fromAlgebraArray :: (Sequence s) => AlgebraArray effs m -> Algebra_ s effs m
 fromAlgebraArray (Algebra (Case s)) = Algebra (Case (seqFromArray s))
 
+infixr 5 :#
 {-# INLINE (:#) #-}
 pattern (:#) :: Sequence s => (forall x. eff m x -> m x) -> Algebra_ s effs m -> Algebra_ s (eff : effs) m
 pattern a :# as <- (viewAlgebra -> (a,as)) where
-  a :# (Algebra as) = Algebra (consCases a as)
+  a :# (Algebra as) = Algebra (consCase a as)
 
+infixr 5 :#.
+{-# INLINE (:#.) #-}
+pattern (:#.) :: Sequence s => (forall x. eff m x -> m x) -> (forall x. eff' m x -> m x) 
+              -> Algebra_ s ([eff, eff']) m
+pattern a :#. b <- (viewAlgebra -> (a,viewAlgebra -> (b, _))) where
+  a :#. b = a :# (b :# endAlg)
+
+infixr 5 :%
 {-# INLINE (:%) #-}
 pattern (:%) :: Sequence s => (eff m x -> y) -> Case_ s effs m x y -> Case_ s (eff : effs) m x y
 pattern a :% as <- (viewCase -> (a,as)) where
-  a :% as = consCases a as
+  a :% as = consCase a as
+
+infixr 5 :%.
+{-% INLINE (:%.) %-}
+pattern (:%.) :: Sequence s => (eff m x -> y) -> (eff' m x -> y)
+              -> Case_ s [eff, eff'] m x y
+pattern a :%. b <- (viewCase -> (a,viewCase -> (b, _))) where
+  a :%. b = a :% (b :% endCase)
 
 -- There is type-safe way to implement the following (by doing induction on @effs@) but the
 -- following gives the correct time complexity.
@@ -192,7 +208,7 @@ singAlgIso = Iso fwd bwd where
 
   {-# INLINE bwd #-}
   bwd :: (forall x. eff m x -> m x) -> Algebra_ s '[eff] m
-  bwd alg = alg :# hnil
+  bwd alg = alg :# endAlg
 
 -- | A variant of `call'` for which the effect is on a given monad rather than the `Prog` monad.
 {-# INLINE callM #-}
@@ -249,32 +265,32 @@ instance KnownEffs '[] where
   lengthEffs = 0
 
   {-# INLINE hmapCases #-}
-  hmapCases _ _ = endCases
+  hmapCases _ _ = endCase
 
   {-# INLINE fmapCases1 #-}
-  fmapCases1 _ _ = endCases
+  fmapCases1 _ _ = endCase
 
   {-# INLINE fmapCases2 #-}
-  fmapCases2 _ _ = endCases
+  fmapCases2 _ _ = endCase
 
   {-# INLINE makeCases #-}
-  makeCases _ = endCases
+  makeCases _ = endCase
 
 instance (HFunctor eff, KnownEffs effs) => KnownEffs (eff ': effs) where
   {-# INLINE lengthEffs #-}
   lengthEffs = 1 + lengthEffs @effs
 
   {-# INLINE hmapCases #-}
-  hmapCases phi cs = consCases (\op -> headCases cs (hmap phi op)) (hmapCases @effs phi (tailCases cs))
+  hmapCases phi cs = consCase (\op -> headCase cs (hmap phi op)) (hmapCases @effs phi (tailCase cs))
 
   {-# INLINE fmapCases1 #-}
-  fmapCases1 f cs = consCases (headCases cs . fmap f) (fmapCases1 @effs f (tailCases cs))
+  fmapCases1 f cs = consCase (headCase cs . fmap f) (fmapCases1 @effs f (tailCase cs))
 
   {-# INLINE fmapCases2 #-}
-  fmapCases2 f cs = consCases (f . headCases cs) (fmapCases2 @effs f (tailCases cs))
+  fmapCases2 f cs = consCase (f . headCase cs) (fmapCases2 @effs f (tailCase cs))
 
   {-# INLINE makeCases #-}
-  makeCases f = consCases (f . hereEff) (makeCases @effs (f . thereEff))
+  makeCases f = consCase (f . hereEff) (makeCases @effs (f . thereEff))
 -}
 
 -- * Concatenating cases and algebras
@@ -282,26 +298,26 @@ instance (HFunctor eff, KnownEffs effs) => KnownEffs (eff ': effs) where
 
 class Append (xs :: [Effect]) (ys :: [Effect]) where
   -- | Concatenating two static algebras.
-  heitherC :: AlgebraC xs m -> AlgebraC ys m -> AlgebraC (xs :++ ys) m
+  appendAlgC :: AlgebraC xs m -> AlgebraC ys m -> AlgebraC (xs :++ ys) m
 
-{-# INLINE joinCases #-}
-joinCases :: Sequence s => Case_ s xeffs m x y -> Case_ s yeffs m x y
+{-# INLINE appendCases #-}
+appendCases :: Sequence s => Case_ s xeffs m x y -> Case_ s yeffs m x y
           -> Case_ s (xeffs :++ yeffs) m x y
-joinCases (Case xs) (Case ys) = Case (append xs ys)
+appendCases (Case xs) (Case ys) = Case (append xs ys)
 
-{-# INLINE heither #-}
-heither :: forall xeffs yeffs m s. Sequence s
+{-# INLINE appendAlg #-}
+appendAlg :: forall xeffs yeffs m s. Sequence s
         => Algebra_ s xeffs m -> Algebra_ s yeffs m
         -> Algebra_ s (xeffs :++ yeffs) m
-heither (Algebra as) (Algebra bs) = Algebra $ joinCases as bs
+appendAlg (Algebra as) (Algebra bs) = Algebra $ appendCases as bs
 
 instance Append '[] ys where
-  heitherC :: AlgebraC '[] m -> AlgebraC ys m -> AlgebraC ('[] :++ ys) m
-  heitherC EndAC cbs = cbs
+  appendAlgC :: AlgebraC '[] m -> AlgebraC ys m -> AlgebraC ('[] :++ ys) m
+  appendAlgC EndAC cbs = cbs
 
 instance Append xs ys => Append (x ': xs) ys where
-  heitherC :: AlgebraC (x : xs) m -> AlgebraC ys m -> AlgebraC ((x : xs) :++ ys) m
-  heitherC (ca, cas) cbs = (ca, heitherC cas cbs)
+  appendAlgC :: AlgebraC (x : xs) m -> AlgebraC ys m -> AlgebraC ((x : xs) :++ ys) m
+  appendAlgC (ca, cas) cbs = (ca, appendAlgC cas cbs)
 
 infixr 6 #
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
@@ -310,7 +326,7 @@ infixr 6 #
   => Algebra_ s eff1 m
   -> Algebra_ s eff2 m
   -> Algebra_ s (eff1 :++ eff2) m
-falg # galg = heither falg galg
+falg # galg = appendAlg falg galg
 
 -- * Subeffects
 --------------------------------------------------------------------------------
@@ -326,7 +342,7 @@ class Injects (xeffs :: [Effect]) (xyeffs :: [Effect]) where
 
 instance Injects '[] xyeffs where
   {-# INLINE weakenAlg #-}
-  weakenAlg _ = hnil
+  weakenAlg _ = endAlg
 
   weakenAlgC _ = EndAC
 
@@ -344,7 +360,7 @@ hunion :: forall xeffs yeffs m s.
      (Injects (yeffs :\\ xeffs) yeffs, Sequence s)
   => Algebra_ s xeffs m -> Algebra_ s yeffs m
   -> Algebra_ s (xeffs `Union` yeffs) m
-hunion xalg yalg = heither @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
+hunion xalg yalg = appendAlg @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
 
 -- * | Definitions related to staged algebras
 -----------------------------------------
@@ -369,7 +385,7 @@ infixr 6 $#
   => AlgebraC eff1 m
   -> AlgebraC eff2 m
   -> AlgebraC (eff1 :++ eff2) m
-falg $# galg = heitherC @eff1 @eff2 falg galg
+falg $# galg = appendAlgC @eff1 @eff2 falg galg
 
 {- INLINE $:# -}
 ($:#) :: CodeQ (eff m -.> m) -> AlgebraC effs m -> AlgebraC (eff ': effs) m
@@ -380,7 +396,7 @@ hunionC :: forall xeffs yeffs m a b
   .  ( Append xeffs (yeffs :\\ xeffs), Injects (yeffs :\\ xeffs) yeffs )
   => AlgebraC xeffs m -> AlgebraC yeffs m
   -> AlgebraC (xeffs `Union` yeffs) m
-hunionC xalg yalg = heitherC @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
+hunionC xalg yalg = appendAlgC @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
 
 -- * Coproducts (aka open union) of effects
 --------------------------------------------------------------------------------
@@ -404,17 +420,17 @@ newtype Effs
 
 {-# INLINE absurdEffs #-}
 absurdEffs :: forall f a b s. Sequence s => Effs s '[] f a -> b
-absurdEffs (Effs k) = k endCases
+absurdEffs (Effs k) = k endCase
 
 -- This was called just @Eff@ previously
 {-# INLINE hereEff #-}
 hereEff :: Sequence s => eff f x -> Effs s (eff ': effs) f x
-hereEff op = Effs $ \cs -> headCases cs op
+hereEff op = Effs $ \cs -> headCase cs op
 
 -- This was called just @Effs@ previously
 {-# INLINE thereEff #-}
 thereEff :: Sequence s => Effs s effs f x -> Effs s (eff ': effs) f x
-thereEff op = Effs $ \cs -> unEffs op (tailCases cs)
+thereEff op = Effs $ \cs -> unEffs op (tailCase cs)
 
 {-# INLINE tabulateAlgebra #-}
 tabulateAlgebra :: (KnownEffs effs, Sequence s)
@@ -463,7 +479,7 @@ instance (Typeable (eff ': effs), Typeable eff, GenAlgebra effs) => GenAlgebra (
 
 instance GenAlgebra '[] where
   genAlgebra :: AlgebraC '[] f -> CodeQ (Algebra '[] f)
-  genAlgebra EndAC = [|| hnil ||]
+  genAlgebra EndAC = [|| endAlg ||]
 
 instance (GenAlgebra effs) => GenAlgebra (eff ': effs) where
   genAlgebra :: AlgebraC (eff : effs) f -> CodeQ (Algebra (eff : effs) f)

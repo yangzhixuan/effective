@@ -95,7 +95,7 @@ fuseR :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
 fuseR at2 r1 r2 = Runner \(oalg :: Algebra _ m)  ->
       getR r2 (weakenAlg oalg)
     . getR r1 (weakenAlg @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
-        heither @(oeffs1 :\\ effs2) @effs2
+        appendAlg @(oeffs1 :\\ effs2) @effs2
           (getAT (fwds @(oeffs1 :\\ effs2) @(ts2))
             (weakenAlg @(oeffs1 :\\ effs2) @_ oalg))
           (getAT at2 (weakenAlg @oeffs2 @_ oalg)))
@@ -115,7 +115,7 @@ fuseRC' at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
     [||
       $$(getRC r2 (weakenAlgC oalg))
     . $$(getRC r1 (weakenAlgC @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
-        heitherC @(oeffs1 :\\ effs2) @effs2
+        appendAlgC @(oeffs1 :\\ effs2) @effs2
           (getATC (fwdsC @(oeffs1 :\\ effs2) @(ts2))
             (weakenAlgC @(oeffs1 :\\ effs2) @_ oalg))
           (getATC at2 (weakenAlgC @oeffs2 @_ oalg))))
@@ -127,7 +127,7 @@ fuseRC at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
     [|| $$(getRC r2 (weakenAlgC oalg)) ||]
     `circCode`
     [|| $$(getRC r1 (weakenAlgC @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
-        heitherC @(oeffs1 :\\ effs2) @effs2
+        appendAlgC @(oeffs1 :\\ effs2) @effs2
           (getATC (fwdsC @(oeffs1 :\\ effs2) @(ts2))
             (weakenAlgC @(oeffs1 :\\ effs2) @_ oalg))
           (getATC at2 (weakenAlgC @oeffs2 @_ oalg))))

@@ -52,13 +52,13 @@ nondet = handler' runListT' nondetAlg
 
 {-# INLINE nondet' #-}
 nondet' :: Handler [Empty, Choose, NondetOr] '[] '[ListT] a [a]
-nondet' = handler' runListT' (alternativeAlg # (nondetOrAlg #: hnil))
+nondet' = handler' runListT' (alternativeAlg # (nondetOrAlg #: endAlg))
 
 {-# INLINE nondetAlg #-}
 nondetAlg
   :: forall m. Monad m
   => Algebra [Empty, NondetOr] (ListT m)
-nondetAlg = emptyAlg #: nondetOrAlg #: hnil
+nondetAlg = emptyAlg #: nondetOrAlg #: endAlg
 
 {-# INLINE emptyAlg #-}
 emptyAlg :: forall m a. Monad m => Empty (ListT m) a -> ListT m a
@@ -69,7 +69,7 @@ nondetOrAlg :: forall m a. Monad m => NondetOr (ListT m) a -> ListT m a
 nondetOrAlg (NondetOr' xs ys) = pure xs <|> pure ys
 
 backtrack :: Handler [Empty, Choose, NondetOr, Once] '[] '[ListT] a [a]
-backtrack = handler' runListT' (alternativeAlg # (nondetOrAlg #: onceAlg #: hnil))
+backtrack = handler' runListT' (alternativeAlg # (nondetOrAlg #: onceAlg #: endAlg))
 
 onceAlg :: Monad m => Once (ListT m) a -> ListT m a
 onceAlg (Once' xs) = ListT $ do
@@ -82,13 +82,13 @@ onceAlg (Once' xs) = ListT $ do
 -- t`Empty`, t`Choose`, and t`Once` into the t`ListT` monad transformer,
 -- supporting backtracking.
 backtrack' :: Handler [Empty, NondetOr, Once] '[] '[ListT] a [a]
-backtrack' = handler' runListT' (emptyAlg #: nondetOrAlg #: onceAlg #: hnil)
+backtrack' = handler' runListT' (emptyAlg #: nondetOrAlg #: onceAlg #: endAlg)
 
 -- | `backtrackOnce` is a handler that transforms nondeterministic effect
 -- t`Once` into the t`ListT` monad transformer,
 -- supporting backtracking.
 backtrackOnce :: Handler '[Once] '[] '[ListT] a [a]
-backtrackOnce = handler' runListT' (onceAlg #: hnil)
+backtrackOnce = handler' runListT' (onceAlg #: endAlg)
 
 {-# INLINE nondetAT #-}
 -- | The algebra transformer underlying the 'alternative' handler. This uses an

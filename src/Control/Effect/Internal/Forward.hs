@@ -84,7 +84,7 @@ instance ForwardEffs '[] t where
 
   {-# INLINE fwdEffs #-}
   fwdEffs :: AlgTrans '[] '[] '[t] TruthC
-  fwdEffs = AlgTrans $ \_ -> hnil
+  fwdEffs = AlgTrans $ \_ -> endAlg
 
   fwdEffsC :: AlgTransC '[] '[] '[t] TruthC
   fwdEffsC = AlgTransC $ \EndAC -> EndAC

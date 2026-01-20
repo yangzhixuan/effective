@@ -93,7 +93,7 @@ except = Handler (runner' runExceptT) exceptAT
 
 -- | The algebra transformer for the 'except' handler.
 exceptAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
-exceptAT = algTrans' (throwAlg #: catchAlg #: hnil)
+exceptAT = algTrans' (throwAlg #: catchAlg #: endAlg)
 
 {-# INLINE throwAlg #-}
 throwAlg :: Monad m => Throw e f k -> ExceptT e m a

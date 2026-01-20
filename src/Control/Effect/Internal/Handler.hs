@@ -102,7 +102,7 @@ handler' run alg = Handler (Runner (\_ -> run)) (AlgTrans (\(_ :: Algebra oeffs 
 fromRunner
   :: forall ts a b. (forall m . Monad m => Apply ts m a -> m b)
   -> Handler '[] '[] ts a b
-fromRunner run = Handler (Runner (\_ -> run)) (AlgTrans (const hnil))
+fromRunner run = Handler (Runner (\_ -> run)) (AlgTrans (const endAlg))
 
 {-# INLINE (<:) #-}
 infixr <:
@@ -203,7 +203,7 @@ interpret1
   .  ( HFunctor eff )
   => (forall m x . eff m x -> Prog oeffs x)
   -> Handler '[eff] oeffs '[] a a
-interpret1 rephrase = interpret (rephrase :% endCases)
+interpret1 rephrase = interpret (rephrase :% endCase)
 
 {-# INLINE interpretM #-}
 -- | A generalisation of `interpret` for non-algebraic operations.
@@ -227,7 +227,7 @@ interpretM1
                          -> (forall x . eff m x -> m x))   -- ^ @mrephrase@
   -> Handler '[eff] oeffs '[] a a
 interpretM1 mrephrase
-  = handler @'[eff] @oeffs @'[] (const id) (\oalg -> mrephrase oalg :# hnil)
+  = handler @'[eff] @oeffs @'[] (const id) (\oalg -> mrephrase oalg :# endAlg)
 
 -- | Case splitting on the union of two effect rows. Note that `Union` is defined
 -- two be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
@@ -420,7 +420,7 @@ handle :: forall effs ts fs a b .
   -> Prog effs a                  -- ^ Program @p@ with effects @effs@
   -> b
 handle (Handler run halg)
-  = runIdentity . LL.getR run hnil. eval (getAT halg (hnil @Identity))
+  = runIdentity . LL.getR run endAlg. eval (getAT halg (endAlg @Identity))
 
 handleC :: forall effs ts fs a b .
            ( Monad (Apply ts Identity), GenAlgebra effs
@@ -554,7 +554,7 @@ handleMApp :: forall effs oeffs xeffs m ts fs a b .
   -> m b
 handleMApp xalg (Handler run halg)
   = getR run @m (weakenAlg xalg)
-  . eval (heither @effs @xeffs (getAT halg (weakenAlg xalg)) (getAT (fwds @_ @ts) xalg))
+  . eval (appendAlg @effs @xeffs (getAT halg (weakenAlg xalg)) (getAT (fwds @_ @ts) xalg))
 
 -- | @handleP' h p@ is a variant of `handleP` where @effs `Union` xeffs@ is replaced
 -- by simply '(:++)'.
