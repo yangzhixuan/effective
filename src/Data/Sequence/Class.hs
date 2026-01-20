@@ -6,7 +6,7 @@ import qualified Data.Sequence as S
 import qualified Data.Primitive.SmallArray as A
 import Data.Foldable
 
-class Sequence (l :: Type -> Type) where
+class Functor l => Sequence (l :: Type -> Type) where
   nil :: l a
   cons :: a -> l a -> l a
   append :: l a -> l a -> l a

@@ -16,7 +16,7 @@ import Data.List.Kind
 import Data.Kind
 
 
-import Control.Effect.Internal.Effs
+import Control.Effect.Internal.Algebra
 import Control.Effect.Internal.AlgTrans.Type
 import Control.Effect.Internal.Forward
 import Language.Haskell.TH hiding (Type)
@@ -93,14 +93,14 @@ fuseR :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
                  a1 a3
                  (CompC ts2 cs1 cs2)
 fuseR at2 r1 r2 = Runner \(oalg :: Algebra _ m)  ->
-      getR r2 (oalg . injs)
+      getR r2 (weakenAlg oalg)
     . getR r1 (weakenAlg @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
         heither @(oeffs1 :\\ effs2) @effs2
           (getAT (fwds @(oeffs1 :\\ effs2) @(ts2))
             (weakenAlg @(oeffs1 :\\ effs2) @_ oalg))
           (getAT at2 (weakenAlg @oeffs2 @_ oalg)))
 
-fuseRC, fuseRC' 
+fuseRC, fuseRC'
        :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
           ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
           , FuseR# effs2 oeffs1 oeffs2 ts1 ts2 )
@@ -161,22 +161,22 @@ passR :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
                 a1 a3
                 (CompC ts2 cs1 cs2)
 passR at2 r1 r2 = Runner \(oalg :: Algebra _ m)  ->
-      getR r2 (oalg . injs)
-    . getR r1 (getAT (fwds @oeffs1 @ts2) (oalg . injs))
+      getR r2 (weakenAlg oalg)
+    . getR r1 (getAT (fwds @oeffs1 @ts2) (weakenAlg oalg))
 
 {-# INLINE weakenR #-}
 weakenR :: forall cs' effs' cs effs ts a b.
            (forall m. cs' m => cs m, Injects effs effs')
         => Runner effs ts a b cs
         -> Runner effs' ts  a b cs'
-weakenR r1 = Runner \oalg -> getR r1 (oalg . injs)
+weakenR r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 
 {-# INLINE weakenREffs #-}
 weakenREffs :: forall effs' cs effs ts a b.
            (Injects effs effs')
         => Runner effs ts a b cs
         -> Runner effs' ts a b cs
-weakenREffs r1 = Runner \oalg -> getR r1 (oalg . injs)
+weakenREffs r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 
 {-# INLINE weakenRC #-}
 weakenRC :: forall cs' cs effs ts a b.

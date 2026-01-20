@@ -16,7 +16,7 @@ module Control.Effect.Internal.AlgTrans.Type where
 
 import Data.Kind
 import Data.List.Kind
-import Control.Effect.Internal.Effs
+import Control.Effect.Internal.Algebra
 
 -- | Transforming effects @oeffs@ into effects @effs@ on a functor satisfying @cs@.
 type AlgTrans

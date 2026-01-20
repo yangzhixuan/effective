@@ -28,7 +28,7 @@ module Control.Effect.Internal.Forward
   ) where
 
 import Control.Effect.Internal.AlgTrans.Type
-import Control.Effect.Internal.Effs
+import Control.Effect.Internal.Algebra
 import Language.Haskell.TH (CodeQ)
 
 import Data.Kind
@@ -84,7 +84,7 @@ instance ForwardEffs '[] t where
 
   {-# INLINE fwdEffs #-}
   fwdEffs :: AlgTrans '[] '[] '[t] TruthC
-  fwdEffs = AlgTrans $ \_ -> absurdEffs
+  fwdEffs = AlgTrans $ \_ -> hnil
 
   fwdEffsC :: AlgTransC '[] '[] '[t] TruthC
   fwdEffsC = AlgTransC $ \EndAC -> EndAC
@@ -99,13 +99,10 @@ instance ( HFunctor eff
 
   {-# INLINE fwdEffs #-}
   fwdEffs :: AlgTrans (eff ': effs) (eff ': effs) '[t] (FwdEffsConstraint (eff ': effs) t)
-  fwdEffs = AlgTrans $ \alg -> \case
-    (Eff op)   -> fwd @_ @t (alg . Eff) op
-    (Effs ops) -> getAT (fwdEffs @_ @t)  (alg . Effs) ops
+  fwdEffs = AlgTrans $ \(alg :# algs) -> fwd alg :# getAT fwdEffs algs
 
   fwdEffsC :: AlgTransC (eff : effs) (eff : effs) '[t] (FwdEffsConstraint (eff : effs) t)
   fwdEffsC = AlgTransC $ \(ca, cas) -> (fwdC ca, getATC fwdEffsC cas)
-
 
 -- | This class builds a forwarder for an t`Effs` along a list @ts@ of transformers
 -- by ensuring that each transformer in @ts@ can forward @effs@.

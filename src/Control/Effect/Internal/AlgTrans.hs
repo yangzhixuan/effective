@@ -10,7 +10,7 @@ of this library.
 -}
 {-# LANGUAGE ImpredicativeTypes, QuantifiedConstraints, UndecidableInstances, AllowAmbiguousTypes #-}
 {-# LANGUAGE MonoLocalBinds, LambdaCase, BlockArguments #-}
-{-# LANGUAGE PartialTypeSignatures, MagicHash, PartialTypeSignatures #-}
+{-# LANGUAGE PartialTypeSignatures, MagicHash #-}
 
 module Control.Effect.Internal.AlgTrans where
 
@@ -18,7 +18,7 @@ import Data.List.Kind
 import Data.HFunctor ( HFunctor )
 import Data.Proxy
 
-import Control.Effect.Internal.Effs
+import Control.Effect.Internal.Algebra
 import Control.Effect.Internal.AlgTrans.Type
 import Control.Effect.Internal.Prog ( Prog, eval )
 import Control.Effect.Internal.Forward
@@ -28,26 +28,24 @@ import Control.Effect.Internal.Forward
 -- | Evaluating a program with an algebra transformer.
 {-# INLINE evalAT #-}
 evalAT :: forall effs oeffs xeffs ts cs m a.
-       ( HFunctor (Effs effs)
-       , cs m
+       ( cs m
        , Injects oeffs xeffs
        , Monad (Apply ts m) )
        => Algebra xeffs m
        -> AlgTrans effs oeffs ts cs
        -> Prog effs a
        -> Apply ts m a
-evalAT oalg alg = eval (getAT alg (oalg . injs))
+evalAT oalg alg = eval (getAT alg (weakenAlg oalg))
 
 -- | Evaluating a program with an algebra transformer that outputs no effects.
 {-# INLINE evalAT' #-}
 evalAT' :: forall m effs ts cs a.
-        ( HFunctor (Effs effs)
-        , cs m
+        ( cs m
         , Monad (Apply ts m) )
         => AlgTrans effs '[] ts cs
         -> Prog effs a
         -> Apply ts m a
-evalAT' alg = eval (getAT alg (absurdEffs @m))
+evalAT' alg = eval (getAT alg (hnil @m))
 
 -- * Building algebra transformers
 
@@ -86,7 +84,7 @@ weakenAT :: forall effs' oeffs' cs' effs oeffs cs ts.
             (Injects effs' effs, Injects oeffs oeffs', forall m. cs' m => cs m)
          => AlgTrans effs  oeffs  ts cs
          -> AlgTrans effs' oeffs' ts cs'
-weakenAT at = AlgTrans \oalg x -> getAT at (oalg . injs) (injs x)
+weakenAT at = AlgTrans \oalg -> weakenAlg (getAT at (weakenAlg oalg))
 
 type CaseTrans# effs1 effs2 =
   ( Append effs1 (effs2 :\\ effs1)
@@ -122,8 +120,7 @@ caseAT' at1 at2 = AlgTrans \oalg -> heither (getAT at1 oalg) (getAT at2 oalg)
 algTrans1 :: forall eff oeffs ts cs
           .  (forall m. cs m => Algebra oeffs m -> forall x. eff (Apply ts m) x -> Apply ts m x)
           -> AlgTrans '[eff] oeffs ts cs
-algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) (o :: Effs '[eff] (Apply ts m) x) ->
-   case prj @eff o of Just o' -> at oalg o'
+algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) -> at oalg :# hnil
 
 -- | Algebra transformer that doesn't need an output effect.
 {-# INLINE algTrans' #-}
@@ -138,13 +135,13 @@ weakenC :: forall cs' cs effs oeffs ts.
           (forall m. cs' m => cs m)
        => AlgTrans effs oeffs ts cs
        -> AlgTrans effs oeffs ts cs'
-weakenC at = AlgTrans \oalg x -> getAT at oalg x
+weakenC at = AlgTrans $ getAT at
 
 weakenCC :: forall cs' cs effs oeffs ts.
           (forall m. cs' m => cs m)
        => AlgTransC effs oeffs ts cs
        -> AlgTransC effs oeffs ts cs'
-weakenCC at = AlgTransC \oalg -> getATC at oalg
+weakenCC at = AlgTransC $ getATC at
 
 -- | Replace the carrier constraint @cs@ of an algebra transformer with the conjunction
 -- of @cs@ and another constraint @cs'@.
@@ -152,7 +149,7 @@ weakenCC at = AlgTransC \oalg -> getATC at oalg
 weakenCAnd :: forall cs' cs effs oeffs ts.
           AlgTrans effs oeffs ts cs
        -> AlgTrans effs oeffs ts (AndC cs cs')
-weakenCAnd at = AlgTrans \oalg x -> getAT at oalg x
+weakenCAnd at = AlgTrans $ getAT at
 
 -- | Forget some input effects and add some unused output effects.
 {-# INLINE weakenEffs #-}
@@ -168,7 +165,7 @@ weakenOEffs :: forall oeffs' oeffs effs ts cs.
           Injects oeffs oeffs'
        => AlgTrans effs oeffs  ts cs
        -> AlgTrans effs oeffs' ts cs
-weakenOEffs at = AlgTrans \ oalg x -> getAT at (oalg . injs) x
+weakenOEffs at = AlgTrans \ oalg -> getAT at (weakenAlg oalg)
 
 -- | Forget some input effects of an algebra transformer.
 {-# INLINE weakenIEffs #-}
@@ -176,7 +173,27 @@ weakenIEffs :: forall effs' effs oeffs ts cs.
           Injects effs' effs
        => AlgTrans effs  oeffs ts cs
        -> AlgTrans effs' oeffs ts cs
-weakenIEffs at = AlgTrans \ oalg x -> getAT at oalg (injs x)
+weakenIEffs at = AlgTrans \ oalg -> weakenAlg (getAT at oalg)
+
+
+-- | Interpret @effs@-effects using @oeffs@-effects without transforming the carrier.
+-- This is done by using the supplied @rephrase@
+-- parameter to translate @effs@ into a program that uses @oeffs@.
+{-# INLINE interpretAT #-}
+interpretAT
+  :: forall effs oeffs.
+     (forall m x . Case effs m x (Prog oeffs x))                -- ^ @rephrase@
+  -> AlgTrans effs oeffs '[] Monad
+interpretAT rephrase = AlgTrans (\oalg -> Algebra (fmap (eval oalg) rephrase))
+
+{-# INLINE interpretAT1 #-}
+-- | A special case of `interpretAT` for one effect @eff@.
+interpretAT1
+  :: forall eff oeffs
+  .  ( HFunctor eff )
+  => (forall m x . eff m x -> Prog oeffs x)
+  -> AlgTrans '[eff] oeffs '[] Monad
+interpretAT1 rephrase = interpretAT (rephrase :% endCases)
 
 type HideAT# effs effs' = (Injects (effs :\\ effs') effs)
 
@@ -186,7 +203,7 @@ hideAT :: forall effs' effs oeffs ts cs.
           HideAT# effs effs'
        => AlgTrans effs  oeffs ts cs
        -> AlgTrans (effs :\\ effs') oeffs ts cs
-hideAT at = AlgTrans \ oalg x -> getAT at oalg (injs x)
+hideAT at = AlgTrans \ oalg -> weakenAlg (getAT at oalg)
 
 -- | Case splitting with the same carrier constraint.
 {-# INLINE caseATSameC #-}
@@ -383,8 +400,8 @@ passAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
                    (CompC ts2 cs1 cs2)
 passAT at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 `Union` oeffs2) m) ->
   hunion @effs1 @effs2
-    (getAT at1 @(Apply ts2 m) (getAT (fwds @oeffs1 @ts2) @m (oalg . injs)))
-    (getAT (fwds @effs2 @ts1) (getAT at2 (oalg . injs)))
+    (getAT at1 @(Apply ts2 m) (getAT (fwds @oeffs1 @ts2) @m (weakenAlg oalg)))
+    (getAT (fwds @effs2 @ts1) (getAT at2 (weakenAlg oalg)))
 
 
 type PassAT'# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 =
@@ -411,10 +428,9 @@ passAT' :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
                     (ts1 :++ ts2)
                     (CompC ts2 cs1 cs2)
 passAT' at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 `Union` oeffs2) m) ->
-  hunion @effs2 @effs1
-      (getAT (fwds @effs2 @ts1) (getAT at2 (oalg . injs)))
-      (getAT at1 (getAT (fwds @oeffs1 @ts2) (oalg . injs)))
-  . injs
+   weakenAlg $ hunion @effs2 @effs1
+     (getAT (fwds @effs2 @ts1) (getAT at2 (weakenAlg oalg)))
+     (getAT at1 (getAT (fwds @oeffs1 @ts2) (weakenAlg oalg)))
 
 type GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
    ( Append effs1 (feffs :\\ effs1)

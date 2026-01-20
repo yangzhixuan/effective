@@ -92,17 +92,17 @@ library
     Data.Functor.Unary
     Data.Sequence.Class
 
-    Control.Effect.Internal.Effs
+--    Control.Effect.Internal.Effs
     Control.Effect.Internal.Algebra
     Control.Effect.Internal.Prog.ProgImp
     Control.Effect.Internal.Prog
 --    Control.Effect.Internal.Effs.Sum
 --    Control.Effect.Internal.Effs.Sum.Type
---    Control.Effect.Internal.Forward
---    Control.Effect.Internal.Handler
---    Control.Effect.Internal.Runner
---    Control.Effect.Internal.AlgTrans
---    Control.Effect.Internal.AlgTrans.Type
+    Control.Effect.Internal.Forward
+    Control.Effect.Internal.Handler
+    Control.Effect.Internal.Runner
+    Control.Effect.Internal.AlgTrans
+    Control.Effect.Internal.AlgTrans.Type
 --    Control.Effect.Internal.TH
   hs-source-dirs:
     src

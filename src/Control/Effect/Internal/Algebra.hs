@@ -27,11 +27,13 @@ import Data.Sequence.Class
 import qualified Data.Sequence as FT
 import qualified Data.Primitive.SmallArray as Arr
 import Data.Iso
-import Data.HFunctor
 
 import GHC.Base (Any)
 import Unsafe.Coerce (unsafeCoerce)
 import Language.Haskell.TH hiding (Type)
+
+import Type.Reflection (Typeable)
+import LiftType
 
 -- | The type of higher-order effects.
 type Effect = (Type -> Type) -> (Type -> Type)
@@ -39,7 +41,7 @@ type Effect = (Type -> Type) -> (Type -> Type)
 -- | An algebra for the effects @effs@ with carrier being the functor @f@.
 -- Informally,
 -- @
--- Algebra s [eff1, ..., eff_n] f = forall x. (eff1 f x -> f x, ..., eff_n f x -> f x)
+-- Algebra_ s [eff1, ..., eff_n] f = forall x. (eff1 f x -> f x, ..., eff_n f x -> f x)
 -- @
 -- The parameter @s@ is a data structure (satisfying the contraint `Sequence`) for
 -- better internal representation of the components of the algebra.
@@ -47,7 +49,7 @@ newtype Algebra_
   (s :: Type -> Type)
   (effs :: [Effect])
   (f :: Type -> Type)
-  = Algebra { unAlgebra :: forall x. Cases s effs f x (f x) }
+  = Algebra { unAlgebra :: forall x. Case_ s effs f x (f x) }
 
 -- | The default data structure for storing algebras is finger trees.
 type Algebra effs f = Algebra_ FT.Seq effs f
@@ -62,13 +64,15 @@ type AlgebraArray effs f = Algebra_ Arr.SmallArray effs f
 -- @
 -- But internally the list is stored using the data structure @s@ (and the `Any` type)
 -- for better time complexity.
-newtype Cases
+newtype Case_
   (s :: Type -> Type)
   (effs :: [Effect])
   (f :: Type -> Type)
   (x :: Type)
   (y :: Type)
-  = Cases { unCases :: s Any }
+  = Case { unCase :: s Any }
+
+type Case effs f x y = Case_ FT.Seq effs f x y
 
 -- * Simple functions manipulating cases and algebras.
 --------------------------------------------------------------------------------
@@ -76,23 +80,23 @@ newtype Cases
 -- | Constructing an algebra from its components represented as the `Any` type.
 {-# INLINE unsafeAlgebra #-}
 unsafeAlgebra :: s Any -> Algebra_ s effs m
-unsafeAlgebra cs = Algebra (Cases cs)
+unsafeAlgebra cs = Algebra (Case cs)
 
 {-# INLINE endCases #-}
-endCases :: Sequence s => Cases s '[] f x y
-endCases = Cases $ nil
+endCases :: Sequence s => Case_ s '[] f x y
+endCases = Case $ nil
 
 {-# INLINE consCases #-}
-consCases :: Sequence s => (eff f x -> y) -> Cases s effs f x y -> Cases s (eff ': effs) f x y
-consCases f (Cases fs) = Cases $ cons (unsafeCoerce @_ @Any f) fs
+consCases :: Sequence s => (eff f x -> y) -> Case_ s effs f x y -> Case_ s (eff ': effs) f x y
+consCases f (Case fs) = Case $ cons (unsafeCoerce @_ @Any f) fs
 
 {-# INLINE tailCases #-}
-tailCases :: Sequence s => Cases s (eff:effs) f x y -> Cases s effs f x y
-tailCases (Cases aas) = case view aas of Just (_, as) -> Cases as
+tailCases :: Sequence s => Case_ s (eff:effs) f x y -> Case_ s effs f x y
+tailCases (Case aas) = case view aas of Just (_, as) -> Case as
 
 {-# INLINE headCases #-}
-headCases :: Sequence s => Cases s (eff:effs) f x y -> (eff f x -> y)
-headCases (Cases aas) = case view aas of Just (a, _) -> unsafeCoerce @Any @_ a
+headCases :: Sequence s => Case_ s (eff:effs) f x y -> (eff f x -> y)
+headCases (Case aas) = case view aas of Just (a, _) -> unsafeCoerce @Any @_ a
 
 {-# INLINE hnil #-}
 hnil :: forall f s. Sequence s => Algebra_ s '[] f
@@ -102,6 +106,12 @@ hnil = Algebra $ endCases
 htail :: forall eff effs f s. Sequence s => Algebra_ s (eff ': effs) f -> Algebra_ s effs f
 htail (Algebra cs) = Algebra $ tailCases cs
 
+{-# INLINE viewCase #-}
+viewCase :: forall eff effs m x y s. Sequence s
+         => Case_ s (eff : effs) m x y
+         -> (eff m x -> y, Case_ s effs m x y)
+viewCase cs = (headCases cs, tailCases cs)
+
 {-# INLINE viewAlgebra #-}
 viewAlgebra :: forall eff effs m s. Sequence s
             => Algebra_ s (eff : effs) m
@@ -110,17 +120,30 @@ viewAlgebra (Algebra aas) = (headCases aas, Algebra $ tailCases aas)
 
 {-# INLINE toAlgebraArray #-}
 toAlgebraArray :: (Sequence s) => Algebra_ s effs m -> AlgebraArray effs m
-toAlgebraArray (Algebra (Cases s)) = Algebra (Cases (seqToArray s))
+toAlgebraArray (Algebra (Case s)) = Algebra (Case (seqToArray s))
 
 {-# INLINE fromAlgebraArray #-}
 fromAlgebraArray :: (Sequence s) => AlgebraArray effs m -> Algebra_ s effs m
-fromAlgebraArray (Algebra (Cases s)) = Algebra (Cases (seqFromArray s))
+fromAlgebraArray (Algebra (Case s)) = Algebra (Case (seqFromArray s))
 
 {-# INLINE (:#) #-}
 pattern (:#) :: Sequence s => (forall x. eff m x -> m x) -> Algebra_ s effs m -> Algebra_ s (eff : effs) m
 pattern a :# as <- (viewAlgebra -> (a,as)) where
   a :# (Algebra as) = Algebra (consCases a as)
 
+{-# INLINE (:%) #-}
+pattern (:%) :: Sequence s => (eff m x -> y) -> Case_ s effs m x y -> Case_ s (eff : effs) m x y
+pattern a :% as <- (viewCase -> (a,as)) where
+  a :% as = consCases a as
+
+-- There is type-safe way to implement the following (by doing induction on @effs@) but the
+-- following gives the correct time complexity.
+instance Sequence s => Functor (Case_ s effs f x) where
+  {-# INLINE fmap #-}
+  fmap :: (a -> b) -> Case_ s effs f x a -> Case_ s effs f x b
+  fmap f (Case cs) = Case (fmap (unsafePostcomp f) cs) where
+    unsafePostcomp :: forall a b. (a -> b) -> Any -> Any
+    unsafePostcomp f x = unsafeCoerce @(Any -> b) @Any $ f . unsafeCoerce @Any @(Any -> a) x
 
 -- * Membership of an effect in effect rows
 --------------------------------------------------------------------------------
@@ -131,8 +154,8 @@ class Member eff effs where
   dispatch (Algebra cases) = dispatchCases cases
 
   {-# INLINE dispatchCases #-}
-  dispatchCases :: Sequence s => Cases s effs m x y -> (eff m x -> y)
-  dispatchCases (Cases cs) = unsafeCoerce @Any (index cs (memberIndex @eff @effs))
+  dispatchCases :: Sequence s => Case_ s effs m x y -> (eff m x -> y)
+  dispatchCases (Case cs) = unsafeCoerce @Any (index cs (memberIndex @eff @effs))
 
   dispatchC :: AlgebraC effs f -> CodeQ (eff f -.> f)
 
@@ -160,16 +183,15 @@ type family Members (xsigs :: [Effect]) (xysigs :: [Effect]) :: Constraint where
 
 -- | An obvious isomorphism between two representations of an algebra for a single effect @eff@.
 {-# INLINE singAlgIso #-}
-singAlgIso ::
-  Iso  (Algebra '[eff] m) (forall x. eff m x -> m x)
-
+singAlgIso :: forall eff m s. Sequence s =>
+  Iso  (Algebra_ s '[eff] m) (forall x. eff m x -> m x)
 singAlgIso = Iso fwd bwd where
   {-# INLINE fwd #-}
-  fwd :: Algebra '[eff] m -> (forall x. eff m x -> m x)
+  fwd :: Algebra_ s '[eff] m -> (forall x. eff m x -> m x)
   fwd alg = dispatch alg
 
   {-# INLINE bwd #-}
-  bwd :: (forall x. eff m x -> m x) -> Algebra '[eff] m
+  bwd :: (forall x. eff m x -> m x) -> Algebra_ s '[eff] m
   bwd alg = alg :# hnil
 
 -- | A variant of `call'` for which the effect is on a given monad rather than the `Prog` monad.
@@ -181,18 +203,18 @@ callM oalg = dispatch oalg
 -- | @unsafeCallM n oalg@ is the @n@-th component of @oalg@.
 unsafeCallM :: forall eff effs a m s . Sequence s
             => Int -> Algebra_ s effs m -> eff m a -> m a
-unsafeCallM n (Algebra (Cases cs)) = unsafeCoerce @Any @(forall x. eff m x -> m x) (index cs n)
+unsafeCallM n (Algebra (Case cs)) = unsafeCoerce @Any @(forall x. eff m x -> m x) (index cs n)
 
 -- | A variant of `callJ` for which the effect is on a given monad rather than the `Prog` monad.
 {-# INLINE callJM #-}
 callJM :: forall eff effs a m s . (Monad m, Member eff effs, Sequence s)
-      => Algebra effs m -> eff m (m a) -> m a
+      => Algebra_ s effs m -> eff m (m a) -> m a
 callJM oalg x = callM oalg x >>= id
 
 -- | A variant of `callK'` for which the effect is on a given monad rather than the `Prog` monad.
 {-# INLINE callKM #-}
 callKM :: forall eff effs a b m s . (Monad m, Member eff effs, Sequence s)
-      => Algebra effs m -> eff m a -> (a -> m b) -> m b
+      => Algebra_ s effs m -> eff m a -> (a -> m b) -> m b
 callKM oalg x k = callM oalg x >>= k
 
 
@@ -263,9 +285,9 @@ class Append (xs :: [Effect]) (ys :: [Effect]) where
   heitherC :: AlgebraC xs m -> AlgebraC ys m -> AlgebraC (xs :++ ys) m
 
 {-# INLINE joinCases #-}
-joinCases :: Sequence s => Cases s xeffs m x y -> Cases s yeffs m x y
-          -> Cases s (xeffs :++ yeffs) m x y
-joinCases (Cases xs) (Cases ys) = Cases (append xs ys)
+joinCases :: Sequence s => Case_ s xeffs m x y -> Case_ s yeffs m x y
+          -> Case_ s (xeffs :++ yeffs) m x y
+joinCases (Case xs) (Case ys) = Case (append xs ys)
 
 {-# INLINE heither #-}
 heither :: forall xeffs yeffs m s. Sequence s
@@ -320,8 +342,8 @@ instance (Member xeff xyeffs, Injects xeffs xyeffs) => Injects (xeff : xeffs) (x
 {-# INLINE hunion #-}
 hunion :: forall xeffs yeffs m s.
      (Injects (yeffs :\\ xeffs) yeffs, Sequence s)
-  => Algebra xeffs m -> Algebra yeffs m
-  -> Algebra (xeffs `Union` yeffs) m
+  => Algebra_ s xeffs m -> Algebra_ s yeffs m
+  -> Algebra_ s (xeffs `Union` yeffs) m
 hunion xalg yalg = heither @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
 
 -- * | Definitions related to staged algebras
@@ -411,3 +433,38 @@ instance (Sequence s, Functor f, KnownEffs effs) => Functor (Effs s effs f) wher
   {-# INLINE fmap #-}
   fmap h (Effs g) = Effs (g . fmapCases1 h)
 -}
+
+
+-- * Definitions related to staged algebras
+-----------------------------------------
+
+class {-Typeable effs =>-} GenAlgebra effs where
+  genAlgebra :: AlgebraC effs f -> CodeQ (Algebra effs f)
+{-
+  genAlgebra acs = unsafeCodeCoerce (genAlgebra' acs)
+
+  genAlgebra' :: AlgebraC effs f -> Q Exp
+  genAlgebra' acs = [| \op -> $(unTypeCode $ genAlgebraAux acs (unsafeCodeCoerce [| op |])) |]
+
+  genAlgebraAux :: AlgebraC effs f -> CodeQ (Effs effs f x) -> CodeQ (f x)
+
+instance GenAlgebra '[] where
+  genAlgebraAux :: AlgebraC '[] f -> CodeQ (Effs '[] f x) -> CodeQ (f x)
+  genAlgebraAux EndAC cx = [|| case $$cx of {} ||]
+
+instance (Typeable (eff ': effs), Typeable eff, GenAlgebra effs) => GenAlgebra (eff ': effs) where
+  genAlgebraAux :: AlgebraC (eff : effs) f -> CodeQ (Effs (eff ': effs) f x) -> CodeQ (f x)
+  genAlgebraAux (ac, acs) cop = unsafeCodeCoerce $ [|
+    case $(unTypeCode cop) of
+       Eff (op :: $(liftTypeQ @eff) _ _)  -> $(unTypeCode ac) `at` op
+       Effs (op' :: Effs $(liftTypeQ @effs) _ _) -> $(unTypeCode $ genAlgebraAux acs (unsafeCodeCoerce [|op'|]))
+   |]
+-}
+
+instance GenAlgebra '[] where
+  genAlgebra :: AlgebraC '[] f -> CodeQ (Algebra '[] f)
+  genAlgebra EndAC = [|| hnil ||]
+
+instance (GenAlgebra effs) => GenAlgebra (eff ': effs) where
+  genAlgebra :: AlgebraC (eff : effs) f -> CodeQ (Algebra (eff : effs) f)
+  genAlgebra (ac, acs) = [|| at $$ac :# $$(genAlgebra acs) ||]

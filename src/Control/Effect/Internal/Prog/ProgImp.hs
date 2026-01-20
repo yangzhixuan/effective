@@ -12,6 +12,7 @@ the representation from this module is suitable for our purpose.
 -}
 
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE LambdaCase #-}
@@ -28,11 +29,11 @@ module Control.Effect.Internal.Prog.ProgImp (
   call,
   callJ,
   callK,
-  progAlg,
+  progAlg, ProgAlg#,
   weakenProg,
 
   -- * Program eliminator
---  eval,
+  eval,
   )
   where
 
@@ -103,8 +104,10 @@ progAlgArr = Algebra $ makeCases (\op -> Prog $ \(alg :: AlgebraArray effs m) ->
 -- The following is an unsafe but efficient version of @progAlg@.
 -}
 
-progAlg :: forall effs s. (Sequence s, ProgAlg effs effs 0) => Algebra_ s effs (Prog effs)
-progAlg = unsafeAlgebra (progAlgAux @effs @effs @0) where
+type ProgAlg# effs = ProgAlg effs effs 0
+
+progAlg :: forall effs s. (Sequence s, ProgAlg# effs) => Algebra_ s effs (Prog effs)
+progAlg = unsafeAlgebra (progAlgAux @effs @effs @0)
 
 class ProgAlg (effs :: [Effect]) (effs' :: [Effect]) (n :: Nat) where
   progAlgAux :: forall s. Sequence s => s Any
