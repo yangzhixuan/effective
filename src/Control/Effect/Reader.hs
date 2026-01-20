@@ -12,9 +12,7 @@ Stability   : experimental
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Control.Effect.Reader ()
-  {-
-  (
+module Control.Effect.Reader (
   -- * Syntax
   -- ** Operations
 -- | Read the value of the environment
@@ -40,7 +38,6 @@ module Control.Effect.Reader ()
   reader',
   readerAsk,
   asker,
-
   readerC,
   askerC,
 
@@ -51,14 +48,10 @@ module Control.Effect.Reader ()
   -- ** Underlying monad transformers
   R.ReaderT(..),
   )
-  -}where
+  where
 
 import Control.Effect
-import Control.Effect.Internal.AlgTrans
-import Control.Effect.Family.Algebraic
-import Control.Effect.Family.Scoped
 import Data.Functor.Unary
-import Language.Haskell.TH
 
 import qualified Control.Monad.Trans.Reader as R
 
@@ -88,10 +81,16 @@ localAlg (Local f p) = R.local f p
 -- | The algebra for the 'reader' handler.
 {-# INLINE readerAlg #-}
 readerAlg :: Monad m => Algebra [Ask r, Local r] (R.ReaderT r m)
-readerAlg = askAlg :# localAlg :# endAlg
+readerAlg = askAlg :#. localAlg
 
+{-# INLINE readerAT #-}
+readerAT :: AlgTrans '[Ask r, Local r] '[] '[R.ReaderT r] Monad
+readerAT = algTrans' readerAlg
 
-{-
+{-# INLINE readerAskAT #-}
+readerAskAT :: AlgTrans '[Ask r] '[] '[R.ReaderT r] Monad
+readerAskAT = algTrans1 (\_ -> askAlg)
+
 -- | The `reader` handler supplies a static environment @r@ to the program
 -- that can be accessed with `ask`, and locally transformed with `local`.
 {-# INLINE reader #-}
@@ -111,19 +110,16 @@ reader' mr = handler run (\_ -> readerAlg) where
                     x <- R.runReaderT rmx r
                     return x
 
-readerAT :: AlgTrans '[Ask r, Local r] '[] '[R.ReaderT r] Monad
-readerAT = AlgTrans (\_ -> readerAlg)
-
-readerAskAT :: AlgTrans '[Ask r] '[] '[R.ReaderT r] Monad
-readerAskAT = weakenIEffs readerAT
-
+{-# INLINE readerAsk #-}
 readerAsk :: r -> Handler '[Ask r] '[] '[R.ReaderT r] a a
-readerAsk r = handler (\_ -> flip R.runReaderT r) (getAT readerAskAT)
+readerAsk r = handler' (flip R.runReaderT r) (askAlg :# endAlg)
 
+{-# INLINE asker #-}
 asker :: r -> Handler '[Ask r] '[] '[] a a
-asker r = interpret (\(Ask k) -> return (k r))
+asker r = interpret1 $ \(Ask k) -> return (k r)
 
--- Handlers for lightweight staging
+-- * Handlers for lightweight staging
+--------------------------------------------------------------------------------
 
 readerC :: CodeQ r -> HandlerC [Ask r, Local r] '[] '[R.ReaderT r] a a
 readerC r = HandlerC
@@ -132,5 +128,4 @@ readerC r = HandlerC
 
 askerC :: CodeQ r -> HandlerC '[Ask r] '[] '[] a a
 askerC r = HandlerC (RunnerC $ \_ -> [|| id ||])
-  (AlgTransC $ \_ -> ([|| NT $ \(Alg (Ask_ p)) -> return (p $$r) ||], EndAC))
--}
+  (AlgTransC $ \_ -> ([|| NT $ \(Ask p) -> return (p $$r) ||], EndAC))
