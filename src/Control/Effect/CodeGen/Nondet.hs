@@ -27,10 +27,10 @@ pushAT :: AlgTrans '[Empty, Choose, Once] '[] '[PushT] TruthC
 pushAT = AlgTrans $ pushAlg where
   pushAlg :: forall n. Algebra '[] n
           -> Algebra '[Empty, Choose, Once] (PushT n)
-  pushAlg oalg op
-    | (Just (Alg Empty_))        <- prj op = empty
-    | (Just (Scp (Choose_ x y))) <- prj op = x <|> y
-    | (Just (Scp (Once_ x)))     <- prj op = P.once x
+  pushAlg oalg =
+   (\Empty -> empty) :#
+   (\(Choose x y) -> x <|> y) :#.
+   (\(Once x) -> P.once x)
 
 -- | Algebra of the non-deterministic operations and the up-operation on `PushT`.
 pushWithUpAT :: Monad m =>
@@ -46,8 +46,8 @@ pushGen :: AlgTrans '[Empty, Choose, Once, UpOp []] '[] '[PushT] ((~) Gen)
 pushGen = AlgTrans $ pushAlg where
   pushAlg :: forall n. Algebra '[] n
           -> Algebra '[Empty, Choose, Once, UpOp []] (PushT Gen)
-  pushAlg oalg op
-    | (Just (Alg Empty_))        <- prj op = empty
-    | (Just (Scp (Choose_ x y))) <- prj op = x <|> y
-    | (Just (Scp (Once_ x)))     <- prj op = P.once x
-    | (Just (Alg (UpOp o k)))    <- prj op = fmap k (upListPushGenAlg o)
+  pushAlg oalg =
+    (\(Alg Empty_) -> empty) :#
+    (\(Scp (Choose_ x y)) -> x <|> y) :#
+    (\(Scp (Once_ x)) -> P.once x) :#.
+    (\(Alg (UpOp o k)) -> fmap k (upListPushGenAlg o))

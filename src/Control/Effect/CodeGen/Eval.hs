@@ -33,24 +33,22 @@ type GenEffects = [CodeGen, UpOp Identity]
 
 -- | The algebra of `Gen`.
 genAlg :: Algebra GenEffects Gen
-genAlg o
-  | Just (Alg o) <- prj @CodeGen o    = o
-  | Just up <- prj @(UpOp Identity) o = bwd upIso (\cm -> return [||runIdentity $$cm||]) up
+genAlg =
+  (\(Alg o :: CodeGen Gen x) -> o) :#.
+  (\(up :: UpOp Identity Gen x) -> bwd upIso (\cm -> return [||runIdentity $$cm||]) up)
 
 -- | The effects supported by the monad `GenM m`.
 type GenMEffects m = [CodeGenM m, CodeGen, UpOp m]
 
 -- | The algebra on `GenM`.
 genMAlg :: forall m. Monad m => Algebra (GenMEffects m) (GenM m)
-genMAlg o
-  | Just (Alg o) <- prj @(CodeGenM _) o = o
-  | Just (Alg o) <- prj @CodeGen      o = specialise o
-  | Just up      <- prj @(UpOp m) o     = bwd upIso genDo_ up
-
+genMAlg =
+  (\(Alg o :: CodeGenM m (GenM m) x) -> o) :#
+  (\(Alg o :: CodeGen (GenM m) x) -> specialise o) :#.
+  (\(up :: UpOp m (GenM m) x) -> bwd upIso genDo_ up)
 
 type EvalGen# effs oeffs =
-  ( HFunctor (Effs (effs `Union` GenEffects))
-  , WithFwds# effs oeffs GenEffects )
+  ( WithFwds# effs oeffs GenEffects )
 
 -- | Evaluate a program with an algebra transformer, with `Gen` at the bottom
 -- of monad transformer stack.
@@ -78,8 +76,7 @@ stage :: forall m effs oeffs ts cs a.
 stage alg = down . evalGen alg
 
 type EvalGenM# effs oeffs m =
-  ( HFunctor (Effs (effs `Union` GenMEffects m))
-  , WithFwds# effs oeffs (GenMEffects m) )
+  ( WithFwds# effs oeffs (GenMEffects m) )
 
 -- | Evaluate a program with an algebra transformer, with `GenM m` at the bottom
 -- of monad transformer stack.

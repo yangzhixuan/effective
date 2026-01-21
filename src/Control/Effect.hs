@@ -37,7 +37,7 @@ module Control.Effect
   -- * Algebras
   , Algebra, Algebra_, AlgebraArray
   , Case, Case_
-  , singAlgIso
+  , singAlgIso, singAlg
   , (#)
   , endAlg, pattern (:#), pattern (:#.)
   , endCase, pattern (:%), pattern (:%.)
@@ -66,8 +66,6 @@ module Control.Effect
   , interpret1, interpretAT1, interpretM1
   , caseHdl
   , unionHdl
---  , unscope
---  , unscopes
 
   -- ** Fusion-based combinators
   , fuse, (|>)

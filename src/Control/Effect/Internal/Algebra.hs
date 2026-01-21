@@ -194,14 +194,11 @@ type family Members (xsigs :: [Effect]) (xysigs :: [Effect]) :: Constraint where
 {-# INLINE singAlgIso #-}
 singAlgIso :: forall eff m s. Sequence s =>
   Iso  (Algebra_ s '[eff] m) (forall x. eff m x -> m x)
-singAlgIso = Iso fwd bwd where
-  {-# INLINE fwd #-}
-  fwd :: Algebra_ s '[eff] m -> (forall x. eff m x -> m x)
-  fwd alg = dispatch alg
+singAlgIso = Iso dispatch singAlg
 
-  {-# INLINE bwd #-}
-  bwd :: (forall x. eff m x -> m x) -> Algebra_ s '[eff] m
-  bwd alg = alg :# endAlg
+{-# INLINE singAlg #-}
+singAlg :: Sequence s => (forall x. eff m x -> m x) -> Algebra_ s '[eff] m
+singAlg alg = alg :# endAlg
 
 -- | A variant of `call'` for which the effect is on a given monad rather than the `Prog` monad.
 {-# INLINE callM #-}

@@ -19,18 +19,15 @@ instance Unary (MapYield_ a b) where
   get (MapYield_ a b x) = x
 
 yieldAlg :: Monad m => Algebra '[Yield a b, MapYield a b] (YResT a b m)
-yieldAlg (Yield a k)      = Y.yield a (fmap return k)
-yieldAlg (MapYield f g k) = Y.mapYield f g k
+yieldAlg =
+  (\(Yield a k) -> Y.yield a (fmap return k)) :#.
+  (\(MapYield f g k) -> Y.mapYield f g k)
 
 yieldAT :: AlgTrans '[Yield a b, MapYield a b] '[] '[YResT a b] Monad
 yieldAT = AlgTrans (\_ -> yieldAlg)
 
 pingpongWith :: forall oeffs a b c y .
-                ( HFunctor (Effs oeffs)
-#ifdef INDEXED
-                , KnownNat (Length oeffs) , KnownNat (1 + Length oeffs)
-#endif
-                , ForwardsM oeffs '[YResT b a] )
+                ( ForwardsM oeffs '[YResT b a] )
              => (a -> Prog ('[Yield b a, MapYield b a] :++ oeffs) y)
              -> Handler '[Yield a b, MapYield a b] oeffs '[YResT a b] c (Either y c)
 

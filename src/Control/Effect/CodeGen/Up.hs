@@ -246,9 +246,9 @@ upListPushGenAlg cl = PushT $ \c n -> return
 -- we write @upState `fuseAT` stateT@ but @upPush `appendAT` pushAT@
 -- (or directly `Control.Effect.CodeGen.Nondet.pushWithUpAT`).
 upPush :: forall m. Monad m => AlgTrans '[UpOp (ListT m), UpOp []] '[UpOp m] '[PushT] (MonadDown m)
-upPush = AlgTrans $ \oalg -> \case
-  (prj -> Just (Alg (UpOp o k))) -> bwd upIso (upPushAlg oalg) (Alg (UpOp o k))
-  (prj -> Just (Alg (UpOp o k))) -> bwd upIso (upListPushAlg oalg) (Alg (UpOp o k))
+upPush = AlgTrans $ \oalg ->
+  (\(Alg (UpOp o k)) -> bwd upIso (upPushAlg oalg) (Alg (UpOp o k))) :#.
+  (\(Alg (UpOp o k)) -> bwd upIso (upListPushAlg oalg) (Alg (UpOp o k)))
 
 -- | The up-operation for the resumption monad transformer. The situation is similar to
 -- that of `ListT` and `PushT`. The meta-level correspondent of the resumption monad `ResT`
@@ -265,7 +265,7 @@ upResAlg oalg cr = ResUpT $ \k1 k2 -> upMN
               $$cr ||]
   where
     upMN :: forall x. CodeQ (m x) -> n (CodeQ x)
-    upMN = Iso.fwd upAlgIso (oalg . injs)
+    upMN = Iso.fwd upAlgIso (weakenAlg oalg)
 
     upSL :: forall x. CodeQ (s x) -> n (l (CodeQ x))
     upSL = liftGenA oalg . genSplit

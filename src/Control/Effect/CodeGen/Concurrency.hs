@@ -83,12 +83,12 @@ cResUpAT :: forall m a . (Action a, Monad m)
                      '[UpOp m, CodeGen]
                      '[CResUpT (CodeQ a)]
                       (MonadDown m)
-cResUpAT = AlgTrans $ \oalg -> \case
-  (prj -> Just (Alg (UpOp o k)))     -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))
-  (prj -> Just (Alg Empty_))         -> empty
-  (prj -> Just (Scp (Choose_ x y)))  -> x <|> y
-  (prj -> Just (ParUp p q k))        -> fmap k (parResUp oalg p q)
-  (Act (a :: (CodeQ a)) p)              -> RUp.prefix a (return p)
+cResUpAT = AlgTrans $ \oalg ->
+  (\(Alg (UpOp o k))         -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))) :#
+  (\(Alg Empty_)             -> empty) :#
+  (\(Scp (Choose_ x y))      -> x <|> y) :#
+  (\(ParUp p q k)            -> fmap k (parResUp oalg p q)) :#.
+  (\(Act (a :: (CodeQ a)) p) -> RUp.prefix a (return p))
 
 -- | Algebra transformer for the resumption monad transformer for yielding.
 yResUpAT :: forall m a b . (Monad m)
@@ -96,7 +96,7 @@ yResUpAT :: forall m a b . (Monad m)
                      '[UpOp m, CodeGen]
                      '[YResUpT (CodeQ a) (CodeQ b)]
                       (MonadDown m)
-yResUpAT = AlgTrans $ \oalg -> \case
-  (prj -> Just (Alg (UpOp o k)))        -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))
-  (prj -> Just (Alg (Yield_ a p)))      -> RUp.yield a (return . p)
-  (prj -> Just (Scp (MapYield_ f g p))) -> RUp.mapYield f g p
+yResUpAT = AlgTrans $ \oalg ->
+  (\(Alg (UpOp o k))        -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))) :#
+  (\(Alg (Yield_ a p))      -> RUp.yield a (return . p)) :#.
+  (\(Scp (MapYield_ f g p)) -> RUp.mapYield f g p)

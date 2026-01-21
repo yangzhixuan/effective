@@ -53,11 +53,12 @@ skip = return ()
 -- | The `cutListAlg` function defines the algebra for handling the t`CutListT` monad transformer.
 -- It clears the `cut` at the boundary of a `cutCall`.
 cutListAlg
-  :: Monad m => forall x. Effs [Empty, Choose, CutFail, CutCall] (CutListT m) x -> CutListT m x
-cutListAlg Empty          = empty
-cutListAlg (Choose xs ys) = xs <|> ys
-cutListAlg CutFail        = CutListT (\cons nil zero -> zero)
-cutListAlg (CutCall xs)   = CutListT (\cons nil zero -> runCutListT xs cons nil nil)
+  :: Monad m => Algebra [Empty, Choose, CutFail, CutCall] (CutListT m)
+cutListAlg =
+  (\Empty -> empty) :#
+  (\(Choose xs ys) -> xs <|> ys) :#
+  (\CutFail -> CutListT (\cons nil zero -> zero)) :#.
+  (\(CutCall xs) -> CutListT (\cons nil zero -> runCutListT xs cons nil nil))
 
 cutListAT :: AlgTrans [Empty, Choose, CutFail, CutCall] '[] '[CutListT] Monad
 cutListAT = algTrans' cutListAlg
@@ -77,9 +78,9 @@ onceCutAT = AlgTrans onceCutAlg
 -- | The algebra for handling the t`Once` effect with t`CutCall` and t`CutFail`.
 onceCutAlg :: forall m .
      Monad m
-  => (forall x. Effs '[CutCall, CutFail, Empty, Choose] m x -> m x)
-  -> (forall x. Effs '[Once] m x -> m x)
-onceCutAlg oalg (Once p) = cutCallM oalg $
+  => Algebra [CutCall, CutFail, Empty, Choose] m
+  -> Algebra '[Once] m
+onceCutAlg oalg = singAlg $ \(Once p) -> cutCallM oalg $
   do x <- p
      eval oalg cut
      return x

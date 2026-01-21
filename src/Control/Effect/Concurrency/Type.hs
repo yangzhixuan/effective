@@ -75,8 +75,7 @@ data JPar_ x = JPar_ x x deriving (Functor, Foldable, Traversable)
 jpar :: Member JPar sig => Prog sig x -> Prog sig x -> Prog sig (x, x)
 jpar l r = call (Distr (JPar_ l r) (\(JPar_ x y) -> (x , y)))
 
-pattern JPar x y k <- (prj -> Just (Distr (JPar_ x y) k)) where
-  JPar x y k = inj (Distr (JPar_ x y) k)
+pattern JPar x y k = Distr (JPar_ x y) k
 
 -- | The process @res a p@ acts like @p@ except that @p@ cannot communicate with the
 -- external environment via action @a@ (@p@ can still use @a@ internally), so @res a@ is like

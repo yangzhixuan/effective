@@ -33,7 +33,7 @@ library
   import: common
 
   exposed-modules:
---    Control.Effect.Plugin
+    Control.Effect.Plugin
     Control.Effect
     Control.Effect.WithName
     Control.Effect.Family.Algebraic
@@ -41,14 +41,14 @@ library
     Control.Effect.Family.Distributive
 --
     Control.Effect.Alternative
---    Control.Effect.Cut
+    Control.Effect.Cut
     Control.Effect.Except
     Control.Effect.IO
     Control.Effect.Maybe
---    Control.Effect.Nondet
---    Control.Effect.Concurrency
---    Control.Effect.Concurrency.Type
---    Control.Effect.Yield
+    Control.Effect.Nondet
+    Control.Effect.Concurrency
+    Control.Effect.Concurrency.Type
+    Control.Effect.Yield
     Control.Effect.Nondet.Type
     Control.Effect.Nondet.List
     Control.Effect.Nondet.Logic
@@ -60,27 +60,27 @@ library
     Control.Effect.Writer
     Control.Effect.HStore.Unsafe
     Control.Effect.HStore.Safe
---
---    Control.Effect.CodeGen
---    Control.Effect.CodeGen.Type
---    Control.Effect.CodeGen.Up
---    Control.Effect.CodeGen.Down
---    Control.Effect.CodeGen.Split
---    Control.Effect.CodeGen.Gen
---    Control.Effect.CodeGen.Eval
---    Control.Effect.CodeGen.JoinFlow
---    Control.Effect.CodeGen.SoPU
---    Control.Effect.CodeGen.Nondet
---    Control.Effect.CodeGen.Concurrency
+
+    Control.Effect.CodeGen
+    Control.Effect.CodeGen.Type
+    Control.Effect.CodeGen.Up
+    Control.Effect.CodeGen.Down
+    Control.Effect.CodeGen.Split
+    Control.Effect.CodeGen.Gen
+    Control.Effect.CodeGen.Eval
+    Control.Effect.CodeGen.JoinFlow
+    Control.Effect.CodeGen.SoPU
+    Control.Effect.CodeGen.Nondet
+    Control.Effect.CodeGen.Concurrency
 
     Control.Monad.Trans.CutList
     Control.Monad.Trans.List
     Control.Monad.Trans.Resump
---    Control.Monad.Trans.CRes
---    Control.Monad.Trans.YRes
---    Control.Monad.Trans.ResumpUp
+    Control.Monad.Trans.CRes
+    Control.Monad.Trans.YRes
+    Control.Monad.Trans.ResumpUp
     Control.Monad.Trans.Compose
---    Control.Monad.Trans.Push
+    Control.Monad.Trans.Push
 
     Data.CutList
     Data.Iso
@@ -89,12 +89,9 @@ library
     Data.Functor.Unary
     Data.Sequence.Class
 
---    Control.Effect.Internal.Effs
     Control.Effect.Internal.Algebra
     Control.Effect.Internal.Prog.ProgImp
     Control.Effect.Internal.Prog
---    Control.Effect.Internal.Effs.Sum
---    Control.Effect.Internal.Effs.Sum.Type
     Control.Effect.Internal.Forward
     Control.Effect.Internal.Handler
     Control.Effect.Internal.Runner
@@ -190,22 +187,22 @@ library
 --   other-modules:
 --     StagedGen
 -- 
--- test-suite plugin
---   type:          exitcode-stdio-1.0
---   ghc-options:   -fplugin Control.Effect.Plugin
---   main-is:       PluginTest.hs
---   default-language: GHC2021
---   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
---   hs-source-dirs:  test
---   build-depends:
---     base               >= 4.16 && < 4.22,
---     effective,
---     template-haskell   >= 2.18 && < 2.24,
---     transformers       >= 0.4  && < 0.7,
--- 
---   other-modules:
---     StagedGen
--- 
+test-suite plugin
+  type:          exitcode-stdio-1.0
+  ghc-options:   -fplugin Control.Effect.Plugin
+  main-is:       PluginTest.hs
+  default-language: GHC2021
+  default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+  hs-source-dirs:  test
+  build-depends:
+    base               >= 4.16 && < 4.22,
+    effective,
+    template-haskell   >= 2.18 && < 2.24,
+    transformers       >= 0.4  && < 0.7,
+
+  other-modules:
+    StagedGen
+
 test-suite misc
   import: common
   type:          exitcode-stdio-1.0
