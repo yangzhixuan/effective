@@ -40,4 +40,4 @@ import Control.Effect
 import Control.Effect.Nondet.List
 
 chooseByNondet :: Handler '[Choose] '[NondetOr] '[] a a
-chooseByNondet = interpretM1 (\oalg (Choose' p q) -> oalg (NondetOr p q) >>= id )
+chooseByNondet = interpretM1 (\oalg (Choose p q) -> callM oalg (NondetOr p q) >>= id )
