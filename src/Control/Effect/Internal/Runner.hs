@@ -148,17 +148,32 @@ fuseRC at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
             (weakenAlgC @(oeffs1 :\\ effs2) @_ oalg))
           (getATC at2 (weakenAlgC @oeffs2 @_ oalg))))
     ||]
-    where
-      circCode :: CodeQ (b -> c) -> CodeQ (a -> b) -> CodeQ (a -> c)
-      circCode (Code qG) (Code qF) = Code $
-        do (TExp f) <- qF
-           (TExp g) <- qG
-           idCode <- [| Prelude.id |]
-           if f == idCode
-             then return (TExp g)
-             else if g == idCode
-                    then return (TExp f)
-                    else fmap TExp [| $(pure g) . $(pure f)|]
+
+circCode :: CodeQ (b -> c) -> CodeQ (a -> b) -> CodeQ (a -> c)
+circCode (Code qG) (Code qF) = Code $
+  do (TExp f) <- qF
+     (TExp g) <- qG
+     idCode <- [| Prelude.id |]
+     if f == idCode
+       then return (TExp g)
+       else if g == idCode
+             then return (TExp f)
+             else fmap TExp [| $(pure g) . $(pure f)|]
+
+fuseAppRC :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+          ( ForwardsC cs2 oeffs1 ts2, forall m. Assoc ts1 ts2 m, Append oeffs1 oeffs2)
+       => RunnerC oeffs1 ts1 a1 a2 cs1
+       -> RunnerC oeffs2 ts2 a2 a3 cs2
+       -> RunnerC (oeffs1  :++ oeffs2)
+                  (ts1 :++ ts2)
+                  a1 a3
+                  (CompC ts2 cs1 cs2)
+fuseAppRC r1 r2 = RunnerC \(oalg :: AlgebraC (oeffs1 :++ oeffs2) m)  ->
+  let (oalg1, oalg2) = splitAlgC @oeffs1 @oeffs2 oalg
+  in [|| $$(getRC r2 oalg2) ||]
+     `circCode`
+     [|| $$(getRC r1 (getATC (fwdsC @(oeffs1) @ts2) oalg1)) ||]
+
 
 type PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 =
    ( Injects oeffs1 (oeffs1 `Union` oeffs2)

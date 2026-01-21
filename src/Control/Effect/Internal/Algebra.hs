@@ -307,6 +307,8 @@ class Append (xs :: [Effect]) (ys :: [Effect]) where
   -- | Concatenating two static algebras.
   appendAlgC :: AlgebraC xs m -> AlgebraC ys m -> AlgebraC (xs :++ ys) m
 
+  splitAlgC :: AlgebraC (xs :++ ys) m -> (AlgebraC xs m, AlgebraC ys m)
+
 {-# INLINE appendCases #-}
 appendCases :: Sequence s => Case_ s xeffs m x y -> Case_ s yeffs m x y
           -> Case_ s (xeffs :++ yeffs) m x y
@@ -337,9 +339,15 @@ instance Append '[] ys where
   appendAlgC :: AlgebraC '[] m -> AlgebraC ys m -> AlgebraC ('[] :++ ys) m
   appendAlgC EndAC cbs = cbs
 
+  splitAlgC :: AlgebraC ('[] :++ ys) m -> (AlgebraC '[] m, AlgebraC ys m)
+  splitAlgC cbs = (EndAC, cbs)
+
 instance Append xs ys => Append (x ': xs) ys where
   appendAlgC :: AlgebraC (x : xs) m -> AlgebraC ys m -> AlgebraC ((x : xs) :++ ys) m
   appendAlgC (ca, cas) cbs = (ca, appendAlgC cas cbs)
+
+  splitAlgC :: AlgebraC ((x : xs) :++ ys) m -> (AlgebraC (x : xs) m, AlgebraC ys m)
+  splitAlgC (ca, cabs) = let (cas, cbs) = splitAlgC cabs in ((ca, cas), cbs)
 
 infixr 6 #
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.

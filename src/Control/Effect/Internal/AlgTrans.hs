@@ -358,6 +358,23 @@ fuseAppAT at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 :++ oeffs2) m) ->
        (getAT at1 (getAT (fwds @oeffs1 @ts2) oalg1))
        (getAT (fwds @effs2 @ts1) (getAT at2 oalg2))
 
+
+{-# INLINE fuseAppATC #-}
+fuseAppATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+              ( CompAT# ts1 ts2, ForwardsC cs1 effs2 ts1, ForwardsC cs2 oeffs1 ts2
+              , Append oeffs1 oeffs2, Append effs1 effs2)
+       => AlgTransC effs1 oeffs1 ts1 cs1
+       -> AlgTransC effs2 oeffs2 ts2 cs2
+       -> AlgTransC (effs1 :++ effs2)
+                    (oeffs1 :++ oeffs2)
+                    (ts1 :++ ts2)
+                    (CompC ts2 cs1 cs2)
+fuseAppATC at1 at2 = AlgTransC $ \(oalg :: AlgebraC (oeffs1 :++ oeffs2) m) ->
+  let (oalg1, oalg2) = splitAlgC @oeffs1 @oeffs2 oalg
+  in appendAlgC @effs1 @effs2 @(Apply (ts1 :++ ts2) m)
+       (getATC at1 (getATC (fwdsC @oeffs1 @ts2) oalg1))
+       (getATC (fwdsC @effs2 @ts1) (getATC at2 oalg2))
+
 infixr 9 `pipeAT`
 
 type PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 =

@@ -338,6 +338,26 @@ fuseApp (Handler run1 malg1) (Handler run2 malg2)
 {-# INLINE (++>) #-}
 (++>) = fuseApp
 
+
+infixr 9 `fuseAppC`, ++>$
+fuseAppC, (++>$)
+  :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3
+  . ( forall m . Monad m => MonadApply ts1 m
+    , forall m . Monad m => MonadApply ts2 m
+    , CompAT# ts1 ts2
+    , ForwardsM effs2 ts1, ForwardsM oeffs1 ts2
+    , Append effs1 effs2, Append oeffs1 oeffs2)
+  => HandlerC effs1 oeffs1 ts1 a1 a2   -- ^ @h1@
+  -> HandlerC effs2 oeffs2 ts2 a2 a3   -- ^ @h2@
+  -> HandlerC (effs1 :++ effs2)
+              (oeffs1 :++ oeffs2)
+              (ts1 :++ ts2)
+              a1 a3
+fuseAppC (HandlerC run1 malg1) (HandlerC run2 malg2)
+  = HandlerC (weakenRCC (LL.fuseAppRC run1 run2)) (weakenCC (LL.fuseAppATC malg1 malg2))
+
+(++>$) = fuseAppC
+
 infixr 9 `pipe`, ||>
 
 {-# INLINE pipe #-}
