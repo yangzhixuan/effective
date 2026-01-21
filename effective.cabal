@@ -104,8 +104,11 @@ library
     Control.Effect.Internal.AlgTrans
     Control.Effect.Internal.AlgTrans.Type
     Control.Effect.Internal.TH
+
   hs-source-dirs:
     src
+
+  ghc-options: -O2
 
   build-depends:
     base               >= 4.16   && < 4.22,

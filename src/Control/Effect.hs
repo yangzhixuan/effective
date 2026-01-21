@@ -71,6 +71,7 @@ module Control.Effect
 
   -- ** Fusion-based combinators
   , fuse, (|>)
+  , fuseApp, (++>)
   , fuseC, (|>$)
   , pipe, (||>)
   , pass
@@ -119,7 +120,7 @@ module Control.Effect
   , NatTrans (..)
   , type (-.>)
   , ($#), ($:#),  ($:#.)
-  , hunionC
+  , unionAlgC
   , GenAlgebra (..)
 
   -- * Template Haskell

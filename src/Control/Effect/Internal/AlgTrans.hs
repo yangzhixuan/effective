@@ -337,20 +337,26 @@ fuseATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
                     (CompC ts2 cs1 cs2)
 fuseATC at1 at2 = generalFuseATC (Proxy @effs2) (Proxy @effs2) at1 at2
 
+-- | `fuseAppAT` is a variant of `fuseAT` has a more crude type but better runtime performance.
+-- When @effs1@ and @effs2@ are disjoint and @oeffs1@ and @oeffs2@ are disjoint, the behaviours of
+-- @fuseAppAT@ and @fuseAT@ are exactly the same.
+--
+-- Performance note: `fuseAppAT` is faster than `fuseAT` because `fuseAppAT` avoids `weakenAlg`,
+-- which constructs its entries by repetitively @cons@-ing.
 {-# INLINE fuseAppAT #-}
 fuseAppAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
-          (CompAT# ts1 ts2, Injects oeffs1 (oeffs1 :++ oeffs2), Injects oeffs2 (oeffs1 :++ oeffs2)
-          , ForwardsC cs1 effs2 ts1, ForwardsC cs2 oeffs1 ts2)
+          (CompAT# ts1 ts2, ForwardsC cs1 effs2 ts1, ForwardsC cs2 oeffs1 ts2, KnownEffs oeffs1)
        => AlgTrans effs1 oeffs1 ts1 cs1
        -> AlgTrans effs2 oeffs2 ts2 cs2
        -> AlgTrans (effs1 :++ effs2)
                    (oeffs1 :++ oeffs2)
                    (ts1 :++ ts2)
                    (CompC ts2 cs1 cs2)
-fuseAppAT at1 at2 = AlgTrans $ \(oalg :: Algebra _ m) ->
-  appendAlg @effs1 @effs2 @(Apply (ts1 :++ ts2) m)
-    (getAT at1 (getAT (fwds @oeffs1 @ts2) (weakenAlg oalg)))
-    (getAT (fwds @effs2 @ts1) (getAT at2 (weakenAlg oalg)))
+fuseAppAT at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 :++ oeffs2) m) ->
+  let (oalg1, oalg2) = splitAlg @oeffs1 @oeffs2 oalg
+  in appendAlg @effs1 @effs2 @(Apply (ts1 :++ ts2) m)
+       (getAT at1 (getAT (fwds @oeffs1 @ts2) oalg1))
+       (getAT (fwds @effs2 @ts1) (getAT at2 oalg2))
 
 infixr 9 `pipeAT`
 
@@ -509,7 +515,7 @@ generalFuseATC
                (ts1 :++ ts2)
                (CompC ts2 cs1 cs2)
 generalFuseATC _ _ at1 at2 = AlgTransC $ \oalg ->
-   hunionC @effs1 @feffs
+   unionAlgC @effs1 @feffs
      (getATC at1 (weakenAlgC $
        appendAlgC @(oeffs1 :\\ ieffs) @ieffs
          (getATC (fwdsC @(oeffs1 :\\ ieffs) @ts2) (weakenAlgC oalg))

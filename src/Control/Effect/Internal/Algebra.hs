@@ -292,6 +292,17 @@ instance (HFunctor eff, KnownEffs effs) => KnownEffs (eff ': effs) where
 -- * Concatenating cases and algebras
 --------------------------------------------------------------------------------
 
+class KnownEffs (xs :: [Effect]) where
+  lengthEffs :: Int
+
+instance KnownEffs '[] where
+  {-# INLINE lengthEffs #-}
+  lengthEffs = 0
+
+instance KnownEffs effs => KnownEffs (eff : effs) where
+  {-# INLINE lengthEffs #-}
+  lengthEffs = 1 + lengthEffs @effs
+
 class Append (xs :: [Effect]) (ys :: [Effect]) where
   -- | Concatenating two static algebras.
   appendAlgC :: AlgebraC xs m -> AlgebraC ys m -> AlgebraC (xs :++ ys) m
@@ -306,6 +317,21 @@ appendAlg :: forall xeffs yeffs m s. Sequence s
         => Algebra_ s xeffs m -> Algebra_ s yeffs m
         -> Algebra_ s (xeffs :++ yeffs) m
 appendAlg (Algebra as) (Algebra bs) = Algebra $ appendCases as bs
+
+{-# INLINE splitCase #-}
+splitCase :: forall xeffs yeffs f x y s. (Sequence s, KnownEffs xeffs)
+          => Case_ s (xeffs :++ yeffs) f x y
+          -> (Case_ s xeffs f x y, Case_ s yeffs f x y)
+splitCase (Case s) = let (l, r) = split s (lengthEffs @xeffs)
+                     in (Case l, Case r)
+
+{-# INLINE splitAlg #-}
+splitAlg :: forall xeffs yeffs m s. (Sequence s, KnownEffs xeffs)
+         => Algebra_ s (xeffs :++ yeffs) m
+         -> (Algebra_ s xeffs m, Algebra_ s yeffs m)
+splitAlg (Algebra (Case s))
+  = let (l, r) = split s (lengthEffs @xeffs)
+    in (Algebra (Case l), Algebra (Case r))
 
 instance Append '[] ys where
   appendAlgC :: AlgebraC '[] m -> AlgebraC ys m -> AlgebraC ('[] :++ ys) m
@@ -347,6 +373,12 @@ instance (Member xeff xyeffs, Injects xeffs xyeffs) => Injects (xeff : xeffs) (x
   weakenAlg xyAlg = dispatch xyAlg :# weakenAlg @xeffs @xyeffs xyAlg
 
   weakenAlgC cxys = (dispatchC @xeff @xyeffs cxys, weakenAlgC @xeffs @xyeffs cxys)
+
+instance {-# OVERLAPPING #-} Injects (xeff : xeffs) (xeff : xeffs) where
+  {-# INLINE weakenAlg #-}
+  weakenAlg xyAlg = xyAlg
+
+  weakenAlgC cxys = cxys
 
 -- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
 -- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
@@ -394,11 +426,11 @@ infixr 5 $:#.
 a $:#. as = (a, (as, EndAC))
 
 -- | Static version of `unionAlg`.
-hunionC :: forall xeffs yeffs m a b
+unionAlgC :: forall xeffs yeffs m a b
   .  ( Append xeffs (yeffs :\\ xeffs), Injects (yeffs :\\ xeffs) yeffs )
   => AlgebraC xeffs m -> AlgebraC yeffs m
   -> AlgebraC (xeffs `Union` yeffs) m
-hunionC xalg yalg = appendAlgC @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
+unionAlgC xalg yalg = appendAlgC @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
 
 -- * Coproducts (aka open union) of effects
 --------------------------------------------------------------------------------

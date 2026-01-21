@@ -4,6 +4,7 @@ import Data.Kind (Type)
 
 import qualified Data.Sequence as S
 import qualified Data.Primitive.SmallArray as A
+import qualified Data.Array as A
 import Data.Foldable
 
 class Functor l => Sequence (l :: Type -> Type) where
@@ -12,6 +13,11 @@ class Functor l => Sequence (l :: Type -> Type) where
   append :: l a -> l a -> l a
   index :: l a -> Int -> a
   view :: l a -> Maybe (a, l a)
+
+  -- | @fst (split l n)@ is the first @n@-elements of @l@. When @l@ doesn't have @n@-elements,
+  --   @fst (split l n)@ should be equal to @l@. @snd (split l n)@ should be the rest of the elements
+  --   in @l@ after @fst (split l n)@.
+  split :: l a -> Int -> (l a, l a)
   seqToArray :: l a -> A.SmallArray a
   seqFromArray :: A.SmallArray a -> l a
   seqToList :: l a -> [a]
@@ -30,6 +36,8 @@ instance Sequence [] where
   {-# INLINE view #-}
   view [] = Nothing
   view (a:as) = Just (a, as)
+  {-# INLINE split #-}
+  split xs n = (take n xs, drop n xs)
   {-# INLINE seqToArray #-}
   seqToArray = A.smallArrayFromList
   {-# INLINE seqFromArray #-}
@@ -54,6 +62,8 @@ instance Sequence S.Seq where
   view x = case S.viewl x of
     S.EmptyL -> Nothing
     a S.:< as -> Just (a, as)
+  {-# INLINE split #-}
+  split l n = S.splitAt n l
   {-# INLINE seqToArray #-}
   seqToArray = A.smallArrayFromList . toList
   {-# INLINE seqFromArray #-}
@@ -77,6 +87,11 @@ instance Sequence A.SmallArray where
   view as = case length as of
     0 -> Nothing
     n -> Just (A.indexSmallArray as 0, A.cloneSmallArray as 1 (n-1))
+  {-# INLINE split #-}
+  split l n = let size = A.sizeofSmallArray l
+              in if size <= n
+                   then (l, A.emptySmallArray)
+                   else (A.cloneSmallArray l 0 n, A.cloneSmallArray l n (size - n))
   {-# INLINE seqToArray #-}
   seqToArray = id
   {-# INLINE seqFromArray #-}

@@ -103,8 +103,7 @@ fuseR at2 r1 r2 = Runner \(oalg :: Algebra _ m)  ->
 {-# INLINE fuseAppR #-}
 fuseAppR :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
           ( ForwardsC cs2 oeffs1 ts2
-          , Injects oeffs1 (oeffs1 :++ oeffs2)
-          , Injects oeffs2 (oeffs1 :++ oeffs2)
+          , KnownEffs oeffs1
           , forall m. Assoc ts1 ts2 m)
        => AlgTrans effs2 oeffs2 ts2 cs2
        -> Runner oeffs1 ts1 a1 a2 cs1
@@ -114,8 +113,8 @@ fuseAppR :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
                  a1 a3
                  (CompC ts2 cs1 cs2)
 fuseAppR at2 r1 r2 = Runner \(oalg :: Algebra (oeffs1 :++ oeffs2) m)  ->
-      getR r2 (weakenAlg oalg)
-    . getR r1 (getAT (fwds @(oeffs1) @ts2) (weakenAlg @oeffs1 oalg))
+  let (oalg1, oalg2) = splitAlg @oeffs1 @oeffs2 oalg
+  in getR r2 oalg2 . getR r1 (getAT (fwds @(oeffs1) @ts2) oalg1)
 
 fuseRC, fuseRC'
        :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
