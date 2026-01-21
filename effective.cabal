@@ -27,10 +27,7 @@ common common
   if impl(ghc >=9.10.1)
     default-extensions: RequiredTypeArguments
 
-
   ghc-options:
-  --cpp-options: -DPROGDIRECT
-
 
 library
   import: common
@@ -43,26 +40,26 @@ library
     Control.Effect.Family.Scoped
     Control.Effect.Family.Distributive
 --
---    Control.Effect.Alternative
+    Control.Effect.Alternative
 --    Control.Effect.Cut
---    Control.Effect.Except
---    Control.Effect.IO
---    Control.Effect.Maybe
+    Control.Effect.Except
+    Control.Effect.IO
+    Control.Effect.Maybe
 --    Control.Effect.Nondet
 --    Control.Effect.Concurrency
 --    Control.Effect.Concurrency.Type
 --    Control.Effect.Yield
---    Control.Effect.Nondet.Type
---    Control.Effect.Nondet.List
---    Control.Effect.Nondet.Logic
+    Control.Effect.Nondet.Type
+    Control.Effect.Nondet.List
+    Control.Effect.Nondet.Logic
     Control.Effect.Reader
     Control.Effect.State
     Control.Effect.State.Type
     Control.Effect.State.Lazy
     Control.Effect.State.Strict
---    Control.Effect.Writer
---    Control.Effect.HStore.Unsafe
---    Control.Effect.HStore.Safe
+    Control.Effect.Writer
+    Control.Effect.HStore.Unsafe
+    Control.Effect.HStore.Safe
 --
 --    Control.Effect.CodeGen
 --    Control.Effect.CodeGen.Type
@@ -118,7 +115,6 @@ library
     ghc-prim           >= 0.8    && < 0.14,
     logict             >= 0.8.2  && < 0.9,
     template-haskell   >= 2.18   && < 2.24,
-    lift-type,
     containers,
 --     for finger trees.
     primitive,
@@ -210,19 +206,19 @@ library
 --   other-modules:
 --     StagedGen
 -- 
--- test-suite misc
---   import: common
---   type:          exitcode-stdio-1.0
---   main-is:       Misc.hs
---   default-language: GHC2021
---   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
---   hs-source-dirs:  test
---   -- ghc-options: -ddump-splices
---   build-depends:
---     base               >= 4.16 && < 4.22,
---     effective,
---     hedgehog           >= 1.5  && < 1.6,
---     template-haskell   >= 2.18 && < 2.24,
+test-suite misc
+  import: common
+  type:          exitcode-stdio-1.0
+  main-is:       Misc.hs
+  default-language: GHC2021
+  default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+  hs-source-dirs:  test
+  ghc-options: -fspecialise-aggressively -ddump-to-file -ddump-splices -ddump-simpl -dsuppress-idinfo -dsuppress-uniques -dsuppress-coercions -dsuppress-module-prefixes
+  build-depends:
+    base               >= 4.16 && < 4.22,
+    effective,
+    hedgehog           >= 1.5  && < 1.6,
+    template-haskell   >= 2.18 && < 2.24,
 -- 
 -- test-suite eval
 --   import:        common

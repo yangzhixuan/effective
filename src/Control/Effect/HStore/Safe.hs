@@ -1,4 +1,4 @@
-{-# LANGUAGE QuantifiedConstraints, MonoLocalBinds, CPP, AllowAmbiguousTypes #-}
+{-# LANGUAGE QuantifiedConstraints, MonoLocalBinds, CPP, AllowAmbiguousTypes, MagicHash #-}
 {-|
 Module      : Control.Effect.HStore.Safe
 Description : Higher-order store (safe implementation)
@@ -43,10 +43,7 @@ module Control.Effect.HStore.Safe (
   handleHSM,
 ) where
 
-import Control.Effect.Internal.Effs
-import Control.Effect.Internal.Forward
-import Control.Effect.Internal.Handler
-import Control.Effect.Internal.Prog ( Prog, call, progAlg )
+import Control.Effect
 import Control.Monad.Trans.Class
 import GHC.Types (Any)
 import Unsafe.Coerce
@@ -55,9 +52,6 @@ import qualified Control.Monad.Trans.State as St
 import Data.HFunctor
 import Data.List.Kind
 import Data.Kind (Type)
-#ifdef INDEXED
-import GHC.TypeNats
-#endif
 
 -- | Internally locations in the store are just integers.
 type Loc = Int
@@ -121,24 +115,22 @@ type HSEffs w = '[Put w, Get w, New w]
 hstore :: Handler (HSEffs w) '[] '[St.StateT Mem] a a
 hstore = handler' (flip St.evalStateT M.empty) hstoreAlg
 
-hstoreAlg :: forall m w.
-     Monad m
-  => (forall x.  Effs (HSEffs w) (St.StateT Mem m) x -> St.StateT Mem m x)
-hstoreAlg op
-  | Just (Put r a p) <- prj @(Put w) op =
+hstoreAlg :: forall m w. Monad m => Algebra (HSEffs w) (St.StateT Mem m)
+hstoreAlg =
+  (\(Put r a p) ->
       do St.modify (\mem -> M.insert (unRef r) (unsafeCoerce a) mem)
-         return p
-
-  | Just (Get r p) <- prj @(Get w) op =
+         return p)
+  :#
+  (\(Get r p) ->
       do mem <- St.get
-         return (p (unsafeCoerce (mem M.! (unRef r))))
-
-  | Just (New a p) <- prj @(New w) op =
+         return (p (unsafeCoerce (mem M.! (unRef r)))))
+  :#.
+  (\(New a p) ->
       do mem <- St.get
          let n = M.size mem
          let mem' = M.insert n (unsafeCoerce a) mem
          St.put mem'
-         return (p (Ref @w n))
+         return (p (Ref @w n)))
 
 -- | Running a program with only the effect of higher-order on the empty store, extracting
 -- the final pure result.
@@ -151,21 +143,14 @@ handleHS = runHS
 -- resulting in an @m@ program.
 handleHSM :: forall effs a m.
           ( forall s. ForwardsM effs '[St.StateT s]
-          , HFunctor (Effs effs)
-          , Monad m
-          )
+          , Monad m )
           => Algebra effs m -> (forall w. Prog (HSEffs w :++ effs) a) -> m a
 handleHSM alg p = handleMApp alg hstore p
 
 -- | Running a program with higher-order store and other effects @effs@, resulting
 -- in a program with effects @effs@.
 handleHSP :: forall effs a.
-             ( forall s. ForwardsM effs '[St.StateT s]
-#ifdef INDEXED
-             , Append (HSEffs ()) effs
-#endif
-             , HFunctor (Effs effs)
-             )
+             ( forall s. ForwardsM effs '[St.StateT s], ProgAlg# effs )
           => (forall w. Prog (HSEffs w :++ effs) a) -> Prog effs a
 handleHSP p = handleMApp progAlg hstore p
 

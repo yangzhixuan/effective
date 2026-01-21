@@ -8,7 +8,7 @@ Stability   : experimental
 This module contains the core types and functions for working with effects.
 The README file contains a tutorial on how to use this library.
 -}
-{-# LANGUAGE ExplicitNamespaces, CPP #-}
+{-# LANGUAGE ExplicitNamespaces, CPP, MagicHash #-}
 
 module Control.Effect
   ( -- * Programs
@@ -73,6 +73,7 @@ module Control.Effect
   , fuse, (|>)
   , fuseApp, (++>)
   , fuseC, (|>$)
+  , fuseAppC, (++>$)
   , pipe, (||>)
   , pass
   , generalFuse
@@ -98,7 +99,7 @@ module Control.Effect
   , handle
   , handleC
   , handleM
-  , handleP
+  , handleP, ProgAlg#
   , handleM'
   , handleP'
   , handleMApp

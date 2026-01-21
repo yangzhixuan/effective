@@ -32,9 +32,6 @@ import GHC.Base (Any)
 import Unsafe.Coerce (unsafeCoerce)
 import Language.Haskell.TH hiding (Type)
 
-import Type.Reflection (Typeable)
-import LiftType
-
 -- | The type of higher-order effects.
 type Effect = (Type -> Type) -> (Type -> Type)
 
@@ -494,30 +491,10 @@ instance (Sequence s, Functor f, KnownEffs effs) => Functor (Effs s effs f) wher
 
 
 -- * Definitions related to staged algebras
------------------------------------------
+-------------------------------------------
 
-class {-Typeable effs =>-} GenAlgebra effs where
+class GenAlgebra effs where
   genAlgebra :: AlgebraC effs f -> CodeQ (Algebra effs f)
-{-
-  genAlgebra acs = unsafeCodeCoerce (genAlgebra' acs)
-
-  genAlgebra' :: AlgebraC effs f -> Q Exp
-  genAlgebra' acs = [| \op -> $(unTypeCode $ genAlgebraAux acs (unsafeCodeCoerce [| op |])) |]
-
-  genAlgebraAux :: AlgebraC effs f -> CodeQ (Effs effs f x) -> CodeQ (f x)
-
-instance GenAlgebra '[] where
-  genAlgebraAux :: AlgebraC '[] f -> CodeQ (Effs '[] f x) -> CodeQ (f x)
-  genAlgebraAux EndAC cx = [|| case $$cx of {} ||]
-
-instance (Typeable (eff ': effs), Typeable eff, GenAlgebra effs) => GenAlgebra (eff ': effs) where
-  genAlgebraAux :: AlgebraC (eff : effs) f -> CodeQ (Effs (eff ': effs) f x) -> CodeQ (f x)
-  genAlgebraAux (ac, acs) cop = unsafeCodeCoerce $ [|
-    case $(unTypeCode cop) of
-       Eff (op :: $(liftTypeQ @eff) _ _)  -> $(unTypeCode ac) `at` op
-       Effs (op' :: Effs $(liftTypeQ @effs) _ _) -> $(unTypeCode $ genAlgebraAux acs (unsafeCodeCoerce [|op'|]))
-   |]
--}
 
 instance GenAlgebra '[] where
   genAlgebra :: AlgebraC '[] f -> CodeQ (Algebra '[] f)

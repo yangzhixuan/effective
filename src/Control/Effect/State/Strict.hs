@@ -10,13 +10,7 @@ Stability   : experimental
 
 module Control.Effect.State.Strict
   ( -- * Syntax
-    -- ** Operations
-    put
-  , get
-
-    -- ** Signatures
-  , Put, Put_ (..), pattern Put
-  , Get, Get_ (..), pattern Get
+    module Control.Effect.State.Type
 
     -- * Semantics
     -- ** Handlers

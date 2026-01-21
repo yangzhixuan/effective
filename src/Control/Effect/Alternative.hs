@@ -31,8 +31,8 @@ module Control.Effect.Alternative (
   select, selects,
 
   -- ** Signatures
-  Empty, Empty_(..), pattern Empty, pattern Empty',
-  Choose, Choose_(..), pattern Choose, pattern Choose',
+  Empty, Empty_(..), pattern Empty,
+  Choose, Choose_(..), pattern Choose,
 
   -- * Semantics
   -- ** Handlers
@@ -40,7 +40,6 @@ module Control.Effect.Alternative (
 
   -- ** Algebras
   alternativeAT,
-  alternativeAlg,
 ) where
 
 import Control.Effect
@@ -49,7 +48,6 @@ import Control.Effect.Family.Scoped
 
 import Control.Applicative ((<|>), Alternative)
 import Control.Applicative qualified as Ap
-
 
 $(makeAlg [e| empty :: 0 |])
 
@@ -90,42 +88,19 @@ alternative
   .  (forall m . Monad m => Alternative (t m))
   => (forall m . Monad m => (forall a . t m a -> m (f a)))
   -> Handler '[Empty, Choose] '[] '[t] a (f a)
-alternative run = handler' run alternativeAlg
-
--- | An alternative definition of `alternative`.
-alternative'
-  :: forall t f a
-  .  (forall m . Monad m => Alternative (t m))
-  => (forall m . Monad m => (forall a . t m a -> m (f a)))
-  -> Handler '[Empty, Choose] '[] '[t] a (f a)
-alternative' run =  emptyAlgT <: chooseAlgT <: fromRunner run
+alternative run = Handler (runner' run) alternativeAT
 
 -- | The algebra transformer underlying the 'alternative' handler. This uses an
 -- underlying 'Alternative' instance for @t m@ given by a transformer @t@.
 alternativeAT
   :: forall t. (forall m . Monad m => Alternative (t m))
   => AlgTrans '[Empty, Choose] '[] '[t] Monad
-alternativeAT = algTrans' alternativeAlg
+alternativeAT = algTrans' (emptyAlg :#. chooseAlg)
 
-{-# INLINE alternativeAlg #-}
-alternativeAlg
-  :: forall t . (forall m . Monad m => Alternative (t m))
-  => forall m. Monad m
-  => Algebra [Empty, Choose] (t m)
-alternativeAlg Empty          = Ap.empty
-alternativeAlg (Choose xs ys) = xs <|> ys
+{-# INLINE emptyAlg #-}
+emptyAlg :: Alternative (t m) => Empty (t m) x -> t m x
+emptyAlg Empty = Ap.empty
 
-emptyAlgT :: forall t. (forall m . Monad m => Alternative (t m))
-  => AlgTrans '[Empty] '[] '[t] Monad
--- emptyAlgT = AlgTrans (const emptyAlg)
-emptyAlgT = algTrans1 (\oalg ((Alg Empty_)) -> Ap.empty)
-
-emptyAlg :: Alternative (t m) => Algebra '[Empty] (t m)
-emptyAlg (Eff (Alg (Empty_))) = Ap.empty
-
-chooseAlgT :: forall t. (forall m . Monad m => Alternative (t m))
-  => AlgTrans '[Choose] '[] '[t] Monad
-chooseAlgT = algTrans1 (\oalg ((Scp (Choose_ xs ys))) -> xs <|> ys)
-
-chooseAlg :: Alternative (t m) => Algebra '[Choose] (t m)
-chooseAlg (Eff (Scp (Choose_ xs ys))) = xs <|> ys
+{-# INLINE chooseAlg #-}
+chooseAlg :: Alternative (t m) => Choose (t m) x -> t m x
+chooseAlg (Choose xs ys) = xs <|> ys

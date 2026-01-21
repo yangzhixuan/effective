@@ -12,8 +12,8 @@ For an implementation based on @LogicT@, import "Control.Effect.Nondet.Logic" in
 
 module Control.Effect.Nondet
   ( module Control.Effect.Nondet.Type
-  , Choose, Choose_(Choose_)
-  , Empty, Empty_(Empty_)
+  , Choose, Choose_(..), pattern Choose
+  , Empty, Empty_(..), pattern Empty
 
   , ListT (..)
   , list, listC

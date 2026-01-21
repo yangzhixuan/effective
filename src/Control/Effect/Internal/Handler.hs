@@ -32,8 +32,6 @@ import Data.Functor.Identity
 import Data.HFunctor
 import Data.Proxy
 import Language.Haskell.TH hiding (Type)
-import LiftType
-import Type.Reflection ( Typeable )
 
 
 -- | A t'Handler' will process input effects @effs@ and produce output effects
@@ -338,8 +336,8 @@ fuseApp (Handler run1 malg1) (Handler run2 malg2)
 {-# INLINE (++>) #-}
 (++>) = fuseApp
 
-
 infixr 9 `fuseAppC`, ++>$
+
 fuseAppC, (++>$)
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3
   . ( forall m . Monad m => MonadApply ts1 m
@@ -463,17 +461,8 @@ handle (Handler run halg)
   = runIdentity . LL.getR run endAlg. eval (getAT halg (endAlg @Identity))
 
 handleC :: forall effs ts fs a b .
-           ( Monad (Apply ts Identity), GenAlgebra effs
-           , Typeable effs, Typeable ts)
+           ( Monad (Apply ts Identity), GenAlgebra effs )
         => HandlerC effs '[] ts a b -> CodeQ (Prog effs a) -> CodeQ b
-{-
-handleC (HandlerC (RunnerC r) (AlgTransC a)) p = unsafeCodeCoerce $
-  [|
-      let alg :: Algebra $(liftTypeQ @effs) (Apply $(liftTypeQ @ts) Identity)
-          alg = $(genAlgebra' (a @Identity EndAC))
-      in runIdentity ($(unTypeCode $ r @(Apply ts Identity) EndAC) (eval alg $(unTypeCode p)))
-  |]
--}
 handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
   [||
       let alg = $$(genAlgebra (a @Identity EndAC))

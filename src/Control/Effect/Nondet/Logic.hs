@@ -15,77 +15,69 @@ including choice and failure.
 
 module Control.Effect.Nondet.Logic
   ( module Control.Effect.Nondet.Type
-  , Choose, Choose_(Choose_)
-  , Empty , Empty_(Empty_)  , empty
-  , list
-  , nondet
-  , backtrackAlg
-  , backtrackOnceAlg
-  , backtrackAlg'
-  , backtrack
+  , module Control.Effect.Nondet.Logic
+  , Empty, Choose
+  , LogicT (..)
   ) where
 
 import Control.Effect
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 import Control.Effect.Alternative
-
 import Control.Effect.Nondet.Type
-
 import Control.Monad.Logic hiding (once)
+import qualified Control.Monad.Logic as L
+
+{-# INLINE emptyAlg #-}
+emptyAlg :: forall m a. Monad m => Empty (LogicT m) a -> LogicT m a
+emptyAlg Empty = empty
+
+{-# INLINE chooseAlg #-}
+chooseAlg :: Monad m => Choose (LogicT m) a -> LogicT m a
+chooseAlg (Choose xs ys) = xs <|> ys
+
+{-# INLINE nondetOrAlg #-}
+nondetOrAlg :: forall m a. Monad m => NondetOr (LogicT m) a -> LogicT m a
+nondetOrAlg (NondetOr xs ys) = pure xs <|> pure ys
+
+{-# INLINE onceAlg #-}
+onceAlg :: Monad m => Once (LogicT m) a -> LogicT m a
+onceAlg (Once p) = L.once p
 
 list :: Handler [Empty, Choose] '[] '[LogicT] a [a]
 list = alternative observeAllT
 
 -- | The `nondet` handler transforms nondeterministic effects t`Empty` and t`Choose`
 -- into the t`LogicT` monad transformer, which collects all possible results.
-{-# INLINE nondet #-}
 nondet :: Handler [Empty, NondetOr] '[] '[LogicT] a [a]
-nondet = handler' observeAllT nondetAlg
+nondet = handler' observeAllT (emptyAlg :#. nondetOrAlg)
 
--- | `nondetAlg` defines the semantics of backtracking for the t`Empty`,
--- t`Choose`, effects in the context of the t`LogicT` monad transformer.
-nondetAlg
-  :: Monad m => (forall x. Effs [Empty, NondetOr] (LogicT m) x -> LogicT m x)
-nondetAlg op
-  | Just (Alg Empty_)            <- prj op = empty
-  | Just (Alg (NondetOr_ xs ys))   <- prj op = pure xs <|> pure ys
+nondet' :: Handler [Empty, Choose, NondetOr] '[] '[LogicT] a [a]
+nondet' = handler' observeAllT (emptyAlg :# chooseAlg :#. nondetOrAlg)
 
--- | `backtrackAlg` defines the semantics of backtracking for the t`Empty`,
--- t`Choose`, and t`Once` effects in the context of the t`LogicT` monad transformer.
-backtrackAlg
-  :: Monad m => (forall x. oeff m x -> m x)
-  -> (forall x. Effs [Empty, NondetOr, Once] (LogicT m) x -> LogicT m x)
-backtrackAlg oalg op
-  | Just (Alg Empty_)            <- prj op = empty
-  | Just (Alg (NondetOr_ xs ys))   <- prj op = pure xs <|> pure ys
-  | Just (Scp (Once_ p))         <- prj op =
-      LogicT (\cons nil -> runLogicT p cons nil)
+backtrack :: Handler [Empty, Choose, NondetOr, Once] '[] '[LogicT] a [a]
+backtrack = handler' observeAllT (emptyAlg :# chooseAlg :# nondetOrAlg :#. onceAlg)
 
---    LogicT $ do mx <- runLogicT p
---                case mx of
---                  Nothing       -> return Nothing
---                  Just (x, mxs) -> return (Just (x, empty))
-
--- | `backtrackOnceAlg` defines the semantics of backtracking for the t`Once`
--- effect in the context of the t`ListT` monad transformer.
-backtrackOnceAlg
-  :: Monad m
-  => (forall x . oeff m x -> m x)
-  -> (forall x . Effs '[Once] (LogicT m) x -> LogicT m x)
-backtrackOnceAlg oalg op
-  | Just (Scp (Once_ p))         <- prj op =
-      LogicT (\cons nil -> runLogicT p cons nil)
-
--- | `backtrackAlg'` combines the semantics of alternative and backtracking
--- for the t`Empty`, t`Choose`, and t`Once` effects.
-backtrackAlg'
-  :: Monad m => (forall x. Effs '[] m x -> m x)
-  -> (forall x. Effs [Empty, Choose, Once] (LogicT m) x -> LogicT m x)
-backtrackAlg' oalg = (getAT alternativeAT oalg) # backtrackOnceAlg oalg
-
--- | `backtrack` is a handler that transforms nondeterministic effects
--- t`Empty`, t`Choose`, and t`Once` into the t`ListT` monad transformer,
+-- | `backtrack'` is a handler that transforms nondeterministic effects
+-- t`Empty`, t`Choose`, and t`Once` into the t`LogicT` monad transformer,
 -- supporting backtracking.
-backtrack :: Handler [Empty, Choose, Once] '[] '[LogicT] a [a]
-backtrack = handler (\_ -> observeAllT) backtrackAlg'
+backtrack' :: Handler [Empty, NondetOr, Once] '[] '[LogicT] a [a]
+backtrack' = handler' observeAllT (emptyAlg :# nondetOrAlg :#. onceAlg)
+
+{-# INLINE nondetAT #-}
+-- | The algebra transformer underlying the 'alternative' handler. This uses an
+-- underlying 'Alternative' instance for @t m@ given by a transformer @t@.
+nondetAT :: AlgTrans '[Empty, NondetOr] '[] '[LogicT] Monad
+nondetAT = algTrans' (emptyAlg :#. nondetOrAlg)
+
+-- Handlers for lightweight staging
+
+nondetC :: HandlerC [Empty, NondetOr] '[] '[LogicT] a [a]
+nondetC = HandlerC
+  (RunnerC $ \_ -> [|| observeAllT ||])
+  (AlgTransC $ \_ -> [|| NT emptyAlg ||] $:# [|| NT nondetOrAlg ||] $:# EndAC)
+
+listC :: HandlerC [Empty, Choose] '[] '[LogicT] a [a]
+listC = HandlerC
+  (RunnerC $ \_ -> [|| observeAllT ||])
+  (AlgTransC $ \_ -> [|| NT emptyAlg ||] $:# [|| NT $ \(Choose a b) -> (a <|> b) ||] $:# EndAC)
