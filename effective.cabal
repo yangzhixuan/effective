@@ -149,16 +149,18 @@ library
 --     Parser,
 --     State,
 -- 
--- test-suite concur
---   type:          exitcode-stdio-1.0
---   ghc-options:   -threaded
---   main-is:       Concur.hs
---   default-language: GHC2021
---   default-extensions: DataKinds
---   hs-source-dirs:  test
---   build-depends:
---     base               >= 4.16 && < 4.22,
---     effective,
+test-suite concur
+  type:          exitcode-stdio-1.0
+  ghc-options:   -threaded
+  main-is:       Concur.hs
+  default-language: GHC2021
+  default-extensions: DataKinds
+  hs-source-dirs:  test
+  build-depends:
+    base               >= 4.16 && < 4.22,
+    process,
+    random,
+    effective,
 -- 
 -- test-suite hostore
 --   type:          exitcode-stdio-1.0

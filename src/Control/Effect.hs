@@ -72,7 +72,7 @@ module Control.Effect
   , fuseApp, (++>)
   , fuseC, (|>$)
   , fuseAppC, (++>$)
-  , pipe, (||>)
+  , pipe, (\\)
   , pass
   , generalFuse
 
@@ -100,6 +100,7 @@ module Control.Effect
   , handleP, ProgAlg#
   , handleM'
   , handleP'
+  , handleMFwds
   , handleMApp
   , handlePApp
   , evalAT

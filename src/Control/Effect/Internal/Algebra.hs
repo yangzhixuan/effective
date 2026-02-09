@@ -57,7 +57,7 @@ type AlgebraArray effs f = Algebra_ Arr.SmallArray effs f
 
 -- | The idea of the type is
 -- @
--- Cases s [eff1, ..., eff_n] f x y = (eff1 f x -> y, ..., eff_n f x -> y)
+-- Case_ s [eff1, ..., eff_n] f x y = (eff1 f x -> y, ..., eff_n f x -> y)
 -- @
 -- But internally the list is stored using the data structure @s@ (and the `Any` type)
 -- for better time complexity.
@@ -156,6 +156,8 @@ instance Sequence s => Functor (Case_ s effs f x) where
 
 -- * Membership of an effect in effect rows
 --------------------------------------------------------------------------------
+
+-- TODO: move the member functions out of the Member class.
 
 class Member eff effs where
   {-# INLINE dispatch #-}
@@ -393,7 +395,7 @@ unionAlg :: forall xeffs yeffs m s.
 unionAlg xalg yalg = appendAlg @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
 
 -- * | Definitions related to staged algebras
------------------------------------------
+---------------------------------------------
 
 -- | In current GHC, polymorphic functions and Template Haskell don't seem to work
 -- seamlessly together. Newtype wrappers seem necessary in some cases.
@@ -404,9 +406,15 @@ type family AlgebraC (effs :: [Effect]) (f :: Type -> Type) = result | result ->
   AlgebraC '[] f = EndAC '[] f
   AlgebraC (eff ': effs) f = (CodeQ (eff f -.> f), AlgebraC effs f)
 
+type family CaseC (effs :: [Effect]) (f :: Type -> Type) a b = result | result -> effs f a b where
+  CaseC '[] f a b = EndCC '[] f a b
+  CaseC (eff ': effs) f a b = (CodeQ (eff f a -> b), CaseC effs f a b)
+
 -- | This is just a unit type, but it has two phantom type variables which are useful
 -- for type inference.
 data EndAC (effs :: [Effect]) (f :: Type -> Type) = EndAC
+
+data EndCC (effs :: [Effect]) (f :: Type -> Type) a b = EndCC
 
 infixr 6 $#
 -- | @alg1 #$ alg2@ joins together code of algebras @alg1@ and @alg2@.

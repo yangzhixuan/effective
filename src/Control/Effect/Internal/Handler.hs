@@ -356,12 +356,12 @@ fuseAppC (HandlerC run1 malg1) (HandlerC run2 malg2)
 
 (++>$) = fuseAppC
 
-infixr 9 `pipe`, ||>
+infixl 9 `pipe`
 
 {-# INLINE pipe #-}
-{-# INLINE (||>) #-}
+{-# INLINE (\\) #-}
 
-pipe, (||>)
+pipe, (\\)
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3
   . ( forall m . Monad m => MonadApply ts1 m
     , forall m . Monad m => MonadApply ts2 m
@@ -383,7 +383,7 @@ pipe (Handler run1 malg1)  (Handler run2 malg2)
   = Handler (LL.weakenRC (LL.fuseR malg2 run1 run2)) (LL.weakenC (LL.pipeAT malg1 malg2))
 
 -- | A synonym for 'pipe'
-(||>) = pipe
+(\\) = pipe
 
 
 type Pass# effs1 effs2 oeffs1 oeffs2 ts1 ts2 =

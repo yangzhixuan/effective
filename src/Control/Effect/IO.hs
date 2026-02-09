@@ -43,7 +43,7 @@ ioAlg :: Algebra '[Alg IO] IO
 ioAlg = nativeAlg
 
 -- | Treating an IO computation as an operation of signature `Alg IO`.
-io :: Members '[Alg IO] sig => IO a -> Prog sig a
+io :: IO a -> a ! '[Alg IO]
 io op = call (Alg op)
 
 -- | @`evalIO` p@ evaluates all IO operations in @p@ in the `IO` monad

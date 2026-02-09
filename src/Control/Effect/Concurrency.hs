@@ -43,6 +43,7 @@ module Control.Effect.Concurrency (
   Control.Monad.Trans.CRes.ListActs (..),
   Control.Monad.Trans.CRes.ActsMb (..),
   Control.Monad.Trans.CRes.CResT (..),
+  QSemMap,
   ) where
 
 import Control.Effect
@@ -132,7 +133,7 @@ ccsByQSem :: forall n a . Ord n
                      '[R.ReaderT (QSemMap n), E.ExceptT String]
                      a
                      (Either String a)
-ccsByQSem = (interpretM (\o -> actionAlg o :#. resAlg o)||> R.reader M.empty) ||> E.except where
+ccsByQSem = (interpretM (\o -> actionAlg o :#. resAlg o) \\ R.reader M.empty) \\ E.except where
   actionAlg :: Monad m => Algebra '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO ] m
             -> forall x. Act (CCSAction n) m x -> m x
   actionAlg oalg (Act (Action n) p) = eval oalg $ do
