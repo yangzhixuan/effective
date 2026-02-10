@@ -19,6 +19,7 @@ module Control.Effect
   , WithName, (:@)
   , call,  callJ,  callK
   , callM, callJM, callKM
+  , callMC
   , callP
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
   , callN
@@ -62,8 +63,8 @@ module Control.Effect
   , hide
   , bypass
   , fromAT
-  , interpret, interpretAT, interpretM
-  , interpret1, interpretAT1, interpretM1
+  , interpret, interpretAT, interpretM, interpretMC
+  , interpret1, interpretAT1, interpretM1, interpretM1C
   , caseHdl
   , unionHdl
 
@@ -72,7 +73,7 @@ module Control.Effect
   , fuseApp, (++>)
   , fuseC, (|>$)
   , fuseAppC, (++>$)
-  , pipe, (\\)
+  , pipe, (\\), pipeC, (\\$)
   , pass
   , generalFuse
 
@@ -83,7 +84,7 @@ module Control.Effect
   , idAT
   , compAT
   , weakenAT
-  , algTrans1
+  , algTrans1, algTrans1C
   , algTrans'
   , fuseAT, fuseAT'
   , fuseATC
@@ -95,12 +96,11 @@ module Control.Effect
   -- * Evaluation
   , eval
   , handle
-  , handleC
-  , handleM
+  , handleC, handleM
   , handleP, ProgAlg#
   , handleM'
   , handleP'
-  , handleMFwds
+  , handleMFwds, handleMFwdsC
   , handleMApp
   , handlePApp
   , evalAT

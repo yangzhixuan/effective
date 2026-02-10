@@ -28,7 +28,7 @@ module Control.Effect.IO (
   handleIO',
 
   -- * Algebras
-  ioAlg,
+  ioAlg, ioAlgC
 )
   where
 
@@ -41,6 +41,9 @@ import Data.HFunctor
 -- | Interprets IO operations using their standard semantics in `IO`.
 ioAlg :: Algebra '[Alg IO] IO
 ioAlg = nativeAlg
+
+ioAlgC :: AlgebraC '[Alg IO] IO
+ioAlgC = nativeAlgC
 
 -- | Treating an IO computation as an operation of signature `Alg IO`.
 io :: IO a -> a ! '[Alg IO]

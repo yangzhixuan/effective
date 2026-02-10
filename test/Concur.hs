@@ -1,4 +1,4 @@
-{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE PartialTypeSignatures, TemplateHaskell #-}
 module Main where
 
 import Prelude hiding (log )
@@ -17,17 +17,14 @@ import System.Random
 
 import Data.Proxy
 import qualified Control.Concurrent.QSem as QSem
+import ConcurStaged
 
-type IOPar = '[Alg IO, Par, JPar]
 
 ioPar :: Algebra IOPar IO
 ioPar = ioAlg # parIOAlg # jparIOAlg
 
 main :: IO ()
 main = return ()
-
-data ActNames = Handshake | Raisehand deriving (Show, Eq, Ord)
-type HR = CCSAction ActNames
 
 handshake :: Member (Act HR) sig => Prog sig ()
 handshake = act (Action Handshake)
@@ -136,7 +133,6 @@ test10 = handleIO' (Proxy @'[Alg IO]) ioPar
 threadId :: Handler '[Par] '[Par, Local String] '[] a a
 threadId = interpretM1 $ \alg (Par a b) ->
   parM alg (localM alg (++ "L") a) (localM alg (++ "R") b)
-
 -- Prepend every output operation with a thread ID
 tellWithId :: Handler '[Tell String] '[Tell String, Ask String] '[] a a
 tellWithId= interpret1 $ \(Tell s k) ->
@@ -153,10 +149,10 @@ tellWithLock = Handler
              daemon
     in do resM oalg (Action Raisehand) $
             parM oalg p daemon)
-  (interpretAT1 $ \(Tell s k) ->
-    do act (Action Raisehand)
-       tell s
-       act (CoAction Raisehand)
+  (algTrans1 $ \oalg (Tell s k) ->
+    do actM oalg (Action Raisehand)
+       tellM oalg s
+       actM oalg (CoAction Raisehand)
        return k)
 
 -- Processes can tell strings and their output is tagged with their ID
@@ -208,3 +204,19 @@ say = interpret1 $
       do v <- (randomIO :: IO Int)
          let cmd = "say -v " ++ (voices !! (v `mod` len)) ++ " '" ++ s ++ "'"
          callCommand cmd
+
+
+-- Zhixuan: if we look at the handler code generated in the following example. We can
+-- see that there are a lot unnecessary beta-reducible expressions. They are symptoms
+-- caused by our choice of using `CodeQ (eff m -.> m)` to represent handler 
+
+stagedIntro :: IO (Either String ())
+stagedIntro =
+  $$(handleMFwdsC
+    (Proxy @'[Par])
+    ioParC
+    (((threadIdC |>$ tellWithIdC) \\$ readerC [||""||])
+       |>$ tellWithLockC
+       |>$ ccsByQSemC @ActNames
+       |>$ writerIOC)
+    [|| bohem ||])

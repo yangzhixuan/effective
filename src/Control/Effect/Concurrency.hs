@@ -35,9 +35,9 @@ module Control.Effect.Concurrency (
 
 
   -- ** IO-based handlers
-  ccsByQSem,
-  parIOAlg,
-  jparIOAlg,
+  ccsByQSem, ccsByQSemC,
+  parIOAlg, parIOAlgC,
+  jparIOAlg, jparIOAlgC,
 
   -- ** Re-exported types used by handlers
   Control.Monad.Trans.CRes.ListActs (..),
@@ -160,19 +160,66 @@ ccsByQSem = (interpretM (\o -> actionAlg o :#. resAlg o) \\ R.reader M.empty) \\
     let m' = M.insert (getActionName a) (s1, s2) m
     R.localM oalg (const m') p
 
+
+ccsByQSemC :: forall n a . Ord n
+          => HandlerC '[Act (CCSAction n), Res (CCSAction n)]
+                     '[Alg IO]
+                     '[R.ReaderT (QSemMap n), E.ExceptT String]
+                     a
+                     (Either String a)
+ccsByQSemC = (interpretMC (\o -> actionAlg o $:#. resAlg o) \\$ R.readerC [||M.empty||]) \\$ E.exceptC where
+  actionAlg :: Monad m => AlgebraC '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO ] m
+            -> CodeQ (Act (CCSAction n) m -.> m)
+  actionAlg oalg = [|| NT $ \(Act a p) ->
+    case a of
+      (Action n) ->
+        do m <- $$(callMC @(R.Ask (QSemMap n)) oalg) (R.Ask id)
+           case M.lookup n m of
+             Just (s1, s2) -> do $$(callMC oalg) (Alg (QSem.waitQSem s1)); $$(callMC oalg) (Alg (QSem.signalQSem s2))
+             Nothing  -> $$(callMC oalg) (E.Throw "Channel used before creation!")
+           return p
+      (CoAction n) ->
+        do m <- $$(callMC @(R.Ask (QSemMap n)) oalg) (R.Ask id)
+           case M.lookup n m of
+             Just (s1, s2) -> do $$(callMC oalg) (Alg (QSem.signalQSem s1)); $$(callMC oalg) (Alg (QSem.waitQSem s2))
+             Nothing  -> $$(callMC oalg) (E.Throw "Channel used before creation!")
+           return p
+     ||]
+
+  resAlg :: Monad m => AlgebraC '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO] m
+         -> CodeQ (Res (CCSAction n) m -.> m)
+  resAlg oalg = [|| NT $ \(Res a p) -> do
+      m <- $$(callMC @(R.Ask (QSemMap n)) oalg) (R.Ask id)
+      s1 <- $$(callMC oalg) (Alg (QSem.newQSem 0))
+      s2 <- $$(callMC oalg) (Alg (QSem.newQSem 0))
+      let m' = M.insert (getActionName a) (s1, s2) m
+      $$(callMC oalg) (R.Local (const m') p)
+    ||]
+
+
 -- | Interprets t`Control.Effect.Concurrency.Par` using the native concurrency API.
 -- from `Control.Concurrent`.
 parIOAlg :: Algebra '[Par] IO
 parIOAlg = singAlg $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l
 
+parIOAlgC :: AlgebraC '[Par] IO
+parIOAlgC = [|| NT $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l ||] $:# EndAC
+
 -- | Interprets t`Control.Effect.Concurrency.JPar` using the native concurrency API.
 -- from "Control.Concurrent". The result from the child thread is passed back to the
 -- main thread using @MVar@.
 jparIOAlg :: Algebra '[JPar] IO
-jparIOAlg = singAlg $ \(JPar l r c) -> do
-  m <- MVar.newEmptyMVar
-  Control.Concurrent.forkIO $
-    do y <- r; MVar.putMVar m y
-  x <- l
-  y' <- MVar.takeMVar m
-  return (c (JPar_ x y'))
+jparIOAlg = singAlg $ \(JPar l r c) -> jparIOImp l r c
+
+jparIOAlgC :: AlgebraC '[JPar] IO
+jparIOAlgC = [|| NT $ \(JPar l r c) -> jparIOImp l r c ||] $:# EndAC
+
+jparIOImp :: IO x -> IO x -> (JPar_ x -> b) -> IO b
+jparIOImp l r c =
+  do
+    m <- MVar.newEmptyMVar
+    Control.Concurrent.forkIO $
+      do y <- r; MVar.putMVar m y
+    x <- l
+    y' <- MVar.takeMVar m
+    return (c (JPar_ x y'))

@@ -117,6 +117,7 @@ data AlgPieces = AlgPieces
   , apPat         :: Dec
 --  , apPat'        :: Dec
   , apSmart       :: FunPieces
+  , apSmartM      :: FunPieces
   , apProxySmart  :: FunPieces
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
   , apNamedSmart  :: FunPieces
@@ -133,8 +134,7 @@ instance ToDecs FunPieces where
   toDecs (FunPieces {..}) = [pPragma, pSig, pFun]
 
 instance ToDecs AlgPieces where
-  -- toDecs (AlgPieces {..}) = [apTySyn] ++ [apPat, apPat'] ++ toDecs apSmart ++ toDecs apProxySmart
-  toDecs (AlgPieces {..}) = [apTySyn] ++ [apPat] ++ toDecs apSmart ++ toDecs apProxySmart
+  toDecs (AlgPieces {..}) = [apTySyn] ++ [apPat] ++ toDecs apSmart ++ toDecs apSmartM ++ toDecs apProxySmart
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
     ++ toDecs apNamedSmart
 #endif
@@ -176,6 +176,7 @@ makeGenPiecesFromDec baseName dec = do
       effStr  = dropTrailingUnderscore baseStr
       effName = mkName effStr
       funName = mkName (lowerHead effStr)
+      funMName = mkName (lowerHead effStr ++ "M")
       proxyFunName = mkName (lowerHead effStr ++ "P")
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
       namedFunName = mkName (lowerHead effStr ++ "N")
@@ -188,11 +189,16 @@ makeGenPiecesFromDec baseName dec = do
 
   sigName  <- newName "sig"
   nameName <- newName "name"
+  mName    <- newName "m"
   let effTy   = applyType (ConT effName) (map VarT freshParams)
       memberC = AppT (AppT (ConT ''Member) effTy) (VarT sigName)
       progRes = AppT (AppT (ConT ''Prog) (VarT sigName)) retTy'
       smartTy = ForallT (map plainTVForall (freshParams ++ [sigName])) [memberC]
                         (funType prefixTys' progRes)
+
+      algTy    = (ConT ''Algebra `AppT` VarT sigName) `AppT` VarT mName
+      smartMTy =  ForallT (map plainTVForall (freshParams ++ [sigName, mName]))
+                    [memberC] (funType (algTy : prefixTys') (AppT (VarT mName) retTy'))
       namedEffTy   = AppT (AppT (ConT ''WithName) (VarT nameName)) effTy
       namedMemberC = AppT (AppT (ConT ''Member) namedEffTy) (VarT sigName)
       proxyTy      = AppT (ConT ''Proxy) (VarT nameName)
@@ -225,15 +231,21 @@ makeGenPiecesFromDec baseName dec = do
 
   argNames <- mapM (\i -> newName ("a" ++ show i)) [1 .. length prefixTys']
   nName <- newName "n"
-  let smartLhs = Clause (map VarP argNames)
-                        (NormalB (VarE 'call `AppE`
-                                   (ConE 'Alg `AppE`
-                                      applyExp (ConE conName)
-                                        (map VarE argNames ++ [contExpr]))))
+  algName <- newName "alg"
+  let opExp = ConE 'Alg `AppE` applyExp (ConE conName) (map VarE argNames ++ [contExpr])
+      smartLhs = Clause (map VarP argNames)
+                        (NormalB (VarE 'call `AppE` opExp))
                         []
       smartSig = SigD funName smartTy
       smartFun = FunD funName [smartLhs]
       pragma   = PragmaD (InlineP funName Inline FunLike AllPhases)
+
+      smartMDef = Clause (map VarP (algName : argNames))
+                         (NormalB ((VarE 'callM `AppE` VarE algName) `AppE` opExp))
+                         []
+      smartMSig = SigD funMName smartMTy
+      smartFunM = FunD funMName [smartMDef]
+      pragmaM    = PragmaD (InlineP funMName Inline FunLike AllPhases)
 
       proxySmartLhs = Clause (map VarP (nName : argNames))
                        (NormalB (AppE (AppE (VarE 'callP) (VarE nName))
@@ -258,6 +270,7 @@ makeGenPiecesFromDec baseName dec = do
 
   pure AlgPieces{ apTySyn      = effTySyn, apPat = patDecl--, apPat' = patDecl'
                 , apSmart      = FunPieces pragma smartSig smartFun
+                , apSmartM     = FunPieces pragmaM smartMSig smartFunM
                 , apProxySmart = FunPieces proxyPragma proxySmartSig proxySmartFun
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
                 , apNamedSmart = FunPieces namedPragma namedSmartSig namedSmartFun
@@ -329,9 +342,9 @@ makeGenSmartFrom :: Name -> Q [Dec]
 makeGenSmartFrom baseName = do
   AlgPieces{..} <- makeGenPieces baseName
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
-  pure (toDecs apSmart ++ toDecs apNamedSmart ++ toDecs apProxySmart)
+  pure (toDecs apSmart ++ toDecs apSmartM ++ toDecs apNamedSmart ++ toDecs apProxySmart)
 #else
-  pure (toDecs apSmart ++ toDecs apProxySmart)
+  pure (toDecs apSmart ++ toDecs apSmartM ++ toDecs apProxySmart)
 #endif
 
 -- | Generate the full bundle of a generic operation from a type signature.
@@ -508,6 +521,7 @@ makeAlgPiecesFromDec baseName dec = do
       patName = effName
       patName' = mkName (effStr ++ "'")
       smartName = mkName (lowerHead effStr)
+      smartMName = mkName (lowerHead effStr ++ "M")
       proxySmartName = mkName (lowerHead effStr ++ "P")
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
       namedSmartName = mkName (lowerHead effStr ++ "N")
@@ -522,14 +536,22 @@ makeAlgPiecesFromDec baseName dec = do
   sigName   <- newName "sig"
   nameName  <- newName "name"
   retTyName <- newName "x"
+  mName     <- newName "m"
 
   -- Type signatures for the smart constructors
   let effTy   = applyType (ConT effName) (map VarT tvNames)
       memberC = AppT (AppT (ConT ''Member) effTy) (VarT sigName)
+      monadC  = AppT (ConT ''Monad) (VarT mName)
       progRes = AppT (AppT (ConT ''Prog) (VarT sigName)) (VarT retTyName)
+      mRes    = AppT (VarT mName) (VarT retTyName)
       opTy    = funType (map (\field -> if field == VarT kName then progRes else field) conFields) progRes
       smartTy = ForallT (map plainTVForall (tvNames ++ [sigName, retTyName]))
                   [memberC] opTy
+
+      algTy    = (ConT ''Algebra `AppT` VarT sigName) `AppT` VarT mName
+      smartMTy = ForallT (map plainTVForall (tvNames ++ [sigName, mName, retTyName]))
+                  [memberC, monadC] $ funType (algTy : map (\field -> if field == VarT kName then mRes else field)
+                                                           conFields) mRes
 
       namedEffTy   = AppT (AppT (ConT ''WithName) (VarT nameName)) effTy
       namedMemberC = AppT (AppT (ConT ''Member) namedEffTy) (VarT sigName)
@@ -544,6 +566,7 @@ makeAlgPiecesFromDec baseName dec = do
 
   -- Smart constructors
   nName <- newName "n"
+  algName <- newName "alg"
   argNames <- forM conFields $ \field ->
     if field == VarT kName
       then newName "a"
@@ -561,6 +584,10 @@ makeAlgPiecesFromDec baseName dec = do
                         (NormalB (VarE 'callJ `AppE` opExp))
                         []
       smart = makeFun smartName smartTy smartDef
+      smartMDef = Clause (map VarP (algName : argNames))
+                        (NormalB (joinExp ((VarE 'callM `AppE` VarE algName) `AppE` opExp)))
+                        []
+      smartM = makeFun smartMName smartMTy smartMDef
       proxySmartDef = Clause (map VarP ([nName] ++ argNames))
                         (NormalB (joinExp ((VarE 'callP `AppE` VarE nName) `AppE` opExp)))
                         []
@@ -592,6 +619,7 @@ makeAlgPiecesFromDec baseName dec = do
       , apPat        = patDecl
 --      , apPat'       = patDecl'
       , apSmart      = smart
+      , apSmartM     = smartM
       , apProxySmart = proxySmart
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
       , apNamedSmart = namedSmart
@@ -617,7 +645,7 @@ makeAlgSmartFrom :: Name -> Q [Dec]
 makeAlgSmartFrom baseName = do
   AlgPieces{..} <- makeAlgPieces baseName
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
-  pure (toDecs apSmart ++ toDecs apNamedSmart ++ toDecs apProxySmart)
+  pure (toDecs apSmart ++ toDecs apSmartM ++ toDecs apNamedSmart ++ toDecs apProxySmart)
 #else
   pure (toDecs apSmart ++ toDecs apProxySmart)
 #endif

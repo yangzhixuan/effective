@@ -218,6 +218,14 @@ interpretM
 interpretM mrephrase
   = handler @effs @oeffs @'[] (const id) mrephrase
 
+interpretMC
+  :: forall effs oeffs a .
+     (forall m . Monad m => AlgebraC oeffs m
+                         -> AlgebraC effs m)   -- ^ @mrephrase@
+  -> HandlerC effs oeffs '[] a a
+interpretMC mrephrase
+  = HandlerC (RunnerC $ \_ -> [|| id ||]) (AlgTransC mrephrase)
+
 {-# INLINE interpretM1 #-}
 interpretM1
   :: forall eff oeffs a.
@@ -226,6 +234,14 @@ interpretM1
   -> Handler '[eff] oeffs '[] a a
 interpretM1 mrephrase
   = handler @'[eff] @oeffs @'[] (const id) (\oalg -> mrephrase oalg :# endAlg)
+
+interpretM1C
+  :: forall eff oeffs a .
+     (forall m . Monad m => AlgebraC oeffs m
+                         -> CodeQ (eff m -.> m))   -- ^ @mrephrase@
+  -> HandlerC '[eff] oeffs '[] a a
+interpretM1C mrephrase
+  = HandlerC (RunnerC $ \_ -> [|| id ||]) (AlgTransC (\oalgc -> mrephrase oalgc $:# EndAC ))
 
 -- | Case splitting on the union of two effect rows. Note that `Union` is defined
 -- two be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
@@ -385,6 +401,26 @@ pipe (Handler run1 malg1)  (Handler run2 malg2)
 -- | A synonym for 'pipe'
 (\\) = pipe
 
+pipeC, (\\$)
+  :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3
+  . ( forall m . Monad m => MonadApply ts1 m
+    , forall m . Monad m => MonadApply ts2 m
+    , LL.PipeAT# effs2 oeffs1 oeffs2 ts1 ts2
+    , LL.FuseR# effs2 oeffs1 oeffs2 ts1 ts2
+    , ForwardsM (oeffs1 :\\ effs2) ts2
+    )
+  => HandlerC effs1 oeffs1 ts1 a1 a2 -- ^ Handler @h1@
+  -> HandlerC effs2 oeffs2 ts2 a2 a3    -- ^ Handler @h2@
+  -> HandlerC effs1
+             ((oeffs1 :\\ effs2) `Union` oeffs2)
+             (ts1 :++ ts2)
+             a1 a3
+pipeC (HandlerC run1 malg1) (HandlerC run2 malg2)
+  = HandlerC (LL.weakenRCC (LL.fuseRC malg2 run1 run2)) (LL.weakenCC (LL.pipeATC malg1 malg2))
+
+-- | A synonym for 'pipe'
+(\\$) = pipeC
+
 
 type Pass# effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
   ( PassAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 Monad
@@ -452,7 +488,7 @@ generalFuse p1 p2 (Handler r1 a1) (Handler r2 a2)
 -- and the handler must produce no effects.
 
 {-# INLINE handle #-}
-handle :: forall effs ts fs a b .
+handle :: forall effs ts a b .
   (Monad (Apply ts Identity))
   => Handler effs '[] ts a b      -- ^ Handler @h@ with no output effects
   -> Prog effs a                  -- ^ Program @p@ with effects @effs@
@@ -460,7 +496,7 @@ handle :: forall effs ts fs a b .
 handle (Handler run halg)
   = runIdentity . LL.getR run endAlg. eval (getAT halg (endAlg @Identity))
 
-handleC :: forall effs ts fs a b .
+handleC :: forall effs ts a b .
            ( Monad (Apply ts Identity), GenAlgebra effs )
         => HandlerC effs '[] ts a b -> CodeQ (Prog effs a) -> CodeQ b
 handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
@@ -480,7 +516,7 @@ type HandleM# effs xeffs =
 -- handled by the handler @h@. The effects @xeffs@ on @m@ must be forwardable by
 -- the transformer stack @ts@.
 -- (When an effect is both in @effs@ and @xeffs@, it is handled by @h@).
-handleM :: forall effs oeffs xeffs m ts fs a b .
+handleM :: forall effs oeffs xeffs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
   , ForwardsM xeffs ts
@@ -530,6 +566,28 @@ handleMFwds _ xalg (Handler run halg)
   . eval (unionAlg @effs @yeffs (getAT halg (weakenAlg xalg))
                               (getAT (fwds @_ @ts) (weakenAlg xalg)))
 
+handleMFwdsC :: forall yeffs effs oeffs xeffs m ts a b .
+  ( Monad m
+  , Monad (Apply ts m)
+  , GenAlgebra (effs `Union` yeffs)
+  , Injects oeffs xeffs
+  , Injects yeffs xeffs
+  , ForwardsM yeffs ts
+  , HandleM# effs yeffs )
+  => Proxy yeffs
+  -> AlgebraC xeffs m
+  -> HandlerC effs oeffs ts a b
+  -> CodeQ (Prog (effs `Union` yeffs) a)
+  -> CodeQ (m b)
+handleMFwdsC _ yalg (HandlerC (RunnerC r) (AlgTransC a)) p =
+  [||
+      let alg = $$(genAlgebra (a @m (weakenAlgC yalg)
+                                 `unionAlgC`
+                                  getATC (fwdsC @_ @ts) (weakenAlgC @yeffs yalg)))
+      in ($$(r (weakenAlgC yalg)) (eval' alg $$p))
+  ||]
+
+
 type HandleP# effs xeffs =
   ( HandleM# effs xeffs
   , Monad (Prog xeffs)
@@ -538,7 +596,7 @@ type HandleP# effs xeffs =
 -- | @handleP h p@ uses the handler @h@ to evaluate the program @p@, resulting
 -- in a program with effects @xeffs@ that are not recognised by @h@.
 -- If an effect is both in @effs@ and @xeffs@, it is handled by @h@.
-handleP :: forall effs oeffs xeffs ts fs a b .
+handleP :: forall effs oeffs xeffs ts a b .
   ( Monad (Apply ts (Prog xeffs))
   , ForwardsM xeffs ts
   , Injects oeffs xeffs
@@ -550,7 +608,7 @@ handleP = handleM progAlg
 
 -- | A variant of @handleP'@ where the program only uses the effects provided
 -- by the handler @h@.
-handleP' :: forall effs oeffs xeffs ts fs a b .
+handleP' :: forall effs oeffs xeffs ts a b .
   ( Monad (Apply ts (Prog xeffs))
   , Forwards xeffs ts
   , Injects oeffs xeffs
@@ -571,7 +629,7 @@ type HandleMApp# effs xeffs =
 -- In most cases, you should just use `handleM` but sometimes limitations regarding class
 -- constraints in GHC necessitate the use of @handleMApp@ (for example, in `Control.Effect.HOStore.Safe.handleHSM`.)
 
-handleMApp :: forall effs oeffs xeffs m ts fs a b .
+handleMApp :: forall effs oeffs xeffs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
   , ForwardsM xeffs ts
@@ -589,7 +647,7 @@ handleMApp xalg (Handler run halg)
 -- by simply '(:++)'.
 -- In most cases, you should just use `handleP` but sometimes limitations regarding class
 -- constraints in GHC necessitate the use of @handleP'@ (for example, in `Control.Effect.HOStore.Safe.handleHSM`.)
-handlePApp :: forall effs oeffs xeffs ts fs a b .
+handlePApp :: forall effs oeffs xeffs ts a b .
   ( ForwardsM xeffs ts
   , Monad (Apply ts (Prog xeffs))
   , Injects oeffs xeffs

@@ -12,6 +12,7 @@ module Control.Effect.Except (
 
   -- | Throwing exceptions of type @e@. This operation is algebraic.
   throw,
+  throwM,
   throwP,
 
   -- | Catching exceptions of type @e@. This operation is scoped.

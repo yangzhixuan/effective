@@ -23,7 +23,7 @@ module Control.Effect.Alternative (
   -- > empty >>= k = empty
   --
   -- '<|>' is a scoped operation.
-  Ap.empty, emptyP,
+  Ap.empty, emptyP, emptyM,
   (<|>), chooseP, chooseM,
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
   emptyN, chooseN,

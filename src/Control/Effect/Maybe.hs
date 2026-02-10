@@ -14,6 +14,7 @@ module Control.Effect.Maybe (
 
   -- | Throwing an exception.
   throw,
+  throwM,
   throwP,
   -- | @catch p h@ catches the exceptions thrown by @p@ and handles them with @h@.
   catch,

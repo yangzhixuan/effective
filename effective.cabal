@@ -151,17 +151,19 @@ library
 -- 
 test-suite concur
   type:          exitcode-stdio-1.0
-  ghc-options:   -threaded
+  ghc-options:   -threaded -ddump-splices -ddump-to-file
   main-is:       Concur.hs
   default-language: GHC2021
-  default-extensions: DataKinds
+  default-extensions: DataKinds, TemplateHaskell
   hs-source-dirs:  test
+  other-modules:
+    ConcurStaged
   build-depends:
     base               >= 4.16 && < 4.22,
     process,
     random,
     effective,
--- 
+--
 -- test-suite hostore
 --   type:          exitcode-stdio-1.0
 --   ghc-options:   -threaded

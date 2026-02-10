@@ -13,6 +13,7 @@ module Control.Effect.Writer (
 -- | The @`tell` w@ operation outputs @w@.
   tell,
   tellP,
+  tellM,
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
   tellN,
 #endif
@@ -34,7 +35,7 @@ module Control.Effect.Writer (
   -- ** Handlers
   writer,
   writer_,
-  writerIO,
+  writerIO, writerIOC,
   censors,
   uncensors,
 
@@ -95,6 +96,10 @@ writerIO :: Handler '[Tell String] '[Alg IO] '[] a a
 writerIO = interpret1 $
   \(Tell w k) -> do io (putStr w)
                     return k
+
+writerIOC :: HandlerC '[Tell String] '[Alg IO] '[] a a
+writerIOC = interpretM1C $ \oalgc ->
+  [|| NT $ \(Tell w k) -> do $$(callMC oalgc) (Alg (putStr w)); return k ||]
 
 $(makeScp [e| censor :: forall w. (w -> w) -> 1 |])
 

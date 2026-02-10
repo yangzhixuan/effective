@@ -208,6 +208,10 @@ callM :: forall eff effs a m s . (Member eff effs, Sequence s)
       => Algebra_ s effs m -> eff m a -> m a
 callM oalg = dispatch oalg
 
+callMC :: forall eff effs a m x. (Member eff effs)
+       => AlgebraC effs m -> CodeQ (eff m x -> m x)
+callMC oalg = [|| at $$(dispatchC oalg) ||]
+
 -- | @unsafeCallM n oalg@ is the @n@-th component of @oalg@.
 unsafeCallM :: forall eff effs a m s . Sequence s
             => Int -> Algebra_ s effs m -> eff m a -> m a

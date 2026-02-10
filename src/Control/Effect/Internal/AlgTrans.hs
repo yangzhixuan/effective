@@ -122,6 +122,11 @@ algTrans1 :: forall eff oeffs ts cs
           -> AlgTrans '[eff] oeffs ts cs
 algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) -> at oalg :# endAlg
 
+algTrans1C :: forall eff oeffs ts cs
+          .  (forall m. cs m => AlgebraC oeffs m -> CodeQ (eff (Apply ts m) -.> Apply ts m))
+          -> AlgTransC '[eff] oeffs ts cs
+algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg $:# EndAC
+
 -- | Algebra transformer that doesn't need an output effect.
 {-# INLINE algTrans' #-}
 algTrans' :: forall effs oeffs ts cs
@@ -410,6 +415,21 @@ pipeAT at1 at2 = AlgTrans $ \oalg ->
     appendAlg @(oeffs1 :\\ effs2) @effs2
       (getAT (fwds @(oeffs1 :\\ effs2) @ts2) (weakenAlg oalg))
       (getAT at2 (weakenAlg oalg)))
+
+pipeATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+          ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
+          , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 )
+        => AlgTransC effs1 oeffs1 ts1 cs1
+        -> AlgTransC effs2 oeffs2 ts2 cs2
+        -> AlgTransC effs1
+                     ((oeffs1 :\\ effs2) `Union` oeffs2)
+                     (ts1 :++ ts2)
+                     (CompC ts2 cs1 cs2)
+pipeATC at1 at2 = AlgTransC $ \oalg ->
+  getATC at1 (weakenAlgC $
+    appendAlgC @(oeffs1 :\\ effs2) @effs2
+      (getATC (fwdsC @(oeffs1 :\\ effs2) @ts2) (weakenAlgC oalg))
+      (getATC at2 (weakenAlgC oalg)))
 
 
 infixr 9 `passAT`

@@ -18,6 +18,7 @@ module Control.Effect.Reader (
 -- | Read the value of the environment
   ask,
   askP,
+  askM,
   asks,
 
 -- | Execute a computation in a transformed environment
