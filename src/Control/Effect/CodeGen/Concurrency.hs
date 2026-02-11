@@ -32,6 +32,7 @@ import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 
 import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.ScopedC
 import Control.Effect.CodeGen.Gen
 import Control.Effect.CodeGen.Up
 import Control.Effect.CodeGen.Down
@@ -48,18 +49,12 @@ import Data.Kind (Type)
 import Data.HFunctor
 import Data.Iso
 
--- TODO: Operations of the form @sig (m (CodeQ a)) -> m (CodeQ a)@ should probably be a new
--- operation family.
+-- | Underlying first-order signature for staged parallel composition.
+data ParUp_ k = ParUp_ k k deriving Functor
 
--- | Signature for the restricted par operation
-data ParUp (f :: Type -> Type) x where
-  ParUp :: forall y x f. f (CodeQ y) -> f (CodeQ y) -> (CodeQ y -> x) -> ParUp f x
+type ParUp = (ScpC ParUp_)
 
-instance Functor (ParUp f) where
-  fmap f (ParUp p q k) = ParUp p q (f . k)
-
-instance HFunctor ParUp where
-  hmap f (ParUp p q k) = ParUp (f p) (f q) k
+pattern ParUp x y k = ScpC (ParUp_ x y) k
 
 -- | Restricted par operation
 parUp :: Member ParUp sig => Prog sig (CodeQ x) -> Prog sig (CodeQ x) -> Prog sig (CodeQ x)

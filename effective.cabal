@@ -72,6 +72,7 @@ library
     Control.Effect.CodeGen.SoPU
     Control.Effect.CodeGen.Nondet
     Control.Effect.CodeGen.Concurrency
+    Control.Effect.CodeGen.ScopedC
 
     Control.Monad.Trans.CutList
     Control.Monad.Trans.List

@@ -29,6 +29,10 @@ class Split a b | a -> b, b -> a where
 split :: (Member CodeGen sig, Split a b) => CodeQ a -> Prog sig b
 split = liftGen . genSplit
 
+-- | Split operation for meta-programs.
+splitM :: (Member CodeGen sig, Split a b) => Algebra sig m -> CodeQ a -> m b
+splitM alg = liftGenA alg . genSplit
+
 -- | With the extension LambdaCase, a useful pattern in meta-programs is
 --
 -- > genCase a $ \case
