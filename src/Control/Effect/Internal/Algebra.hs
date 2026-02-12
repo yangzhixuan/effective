@@ -80,8 +80,10 @@ unsafeAlgebra :: s Any -> Algebra_ s effs m
 unsafeAlgebra cs = Algebra (Case cs)
 
 {-# INLINE endCase #-}
-endCase :: Sequence s => Case_ s '[] f x y
+{-# INLINE nilCase #-}
+endCase, nilCase :: Sequence s => Case_ s '[] f x y
 endCase = Case $ nil
+nilCase = endCase
 
 {-# INLINE consCase #-}
 consCase :: Sequence s => (eff f x -> y) -> Case_ s effs f x y -> Case_ s (eff ': effs) f x y
@@ -96,8 +98,10 @@ headCase :: Sequence s => Case_ s (eff:effs) f x y -> (eff f x -> y)
 headCase (Case aas) = case view aas of Just (a, _) -> unsafeCoerce @Any @_ a
 
 {-# INLINE endAlg #-}
-endAlg :: forall f s. Sequence s => Algebra_ s '[] f
+{-# INLINE nilAlg #-}
+endAlg, nilAlg :: forall f s. Sequence s => Algebra_ s '[] f
 endAlg = Algebra $ endCase
+nilAlg = endAlg
 
 {-# INLINE tailAlg #-}
 tailAlg :: forall eff effs f s. Sequence s => Algebra_ s (eff ': effs) f -> Algebra_ s effs f

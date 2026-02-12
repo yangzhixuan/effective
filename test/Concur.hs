@@ -219,10 +219,10 @@ stagedIntro =
 -- Fully staged
 
 stagedIntroFull :: IO (Either String ())
-stagedIntroFull = $$(stageHM' (Proxy @'[]) (parUpGenIO :# genMAlg)
-  ((((ccsByQSemS @ActNames \\ reader (M.empty :: QSemMapS ActNames)) \\ except @(CodeQ String)) |> writerGenIO)
-    `unionHdlAT` weakenC (fwds @'[ParUp] @'[ReaderT _] `compAT` scpCExceptFwd @ParUp_))
+stagedIntroFull = $$(stageHM' (Proxy @'[Par]) (parGenIO :# genMAlg)
+  ((ccsByQSemS @ActNames \\ reader (M.empty :: QSemMapS ActNames) \\ except @(CodeQ String)) |> writerGenIO)
   bohemGen)
+
 {-
     do let childProc_airv
              = do x_airw <- putStrLn "Oh poor boy"
@@ -238,8 +238,8 @@ stagedIntroFull = $$(stageHM' (Proxy @'[]) (parUpGenIO :# genMAlg)
                   x_airE <- putStrLn "I need no sympathy"
                   return ()
        forkIO childProc_airB
-       do x_airF <- putStrLn "I am just a poor boy"
-          x_airG <- QSem.waitQSem x_airz
-          x_airH <- QSem.signalQSem x_airA
-          return (Right ())
+       x_airF <- putStrLn "I am just a poor boy"
+       x_airG <- QSem.waitQSem x_airz
+       x_airH <- QSem.signalQSem x_airA
+       return (Right ())
 -}

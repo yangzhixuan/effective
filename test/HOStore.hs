@@ -66,7 +66,7 @@ progS = do iRef <- Safe.new @Int @w 1
            return (f i)
 
 test4 :: Int
-test4 = runIdentity (Safe.handleHSM @'[] absurdEffs progS') where
+test4 = runIdentity (Safe.handleHSM @'[] nilAlg progS') where
   progS' :: forall w. Prog (Safe.HSEffs w) Int
   progS' = progS @w
 

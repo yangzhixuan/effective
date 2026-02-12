@@ -66,15 +66,14 @@ instance ParUp_ $~> ParUp_ where
 parUp :: Member ParUp sig => Prog sig (CodeQ x) -> Prog sig (CodeQ x) -> Prog sig (CodeQ x)
 parUp p q = call (ParUp p q id)
 
--- | Staged par operation on @GenM IO@ using the native implementation of `forkIO`
-parUpGenIO :: ParUp (GenM IO) x -> GenM IO x
-parUpGenIO = bwd scpCIso $ (\(ParUp' p q) ->
-  GenM $ \k -> [|| do let childProc = $$(runGenM (fmap (const [|| () ||]) q))
-                      forkIO childProc
-                      $$(unGenM p k)
-               ||])
+-- | Par operation on @GenM IO@ using the native implementation of `forkIO`
+parGenIO :: Par (GenM IO) x -> GenM IO x
+parGenIO (Par p q) = GenM $ \k ->
+  [|| do let childProc = $$(runGenM (fmap (const [|| () ||]) q))
+         forkIO childProc
+         $$(unGenM p k)
+  ||]
 
-{-
 -- | The operation `par` on `CResT` needs to perform pattern matching on the resumption
 -- monad, but `CResUpT` can't be pattern matched. Therefore here we simply
 -- `down` the two processes and perform `par` at the object level. As a result,
@@ -110,4 +109,3 @@ yResUpAT = AlgTrans $ \oalg ->
   (\(Alg (UpOp o k))        -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))) :#
   (\(Alg (Yield_ a p))      -> RUp.yield a (return . p)) :#.
   (\(Scp (MapYield_ f g p)) -> RUp.mapYield f g p)
--}

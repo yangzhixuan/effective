@@ -149,7 +149,7 @@ library
 --     Nondet,
 --     Parser,
 --     State,
--- 
+
 test-suite concur
   type:          exitcode-stdio-1.0
   ghc-options:   -threaded -ddump-splices -ddump-to-file
@@ -165,50 +165,50 @@ test-suite concur
     random,
     containers,
     effective,
---
--- test-suite hostore
---   type:          exitcode-stdio-1.0
---   ghc-options:   -threaded
---   main-is:       HOStore.hs
---   default-language: GHC2021
---   default-extensions: DataKinds
---   hs-source-dirs:  test
---   build-depends:
---     base               >= 4.16 && < 4.22,
---     effective,
--- 
--- test-suite staged
---   type:          exitcode-stdio-1.0
---   main-is:       Staged.hs
---   default-language: GHC2021
---   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
---   ghc-options: -ddump-to-file -ddump-splices
---   hs-source-dirs:  test
---   build-depends:
---     base               >= 4.16 && < 4.22,
---     effective,
---     template-haskell   >= 2.18 && < 2.24,
---     transformers       >= 0.4  && < 0.7,
--- 
---   other-modules:
---     StagedGen
+
+test-suite hostore
+  type:          exitcode-stdio-1.0
+  ghc-options:   -threaded
+  main-is:       HOStore.hs
+  default-language: GHC2021
+  default-extensions: DataKinds
+  hs-source-dirs:  test
+  build-depends:
+    base               >= 4.16 && < 4.22,
+    effective,
+
+test-suite staged
+  type:          exitcode-stdio-1.0
+  main-is:       Staged.hs
+  default-language: GHC2021
+  default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+  ghc-options: -ddump-to-file -ddump-splices
+  hs-source-dirs:  test
+  build-depends:
+    base               >= 4.16 && < 4.22,
+    effective,
+    template-haskell   >= 2.18 && < 2.24,
+    transformers       >= 0.4  && < 0.7,
+
+  other-modules:
+    StagedGen
 
 
--- test-suite plugin
---   type:          exitcode-stdio-1.0
---   ghc-options:   -fplugin Control.Effect.Plugin
---   main-is:       PluginTest.hs
---   default-language: GHC2021
---   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
---   hs-source-dirs:  test
---   build-depends:
---     base               >= 4.16 && < 4.22,
---     effective,
---     template-haskell   >= 2.18 && < 2.24,
---     transformers       >= 0.4  && < 0.7,
---
---   other-modules:
---     StagedGen
+test-suite plugin
+  type:          exitcode-stdio-1.0
+  ghc-options:   -fplugin Control.Effect.Plugin
+  main-is:       PluginTest.hs
+  default-language: GHC2021
+  default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+  hs-source-dirs:  test
+  build-depends:
+    base               >= 4.16 && < 4.22,
+    effective,
+    template-haskell   >= 2.18 && < 2.24,
+    transformers       >= 0.4  && < 0.7,
+
+  other-modules:
+    StagedGen
 
 test-suite misc
   import: common
@@ -223,16 +223,16 @@ test-suite misc
     effective,
     hedgehog           >= 1.5  && < 1.6,
     template-haskell   >= 2.18 && < 2.24,
--- 
--- test-suite eval
---   import:        common
---   type:          exitcode-stdio-1.0
---   ghc-options:   -threaded
---   main-is:       Eval.hs
---   default-language: GHC2021
---   default-extensions: DataKinds
---   hs-source-dirs:  test
---   build-depends:
---     base               >= 4.16 && < 4.22,
---     effective,
---     transformers       >= 0.4  && < 0.7,
+
+test-suite eval
+  import:        common
+  type:          exitcode-stdio-1.0
+  ghc-options:   -threaded
+  main-is:       Eval.hs
+  default-language: GHC2021
+  default-extensions: DataKinds
+  hs-source-dirs:  test
+  build-depends:
+    base               >= 4.16 && < 4.22,
+    effective,
+    transformers       >= 0.4  && < 0.7,

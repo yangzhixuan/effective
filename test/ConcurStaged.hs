@@ -80,9 +80,9 @@ threadIdC = interpretM1C $ \alg -> [|| NT $ \(Par a b) ->
 
 -- Fully staged version of bohem
 
-bohemGen :: CodeQ () ! [Act HR, Res HR, ParUp, Tell String]
-bohemGen = parUp (resHS $ parUp (do tell "I am just a poor boy"; handshake; return [||()||])
-                         (do shakehand; tell "I need no sympathy"; return [||()||]))
+bohemGen :: CodeQ () ! [Act HR, Res HR, Par, Tell String]
+bohemGen = par (resHS $ par (do tell "I am just a poor boy"; handshake; return [||()||])
+                        (do shakehand; tell "I need no sympathy"; return [||()||]))
                  (do tell "Oh poor boy"; return [||()||])
 
 type QSemMapS a = M.Map a (CodeQ QSem, CodeQ QSem)
