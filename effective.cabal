@@ -163,6 +163,7 @@ test-suite concur
     base               >= 4.16 && < 4.22,
     process,
     random,
+    containers,
     effective,
 --
 -- test-suite hostore

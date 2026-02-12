@@ -23,9 +23,9 @@ import Control.Effect.CodeGen.Down
 import Control.Effect
 import Control.Effect.Internal.AlgTrans
 import Control.Effect.Family.Algebraic
+import Control.Effect.Internal.Handler ( HandleM# )
 import Data.Functor.Identity
 import Data.Iso
-import Data.HFunctor
 import Data.List.Kind
 
 -- | The effects supported by the monad `Gen`.
@@ -103,3 +103,53 @@ stageM :: forall m m' effs oeffs ts cs a.
          -> Prog (effs `Union` GenMEffects m) (CodeQ a)
          -> CodeQ (m' a)
 stageM _ at = down . evalGenM @m at
+
+-- | Handle and run a meta-program, and generate the code. In most cases we don't really
+-- want to run the meta-program, so the function `stage` is probably more useful.
+stageH :: forall effs oeffs ts a b.
+         ( Monad (Apply ts Gen)
+         , Injects oeffs GenEffects
+         , ForwardsM GenEffects ts
+         , HandleM# effs GenEffects)
+      => Handler effs oeffs ts (CodeQ a) (CodeQ b)
+      -> Prog (effs `Union` GenEffects) (CodeQ a)
+      -> CodeQ b
+stageH h p =
+  let cb = handleMFwds (Proxy @GenEffects) genAlg h p
+  in [|| runIdentity $$(down @Gen @Identity cb) ||]
+
+-- | Handle and run a meta-program, and generate the code. In most cases we don't really
+-- want to run the meta-program, so the function `stageM` is probably more useful.
+stageHM :: forall m effs oeffs ts a b.
+         ( Monad (Apply ts (GenM m))
+         , Monad m
+         , Injects oeffs (GenMEffects m)
+         , ForwardsM (GenMEffects m) ts
+         , HandleM# effs (GenMEffects m))
+      => Handler effs oeffs ts (CodeQ a) (CodeQ b)
+      -> Prog (effs `Union` GenMEffects m) (CodeQ a)
+      -> CodeQ (m b)
+stageHM h p =
+  let cb = handleMFwds (Proxy @(GenMEffects m)) genMAlg h p
+  in down @(GenM m) @m cb
+
+
+-- | This is an ad-hoc generalisation of `stageHM'` which allows an additional wrapper `f`
+-- in the result type, but multiple layers of wrappers `f1 (f2 (... CodeQ b))` is not supported.
+-- There should be a better way to do this.
+stageHM' :: forall m f g xeffs yeffs effs oeffs ts a b.
+         ( Monad (Apply ts (GenM m))
+         , Monad m
+         , f $~> g
+         , Injects oeffs xeffs
+         , Injects yeffs xeffs
+         , ForwardsM yeffs ts
+         , HandleM# effs yeffs)
+      => Proxy yeffs
+      -> Algebra xeffs (GenM m)
+      -> Handler effs oeffs ts (CodeQ a) (f (CodeQ b))
+      -> Prog (effs `Union` yeffs) (CodeQ a)
+      -> CodeQ (m (g b))
+stageHM' _ alg h p =
+  let cb = handleMFwds (Proxy @yeffs) alg h p
+  in down @(GenM m) @m (fmap down cb)

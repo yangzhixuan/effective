@@ -7,13 +7,16 @@ import Control.Effect.IO
 import Control.Effect.Writer
 import Control.Effect.Concurrency
 import Control.Effect.Except
+import Control.Effect.Internal.AlgTrans (weakenC)
 import Control.Effect.Family.Algebraic
 import Control.Monad
 import Control.Effect.WithName
 import Control.Effect.Yield
 import Control.Effect.Reader
+import Control.Effect.CodeGen
 import System.Process
 import System.Random
+import qualified Data.Map as M
 
 import Data.Proxy
 import qualified Control.Concurrent.QSem as QSem
@@ -25,15 +28,6 @@ ioPar = ioAlg # parIOAlg # jparIOAlg
 
 main :: IO ()
 main = return ()
-
-handshake :: Member (Act HR) sig => Prog sig ()
-handshake = act (Action Handshake)
-
-shakehand :: Member (Act HR) sig => Prog sig ()
-shakehand = act (CoAction Handshake)
-
-resHS :: Member (Res HR) sig => Prog sig x -> Prog sig x
-resHS x = res (Action Handshake) (res (CoAction Handshake) x)
 
 prog :: Members '[Par, Act HR, Res HR, Tell String] sig => Prog sig ()
 prog = resHS (par (do tell "A"; handshake; tell "C")
@@ -220,3 +214,45 @@ stagedIntro =
        |>$ ccsByQSemC @ActNames
        |>$ writerIOC)
     [|| bohem ||])
+
+
+-- Fully staged
+
+stagedIntroFull :: IO (Either String ())
+stagedIntroFull = $$(stageHM' (Proxy @'[]) (parUpGenIO :# genMAlg)
+  ((((ccsByQSemS @ActNames \\ reader (M.empty :: QSemMapS ActNames)) \\ except @(CodeQ String)) |> writerGenIO)
+    `unionHdlAT` weakenC (fwds @'[ParUp] @'[ReaderT _] `compAT` scpCExceptFwd @ParUp_))
+  bohemGen)
+{-
+    do let childProc_air6
+             = fmap
+                 (const ())
+                 (do x_air7 <- putStrLn "Oh poor boy"
+                     return (Right ()))
+       ghc-internal:GHC.Internal.Conc.Sync.forkIO childProc_air6
+       do x_air8 <- QSem.newQSem 0
+          do x_air9 <- QSem.newQSem 0
+             do x_aira <- QSem.newQSem 0
+                do x_airb <- QSem.newQSem 0
+                   do let childProc_airc
+                            = fmap
+                                (const ())
+                                (do x_aird <- QSem.signalQSem x_aira
+                                    do x_aire <- QSem.waitQSem x_airb
+                                       do x_airf <- putStrLn "I need no sympathy"
+                                          return (Right ()))
+                      ghc-internal:GHC.Internal.Conc.Sync.forkIO childProc_airc
+                      do x_airg <- putStrLn "I am just a poor boy"
+                         do x_airh <- QSem.waitQSem x_aira
+                            do x_airi <- QSem.signalQSem x_airb
+                               case Right () of
+                                 Left a_airj
+                                   -> case Left a_airj of
+                                        Left a_airk -> return (Left a_airk)
+                                        Right b_airl -> return (Right b_airl)
+                                 Right b_airm
+                                   -> case Right b_airm of
+                                        Left a_airn -> return (Left a_airn)
+                                        Right b_airo -> return (Right b_airo)
+
+-}

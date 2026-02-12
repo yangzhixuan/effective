@@ -44,21 +44,35 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.CRes
 import Control.Monad.Trans.YRes
 import Control.Monad.Trans.ResumpUp as RUp
+import Control.Concurrent (forkIO)
 
 import Data.Kind (Type)
-import Data.HFunctor
 import Data.Iso
 
 -- | Underlying first-order signature for staged parallel composition.
 data ParUp_ k = ParUp_ k k deriving Functor
 
-type ParUp = (ScpC ParUp_)
+type ParUp = ScpC ParUp_
 
 pattern ParUp x y k = ScpC (ParUp_ x y) k
 
--- | Restricted par operation
+pattern ParUp' :: f (CodeQ k) -> f (CodeQ k) -> Scp ParUp_ f (CodeQ k)
+pattern ParUp' x y = Scp (ParUp_ x y)
+
+instance ParUp_ $~> ParUp_ where
+  down (ParUp_ x y) = [|| ParUp_ $$x $$y ||]
+
+-- | Staged par operation
 parUp :: Member ParUp sig => Prog sig (CodeQ x) -> Prog sig (CodeQ x) -> Prog sig (CodeQ x)
 parUp p q = call (ParUp p q id)
+
+-- | Staged par operation on @GenM IO@ using the native implementation of `forkIO`
+parUpGenIO :: ParUp (GenM IO) x -> GenM IO x
+parUpGenIO = bwd scpCIso $ (\(ParUp' p q) ->
+  GenM $ \k -> [|| do let childProc = $$(runGenM (fmap (const [|| () ||]) q))
+                      forkIO childProc
+                      $$(unGenM p k)
+               ||])
 
 -- | The operation `par` on `CResT` needs to perform pattern matching on the resumption
 -- monad, but `CResUpT` can't be pattern matched. Therefore here we simply

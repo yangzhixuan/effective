@@ -61,7 +61,6 @@ import qualified Control.Concurrent.MVar as MVar
 import qualified Control.Concurrent.QSem as QSem
 import Control.Monad.Trans.CRes
 import qualified Data.Map as M
-import Data.HFunctor
 
 -- | Algebra for the resumption-based handler of t`Par`, t`Act`, and t`Res`.
 resumpAlg :: (Action a, Monad m) => Algebra '[Act a, Par, Res a] (C.CResT a m)

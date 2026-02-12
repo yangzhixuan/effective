@@ -264,6 +264,15 @@ unionHdl :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
        -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
 unionHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenC (unionAT a1 a2))
 
+-- | Case splitting on the union of two effect rows, and the two handlers may output
+-- different effects.
+unionHdlAT :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
+          UnionAT# effs1 effs2 oeffs1 oeffs2
+       => Handler  effs1 oeffs1 ts a1 a2
+       -> AlgTrans effs2 oeffs2 ts Monad
+       -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
+unionHdlAT (Handler r1 a1) a2 = Handler (weakenR r1) (weakenC (unionAT a1 a2))
+
 {-# INLINE appendHdl #-}
 -- | Case splitting on the append of two effect rows, and the two handlers may output
 -- different effects.

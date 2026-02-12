@@ -66,7 +66,7 @@ module Control.Effect
   , interpret, interpretAT, interpretM, interpretMC
   , interpret1, interpretAT1, interpretM1, interpretM1C
   , caseHdl
-  , unionHdl
+  , unionHdl, unionHdlAT
 
   -- ** Fusion-based combinators
   , fuse, (|>)

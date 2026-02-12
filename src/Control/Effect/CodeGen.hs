@@ -28,6 +28,7 @@ module Control.Effect.CodeGen (
   , module Control.Effect.CodeGen.Type
   , module Control.Effect.CodeGen.Gen
   , module Control.Effect.CodeGen.Eval
+  , module Control.Effect.CodeGen.ScopedC
   , module Control.Effect.CodeGen.JoinFlow
   , module Control.Effect.CodeGen.Nondet
   , module Control.Effect.CodeGen.Concurrency
@@ -39,6 +40,7 @@ import Control.Effect.CodeGen.Down
 import Control.Effect.CodeGen.Type
 import Control.Effect.CodeGen.Gen
 import Control.Effect.CodeGen.Eval
+import Control.Effect.CodeGen.ScopedC
 import Control.Effect.CodeGen.JoinFlow
 import Control.Effect.CodeGen.Nondet
 import Control.Effect.CodeGen.Concurrency

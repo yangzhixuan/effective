@@ -121,7 +121,10 @@ genLet = liftGen . genLet_
 genLetRec :: Member CodeGen sig => (CodeQ a -> CodeQ a) -> Prog sig (CodeQ a)
 genLetRec = liftGen . genLetRec_
 
--- | Perform code generation on a monad @m@.
+-- | Perform code generation on a monad @m@. By our usual naming convention this
+-- function should be called @liftGenM@ because it is a version of @liftGen@ on
+-- a monad @m@, but here we already have `GenM` and `liftGenM`, so this function
+-- has to be called something else.
 liftGenA :: Member CodeGen sig => Algebra sig m -> Gen a -> m a
 liftGenA alg o = callM alg (Alg o)
 
@@ -139,12 +142,20 @@ genLetRecM alg = callM alg . Alg .  genLetRec_
 type CodeGenM m = Alg (GenM m)
 
 -- | Generic code-generation operation.
-liftGenM :: forall m sig a. Member (CodeGenM m) sig => GenM m a -> Prog sig a
+liftGenM :: forall n sig a. Member (CodeGenM n) sig => GenM n a -> Prog sig a
 liftGenM o = call (Alg o)
 
+-- | Generic code-generation operation.
+liftGenMM :: forall m n sig a. Member (CodeGenM n) sig => Algebra sig m -> GenM n a -> m a
+liftGenMM alg o = callM alg (Alg o)
+
 -- | Generate a do-binding.
-genDo :: (Monad m, Member (CodeGenM m) sig) => CodeQ (m a) -> Prog sig (CodeQ a)
+genDo :: (Monad n, Member (CodeGenM n) sig) => CodeQ (n a) -> Prog sig (CodeQ a)
 genDo = liftGenM . genDo_
+
+-- | Generate a do-binding for a monad supporting code-generation.
+genDoM :: (Monad n, Member (CodeGenM n) sig) => Algebra sig m -> CodeQ (n a) -> m (CodeQ a)
+genDoM alg = liftGenMM alg . genDo_
 
 -- | Whenever we have an effect @CodeGenM m@, we can use the effect `CodeGen` as
 -- well (for example, generating let-bindings using `genLet`).

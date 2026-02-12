@@ -11,9 +11,8 @@ import Data.Iso
 import qualified Data.Iso as Iso
 import Data.Kind (Type, Constraint)
 import Data.HFunctor
-import Control.Effect.Internal.Algebra
-import Control.Effect.Internal.Forward
 import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Except
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Lazy as L
 
@@ -65,6 +64,12 @@ instance Functor sig => Forward (ScpC sig) (ReaderT s) where
 scpCMaybeFwd :: Functor sig => AlgTrans '[ScpC sig] '[ScpC sig, CodeGen] '[MaybeT] Monad
 scpCMaybeFwd = algTrans1 $ \oalg -> Iso.bwd scpCIso (\(Scp op) -> MaybeT $
   let x = fmap (fmap (down @Maybe @Maybe) . runMaybeT) op
+      y = Iso.fwd scpCIso (callM oalg) (Scp x)
+  in do cMb <- y; splitM oalg cMb)
+
+scpCExceptFwd :: Functor sig => AlgTrans '[ScpC sig] '[ScpC sig, CodeGen] '[ExceptT (CodeQ e)] Monad
+scpCExceptFwd = algTrans1 $ \oalg -> Iso.bwd scpCIso (\(Scp op) -> ExceptT $
+  let x = fmap (fmap (down @(Either _) @(Either _)) . runExceptT) op
       y = Iso.fwd scpCIso (callM oalg) (Scp x)
   in do cMb <- y; splitM oalg cMb)
 

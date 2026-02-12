@@ -6,12 +6,27 @@ import Control.Effect.IO
 import Control.Effect.Writer
 import Control.Effect.Concurrency
 import Control.Effect.Reader
+import Control.Effect.CodeGen
+import qualified Control.Effect.Reader as R
+import qualified Control.Effect.Except as E
 import qualified Control.Concurrent.QSem as QSem
+import Control.Concurrent ( forkIO, QSem )
+import qualified Data.Map as M
 
 type IOPar = '[Alg IO, Par, JPar]
 
 data ActNames = Handshake | Raisehand deriving (Show, Eq, Ord)
 type HR = CCSAction ActNames
+
+handshake :: Member (Act HR) sig => Prog sig ()
+handshake = act (Action Handshake)
+
+shakehand :: Member (Act HR) sig => Prog sig ()
+shakehand = act (CoAction Handshake)
+
+resHS :: Member (Res HR) sig => Prog sig x -> Prog sig x
+resHS x = res (Action Handshake) (res (CoAction Handshake) x)
+
 
 ioParC :: AlgebraC IOPar IO
 ioParC = ioAlgC $# parIOAlgC $# jparIOAlgC
@@ -61,3 +76,41 @@ threadIdC :: HandlerC '[Par] '[Par, Local String] '[] a a
 threadIdC = interpretM1C $ \alg -> [|| NT $ \(Par a b) ->
   $$(parMC alg (localMC alg [|| (++ "L")||] [||a||])
                (localMC alg [|| (++ "R")||] [||b||])) ||]
+
+
+-- Fully staged version of bohem
+
+bohemGen :: CodeQ () ! [Act HR, Res HR, ParUp, Tell String]
+bohemGen = parUp (resHS $ parUp (do tell "I am just a poor boy"; handshake; return [||()||])
+                         (do shakehand; tell "I need no sympathy"; return [||()||]))
+                 (do tell "Oh poor boy"; return [||()||])
+
+type QSemMapS a = M.Map a (CodeQ QSem, CodeQ QSem)
+
+ccsByQSemS :: forall n a . Ord n =>
+  Handler '[Act (CCSAction n), Res (CCSAction n)]
+          '[ R.Ask (QSemMapS n), R.Local (QSemMapS n)
+           , E.Throw (CodeQ String), CodeGenM IO ]
+          '[]
+          a
+          a
+ccsByQSemS = interpretM $ \oalg ->
+  (\(Act n k) -> do
+    m <- R.askM @(QSemMapS n) oalg
+    case M.lookup (getActionName n) m of
+      Nothing -> E.throwM oalg ([||"Channel used before creation!"||] :: CodeQ String)
+      Just (cs1, cs2) ->
+        case n of
+          Action   _ -> do genDoM oalg [||QSem.waitQSem $$cs1||]; genDoM oalg [||QSem.signalQSem $$cs2||]
+          CoAction _ -> do genDoM oalg [||QSem.signalQSem $$cs1||]; genDoM oalg [||QSem.waitQSem $$cs2||]
+    return k
+  ) :#.
+  (\(Res a p) -> do
+    m <- R.askM @(QSemMapS n) oalg
+    cs1 <- genDoM oalg [||QSem.newQSem 0||];
+    cs2 <- genDoM oalg [||QSem.newQSem 0||];
+    let m' = M.insert (getActionName a) (cs1, cs2) m
+    R.localM oalg (const m') p)
+
+writerGenIO :: Handler '[Tell String] '[CodeGenM IO] '[] a a
+writerGenIO = interpret1 $ \(Tell s k) -> do genDo [|| putStrLn s ||]; return k
