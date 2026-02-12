@@ -3,6 +3,7 @@ module Control.Effect.CodeGen.ScopedC where
 
 import Control.Effect
 import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.SoPU
 import Control.Effect.CodeGen.Down
 import Control.Effect.CodeGen.Split
 import Control.Effect.CodeGen.Gen
@@ -17,9 +18,9 @@ import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Lazy as L
 
 -- | The family of _staged scoped_ operations, which are scoped operations with the
--- restriction that the return value must be code. See `scpCIso`.
+-- restriction that the return value must be sum of products of code. See `scpCIso`.
 data ScpC (sig :: Type -> Type) (m :: Type -> Type) (x :: Type) where
-  ScpC :: sig (m (CodeQ y)) -> (CodeQ y -> x) -> ScpC sig m x
+  ScpC :: IsSOP y => sig (m y) -> (y -> x) -> ScpC sig m x
 
 instance Functor (ScpC sig m) where
   fmap f (ScpC op k) = ScpC op (f . k)
@@ -29,12 +30,12 @@ instance Functor sig => HFunctor (ScpC sig) where
 
 -- | The isomorphism characterising `ScpC`.
 scpCIso :: Functor m => Iso (forall x. ScpC sig m x -> m x)
-                            (forall x. Scp sig m (CodeQ x) -> m (CodeQ x))
+                            (forall x. IsSOP x => Scp sig m x -> m x)
 scpCIso = Iso fwd bwd where
-  fwd :: (forall x. ScpC sig m x -> m x) -> (forall x. Scp sig m (CodeQ x) -> m (CodeQ x))
+  fwd :: (forall x. ScpC sig m x -> m x) -> (forall x. IsSOP x => Scp sig m x -> m x)
   fwd f (Scp op) = f (ScpC op id)
 
-  bwd :: Functor m => (forall x. Scp sig m (CodeQ x) -> m (CodeQ x)) -> (forall x. ScpC sig m x -> m x)
+  bwd :: Functor m => (forall x. IsSOP x => Scp sig m x -> m x) -> (forall x. ScpC sig m x -> m x)
   bwd g (ScpC op k) = fmap k $ g (Scp op)
 
 -- | Obtaining a staged scoped operation from the code of a scoped operation.
@@ -63,15 +64,12 @@ instance Functor sig => Forward (ScpC sig) (ReaderT s) where
 -- when needed.
 scpCMaybeFwd :: Functor sig => AlgTrans '[ScpC sig] '[ScpC sig, CodeGen] '[MaybeT] Monad
 scpCMaybeFwd = algTrans1 $ \oalg -> Iso.bwd scpCIso (\(Scp op) -> MaybeT $
-  let x = fmap (fmap (down @Maybe @Maybe) . runMaybeT) op
-      y = Iso.fwd scpCIso (callM oalg) (Scp x)
-  in do cMb <- y; splitM oalg cMb)
+  Iso.fwd scpCIso (callM oalg) (Scp (fmap runMaybeT op)))
 
 scpCExceptFwd :: Functor sig => AlgTrans '[ScpC sig] '[ScpC sig, CodeGen] '[ExceptT (CodeQ e)] Monad
 scpCExceptFwd = algTrans1 $ \oalg -> Iso.bwd scpCIso (\(Scp op) -> ExceptT $
-  let x = fmap (fmap (down @(Either _) @(Either _)) . runExceptT) op
-      y = Iso.fwd scpCIso (callM oalg) (Scp x)
-  in do cMb <- y; splitM oalg cMb)
+  let x = fmap runExceptT op
+  in Iso.fwd scpCIso (callM oalg) (Scp x))
 
 -- | We can only forward staged scoped operations along `MaybeT` when we have also
 -- the code-generation effects to generate a case splitting. Consequently, this
@@ -80,6 +78,4 @@ scpCExceptFwd = algTrans1 $ \oalg -> Iso.bwd scpCIso (\(Scp op) -> ExceptT $
 scpCStateFwd :: Functor sig => AlgTrans '[ScpC sig] '[ScpC sig, CodeGen] '[L.StateT (CodeQ s)] Monad
 scpCStateFwd = algTrans1 $ \oalg -> Iso.bwd scpCIso (\(Scp op) -> L.StateT $ \s ->
   let x = fmap (flip L.runStateT s) op
-      y = fmap (fmap (\(c1, c2) -> [|| ($$c1, $$c2) ||])) x
-      z = Iso.fwd scpCIso (callM oalg) (Scp y)
-  in do cp <- z; splitM oalg cp)
+  in Iso.fwd scpCIso (callM oalg) (Scp x))

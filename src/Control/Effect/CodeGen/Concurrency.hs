@@ -56,7 +56,7 @@ type ParUp = ScpC ParUp_
 
 pattern ParUp x y k = ScpC (ParUp_ x y) k
 
-pattern ParUp' :: f (CodeQ k) -> f (CodeQ k) -> Scp ParUp_ f (CodeQ k)
+pattern ParUp' :: f x -> f x -> Scp ParUp_ f x
 pattern ParUp' x y = Scp (ParUp_ x y)
 
 instance ParUp_ $~> ParUp_ where
@@ -74,6 +74,7 @@ parUpGenIO = bwd scpCIso $ (\(ParUp' p q) ->
                       $$(unGenM p k)
                ||])
 
+{-
 -- | The operation `par` on `CResT` needs to perform pattern matching on the resumption
 -- monad, but `CResUpT` can't be pattern matched. Therefore here we simply
 -- `down` the two processes and perform `par` at the object level. As a result,
@@ -109,3 +110,4 @@ yResUpAT = AlgTrans $ \oalg ->
   (\(Alg (UpOp o k))        -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))) :#
   (\(Alg (Yield_ a p))      -> RUp.yield a (return . p)) :#.
   (\(Scp (MapYield_ f g p)) -> RUp.mapYield f g p)
+-}

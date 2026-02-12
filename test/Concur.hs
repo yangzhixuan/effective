@@ -224,35 +224,22 @@ stagedIntroFull = $$(stageHM' (Proxy @'[]) (parUpGenIO :# genMAlg)
     `unionHdlAT` weakenC (fwds @'[ParUp] @'[ReaderT _] `compAT` scpCExceptFwd @ParUp_))
   bohemGen)
 {-
-    do let childProc_air6
-             = fmap
-                 (const ())
-                 (do x_air7 <- putStrLn "Oh poor boy"
-                     return (Right ()))
-       ghc-internal:GHC.Internal.Conc.Sync.forkIO childProc_air6
-       do x_air8 <- QSem.newQSem 0
-          do x_air9 <- QSem.newQSem 0
-             do x_aira <- QSem.newQSem 0
-                do x_airb <- QSem.newQSem 0
-                   do let childProc_airc
-                            = fmap
-                                (const ())
-                                (do x_aird <- QSem.signalQSem x_aira
-                                    do x_aire <- QSem.waitQSem x_airb
-                                       do x_airf <- putStrLn "I need no sympathy"
-                                          return (Right ()))
-                      ghc-internal:GHC.Internal.Conc.Sync.forkIO childProc_airc
-                      do x_airg <- putStrLn "I am just a poor boy"
-                         do x_airh <- QSem.waitQSem x_aira
-                            do x_airi <- QSem.signalQSem x_airb
-                               case Right () of
-                                 Left a_airj
-                                   -> case Left a_airj of
-                                        Left a_airk -> return (Left a_airk)
-                                        Right b_airl -> return (Right b_airl)
-                                 Right b_airm
-                                   -> case Right b_airm of
-                                        Left a_airn -> return (Left a_airn)
-                                        Right b_airo -> return (Right b_airo)
-
+    do let childProc_airv
+             = do x_airw <- putStrLn "Oh poor boy"
+                  return ()
+       forkIO childProc_airv
+       x_airx <- QSem.newQSem 0
+       x_airy <- QSem.newQSem 0
+       x_airz <- QSem.newQSem 0
+       x_airA <- QSem.newQSem 0
+       let childProc_airB
+             = do x_airC <- QSem.signalQSem x_airz
+                  x_airD <- QSem.waitQSem x_airA
+                  x_airE <- putStrLn "I need no sympathy"
+                  return ()
+       forkIO childProc_airB
+       do x_airF <- putStrLn "I am just a poor boy"
+          x_airG <- QSem.waitQSem x_airz
+          x_airH <- QSem.signalQSem x_airA
+          return (Right ())
 -}

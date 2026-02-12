@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 -}
 
 {-# LANGUAGE TypeFamilies, UnicodeSyntax, TemplateHaskell, BlockArguments #-}
-{-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
+{-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes, ScopedTypeVariables #-}
 
 module Control.Effect.CodeGen.SoPU where
 
@@ -272,3 +272,24 @@ index fs (There x) = index (snd fs) x
 genFunSU ∷ ∀ a b. Sing a → FunSU a b → Gen (FunSU a b)
 genFunSU SNil         fs = pure ()
 genFunSU (SCons a as) fs = (,) <$> genLet_ (fst fs) <*> genFunSU @_ @b as (snd fs)
+
+-- Generate runtime sum-of-products
+
+data RElₚ ∷ Uₚ → Type where
+  RNil  ∷ RElₚ '[]
+  RCons ∷ ∀ a as. a → RElₚ as → RElₚ (a ': as)
+
+data RElₛ ∷ Uₛ → Type where
+  RHere  ∷ ∀ as ass. RElₚ as  → RElₛ (as ': ass)
+  RThere ∷ ∀ as ass. RElₛ ass → RElₛ (as ': ass)
+
+genSOP :: forall x. IsSOP x => x -> CodeQ (RElₛ (Rep x))
+genSOP x = genS @(Rep x) (singRep @x) (encode x) where
+  genS :: forall x. Sing x -> Elₛ x -> CodeQ (RElₛ x)
+  genS SNil _ = error "impossible"
+  genS (SCons sa sas) (Here x)  = [|| RHere $$(genP sa x) ||]
+  genS (SCons sa sas) (There y) = [|| RThere $$(genS sas y) ||]
+
+  genP :: forall x. Sing x -> Elₚ x -> CodeQ (RElₚ x)
+  genP SNil Nil = [|| RNil ||]
+  genP (SCons sa sas) (Cons a as) = [|| RCons $$a $$(genP sas as) ||]
