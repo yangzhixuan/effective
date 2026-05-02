@@ -26,8 +26,6 @@ module Control.Effect.Internal.Effs.Sum
   , Injects (..)
   , Member
   , Members
-  , PElemIndex
-  , Peano (..)
   )
   where
 
@@ -161,9 +159,9 @@ class Member sig sigs where
   -- when @eff@ is in @effs@.
   prj :: Effs sigs f a -> Maybe (sig f a)
 
-instance {-# OVERLAPPING #-} Member sig (sig : sigs) where
+instance {-# OVERLAPPING #-} Member sig (sig ': sigs) where
   {-# INLINE inj #-}
-  inj :: sig f a -> Effs (sig : sigs) f a
+  inj :: sig f a -> Effs (sig ': sigs) f a
   inj x = Eff x
 
   {-# INLINE prj #-}
@@ -185,16 +183,3 @@ instance (Member sig sigs) => Member sig (sig' : sigs) where
 type family Members (xsigs :: [Effect]) (xysigs :: [Effect]) :: Constraint where
   Members '[] xysigs       = ()
   Members (xsig ': xsigs) xysigs = (Member xsig xysigs, Members xsigs xysigs)
-
--- | @`ElemIndex x xs@ finds the index of an element @x@ in the type
--- level list @xs@. Indexing starts at @0@ at the head of the list.
-type family PElemIndex (x :: a) (xs :: [a]) :: Peano where
-  PElemIndex x (x ': xs) = Zero
-  PElemIndex x (_ ': xs) = Succ (PElemIndex x xs)
-
--- | The type of Peano numbers.
-data Peano where
-  -- | @Zero@, the first Peano number
-  Zero :: Peano
-  -- | @Succ n@, is the Peano number after @n@
-  Succ :: Peano -> Peano
