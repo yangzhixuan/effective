@@ -52,85 +52,85 @@ import Unsafe.Coerce
 --	total time  =        0.36 secs   (359 ticks @ 1000 us, 1 processor)
 --	total alloc = 1,023,990,040 bytes  (excludes profiling overheads)
 
--- | Matches an effect @eff@ at the head of a signature @eff ': effs@.
+-- | Matches an effect @sig@ at the head of a signature @sig ': sigs@.
 
 {-# INLINE Eff #-}
-pattern Eff :: (HFunctor eff, KnownNat (1 + Length effs), KnownNat (Length effs))
-  => eff f a -> Effs (eff ': effs) f a
+pattern Eff :: (HFunctor sig, KnownNat (1 + Length sigs), KnownNat (Length sigs))
+  => sig f a -> Effs (sig ': sigs) f a
 pattern Eff op <- (openEff -> Just op) where
   Eff op = inj op
 
 {-# INLINE Effs #-}
--- | Matches the tail @effs@ of effects of a signature @eff ': effs@.
-pattern Effs :: forall eff effs f a . KnownNat (Length effs)
-  => Effs effs f a -> Effs (eff ': effs) f a
+-- | Matches the tail @sigs@ of effects of a signature @sig ': sigs@.
+pattern Effs :: forall sig sigs f a . KnownNat (Length sigs)
+  => Effs sigs f a -> Effs (sig ': sigs) f a
 pattern Effs op <- (openEffs -> Just op) where
-  Effs op = coerce @(Effs effs f a) @(Effs (eff ': effs) f a) op
+  Effs op = coerce @(Effs sigs f a) @(Effs (sig ': sigs) f a) op
 
--- | Inspects an operation in the union @eff ': effs@ and returns the operation
--- specialied to @eff@ if possible, or a union @effs@ otherwise.
+-- | Inspects an operation in the union @sig ': sigs@ and returns the operation
+-- specialied to @sig@ if possible, or a union @sigs@ otherwise.
 {-# INLINE open #-}
-open :: forall eff effs f a . KnownNat (Length effs) => Effs (eff ': effs) f a -> Either (Effs effs f a) (eff f a)
-open  eff@(Effn n (op :: peff f a))
-  | n == fromInteger (natVal' (proxy#@(Length effs))) = Right (unsafeCoerce @(peff f a) @(eff f a) op)
-  | otherwise                                         = Left (coerce @(Effs (eff ': effs) f a) @(Effs effs f a) eff)
+open :: forall sig sigs f a . KnownNat (Length sigs) => Effs (sig ': sigs) f a -> Either (Effs sigs f a) (sig f a)
+open  sig@(Effn n (op :: psig f a))
+  | n == fromInteger (natVal' (proxy#@(Length sigs))) = Right (unsafeCoerce @(psig f a) @(sig f a) op)
+  | otherwise                                         = Left (coerce @(Effs (sig ': sigs) f a) @(Effs sigs f a) sig)
 
--- | Inspects an operation in the union @eff ': effs@ and returns the operation
--- specialied to @eff@ if possible.
+-- | Inspects an operation in the union @sig ': sigs@ and returns the operation
+-- specialied to @sig@ if possible.
 {-# INLINE openEff #-}
-openEff :: forall eff effs f a . Member eff effs
-  => Effs effs f a -> Maybe (eff f a)
+openEff :: forall sig sigs f a . Member sig sigs
+  => Effs sigs f a -> Maybe (sig f a)
 openEff (Effn n op)
-  | n == n'   = Just (unsafeCoerce @(_ f a) @(eff f a) op)
+  | n == n'   = Just (unsafeCoerce @(_ f a) @(sig f a) op)
   | otherwise = Nothing
-  where n' = fromInteger (natVal' (proxy#@(EffIndex eff effs)))
+  where n' = fromInteger (natVal' (proxy#@(EffIndex sig sigs)))
 
--- | Inspects an operation in the union @eff ': effs@ and returns
--- a union @effs@ if possible.
+-- | Inspects an operation in the union @sig ': sigs@ and returns
+-- a union @sigs@ if possible.
 {-# INLINE openEffs #-}
-openEffs :: forall eff effs f a . KnownNat (Length effs)
-  => Effs (eff ': effs) f a -> Maybe (Effs effs f a)
+openEffs :: forall sig sigs f a . KnownNat (Length sigs)
+  => Effs (sig ': sigs) f a -> Maybe (Effs sigs f a)
 openEffs effn@(Effn n op)
   | n == m    = Nothing
-  | otherwise = Just (coerce @(Effs (eff ': effs) f a) @(Effs effs f a) effn)
-  where m = fromInteger (natVal' (proxy#@(Length effs)))
+  | otherwise = Just (coerce @(Effs (sig ': sigs) f a) @(Effs sigs f a) effn)
+  where m = fromInteger (natVal' (proxy#@(Length sigs)))
 
 
--- | Constructs an operation in the union @Effs effs f a@ from a single
--- operation @eff f a@, when @eff@ is in @effs@.
+-- | Constructs an operation in the union @Effs sigs f a@ from a single
+-- operation @sig f a@, when @sig@ is in @sigs@.
 {-# INLINE inj #-}
-inj :: forall eff effs f a . (Member eff effs) => eff f a -> Effs effs f a
+inj :: forall sig sigs f a . (Member sig sigs) => sig f a -> Effs sigs f a
 inj = Effn n
   where
-    n = fromInteger (natVal' (proxy# @(EffIndex eff effs)))
+    n = fromInteger (natVal' (proxy# @(EffIndex sig sigs)))
 
--- | Attempts to project an operation of type @eff f a@ from a the union @Effs effs f a@,
--- when @eff@ is in @effs@.
+-- | Attempts to project an operation of type @sig f a@ from a the union @Effs sigs f a@,
+-- when @sig@ is in @sigs@.
 {-# INLINE prj #-}
-prj :: forall eff effs f a . (Member eff effs)
-  => Effs effs f a -> Maybe (eff f a)
+prj :: forall sig sigs f a . (Member sig sigs)
+  => Effs sigs f a -> Maybe (sig f a)
 prj (Effn n x)
-  | n == n'   = Just (unsafeCoerce @(_ f a) @(eff f a) x)
+  | n == n'   = Just (unsafeCoerce @(_ f a) @(sig f a) x)
   | otherwise = Nothing
   where
-    n' = fromInteger (natVal' (proxy# @(EffIndex eff effs)))
+    n' = fromInteger (natVal' (proxy# @(EffIndex sig sigs)))
 
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
 {-# INLINE (#) #-}
-(#) :: forall eff1 eff2 m .
-  (Monad m, KnownNat (Length eff2))
-  => (Algebra eff1 m)
-  -> (Algebra eff2 m)
-  -> (Algebra (eff1 :++ eff2) m)
-falg # galg = heither @eff1 @eff2 (falg) (galg)
+(#) :: forall sigs1 sigs2 m .
+  (Monad m, KnownNat (Length sigs2))
+  => (Algebra sigs1 m)
+  -> (Algebra sigs2 m)
+  -> (Algebra (sigs1 :++ sigs2) m)
+falg # galg = heither @sigs1 @sigs2 (falg) (galg)
 
--- | Weakens the signature of an operation in the union containing @effs@
--- to one that contains @eff ': effs@ for any @eff@.
+-- | Weakens the signature of an operation in the union containing @sigs@
+-- to one that contains @sig ': sigs@ for any @sig@.
 {-# INLINE weakenEffs #-}
-weakenEffs :: forall eff effs f a . Effs effs f a -> Effs (eff ': effs) f a
-weakenEffs = coerce @(Effs effs f a) @(Effs (eff ': effs) f a)
+weakenEffs :: forall sig sigs f a . Effs sigs f a -> Effs (sig ': sigs) f a
+weakenEffs = coerce @(Effs sigs f a) @(Effs (sig ': sigs) f a)
 
---instance Functor f => Functor (Effs effs f) where
+--instance Functor f => Functor (Effs sigs f) where
 --  {-# INLINE fmap #-}
 --  fmap f (Effn n op) = Effn n (fmap f op)
 
@@ -138,8 +138,8 @@ instance Functor (Effs '[] f) where
   {-# INLINE fmap #-}
   fmap f = absurdEffs
 
-instance (Functor f, Functor (eff f), Functor (Effs effs f), KnownNat (Length effs))
-  => Functor (Effs (eff ': effs) f) where
+instance (Functor f, Functor (sig f), Functor (Effs sigs f), KnownNat (Length sigs))
+  => Functor (Effs (sig ': sigs) f) where
   {-# INLINE fmap #-}
   fmap f e = case open e of
     Left  o -> coerce (fmap f o)
@@ -149,81 +149,81 @@ instance HFunctor (Effs '[]) where
   {-# INLINE hmap #-}
   hmap h = absurdEffs
 
-instance (HFunctor eff, HFunctor (Effs effs), KnownNat (Length effs))
-  => HFunctor (Effs (eff ': effs)) where
+instance (HFunctor sig, HFunctor (Effs sigs), KnownNat (Length sigs))
+  => HFunctor (Effs (sig ': sigs)) where
   {-# INLINE hmap #-}
   hmap h e = case open e of
     Left o  -> coerce (hmap h o)
     Right o -> inj (hmap h o)
 
 
--- | Weakens an an operation of type @Effs xeffs f a@ to one of type @Effs (xeffs :++ yeffs) f a@.
+-- | Weakens an an operation of type @Effs sigs1 f a@ to one of type @Effs (sigs1 :++ sigs2) f a@.
 {-# INLINE hinl #-}
-hinl :: forall xeffs yeffs f a . KnownNat (Length yeffs)
-  => Effs xeffs f a -> Effs (xeffs :++ yeffs) f a
+hinl :: forall sigs1 sigs2 f a . KnownNat (Length sigs2)
+  => Effs sigs1 f a -> Effs (sigs1 :++ sigs2) f a
 hinl (Effn n op) = Effn (m + n) op
   where
-    -- m = fromInteger (fromSNat (natSing @(Length yeffs)))
-    m = fromInteger (natVal' (proxy# @(Length yeffs)))
+    -- m = fromInteger (fromSNat (natSing @(Length sigs2)))
+    m = fromInteger (natVal' (proxy# @(Length sigs2)))
 
--- | Weakens an an operation of type @Effs yeffs f a@ to one of type @Effs (xeffs :++ yeffs) f a@.
+-- | Weakens an an operation of type @Effs sigs2 f a@ to one of type @Effs (sigs1 :++ sigs2) f a@.
 {-# INLINE hinr #-}
-hinr :: forall xeffs yeffs f a . Effs yeffs f a -> Effs (xeffs :++ yeffs) f a
-hinr = coerce @(Effs yeffs f a) @(Effs (xeffs :++ yeffs) f a)
+hinr :: forall sigs1 sigs2 f a . Effs sigs2 f a -> Effs (sigs1 :++ sigs2) f a
+hinr = coerce @(Effs sigs2 f a) @(Effs (sigs1 :++ sigs2) f a)
 
--- | Attempts to project a value of type @Effs xeffs f a@ from a union of type @Effs (xeffs :++ yeffs) f a@.
+-- | Attempts to project a value of type @Effs sigs1 f a@ from a union of type @Effs (sigs1 :++ sigs2) f a@.
 {-# INLINE houtl #-}
-houtl :: forall xeffs yeffs f a . KnownNat (Length yeffs)
-  => Effs (xeffs :++ yeffs) f a -> Maybe (Effs xeffs f a)
+houtl :: forall sigs1 sigs2 f a . KnownNat (Length sigs2)
+  => Effs (sigs1 :++ sigs2) f a -> Maybe (Effs sigs1 f a)
 houtl (Effn n op)
   | n < m     = Nothing
   | otherwise = Just (Effn (n - m) op)
   where
-    m = fromInteger (natVal' (proxy# @(Length yeffs)))
+    m = fromInteger (natVal' (proxy# @(Length sigs2)))
 
--- | Attempts to project a value of type @Effs yeffs f a@ from a union of type @Effs (xeffs :++ yeffs) f a@.
+-- | Attempts to project a value of type @Effs sigs2 f a@ from a union of type @Effs (sigs1 :++ sigs2) f a@.
 {-# INLINE houtr #-}
-houtr :: forall xeffs yeffs f a . KnownNat (Length yeffs)
-  => Effs (xeffs :++ yeffs) f a -> Maybe (Effs yeffs f a)
+houtr :: forall sigs1 sigs2 f a . KnownNat (Length sigs2)
+  => Effs (sigs1 :++ sigs2) f a -> Maybe (Effs sigs2 f a)
 houtr effn@(Effn n op)
-  | n < m     = Just (coerce @(Effs (xeffs :++ yeffs) f a) @(Effs yeffs f a) effn)
+  | n < m     = Just (coerce @(Effs (sigs1 :++ sigs2) f a) @(Effs sigs2 f a) effn)
   | otherwise = Nothing
   where
-    m = fromInteger (natVal' (proxy# @(Length yeffs)))
+    m = fromInteger (natVal' (proxy# @(Length sigs2)))
 
 
--- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
--- every effect in @xeffs@ is in @xyeffs@.
+-- | Weakens an algera that works on @sigs2@ to work on @sigs1@ when
+-- every effect in @sigs1@ is in @sigs2@.
 {-# INLINE weakenAlg #-}
 weakenAlg
-  :: forall xeffs xyeffs m x . (Injects xeffs xyeffs)
-  => (Effs xyeffs m x -> m x)
-  -> (Effs xeffs  m x -> m x)
+  :: forall sigs1 sigs2 m x . (Injects sigs1 sigs2)
+  => (Effs sigs2 m x -> m x)
+  -> (Effs sigs1  m x -> m x)
 weakenAlg alg = alg . injs
 
--- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
--- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
+-- | Constructs an algebra for the union containing @sigs1 `Union` sigs2@
+-- by using an algebra for the union @sigs1@ and aonther for the union @sigs2@.
 {-# INLINE hunion #-}
-hunion :: forall xeffs yeffs f a b . Injects (yeffs :\\ xeffs) yeffs
-  => (Effs xeffs f a -> b) -> (Effs yeffs f a -> b)
-  -> (Effs (xeffs `Union` yeffs) f a -> b)
-hunion xalg yalg = heither @xeffs @(yeffs :\\ xeffs) xalg (yalg . injs)
+hunion :: forall sigs1 sigs2 f a b . Injects (sigs2 :\\ sigs1) sigs2
+  => (Effs sigs1 f a -> b) -> (Effs sigs2 f a -> b)
+  -> (Effs (sigs1 `Union` sigs2) f a -> b)
+hunion xalg yalg = heither @sigs1 @(sigs2 :\\ sigs1) xalg (yalg . injs)
 
--- | Creates an alebra that can work with either signatures in @xeffs@
--- or @yeffs@ by using the provided algebras as appropriate.
+-- | Creates an alebra that can work with either signatures in @sigs1@
+-- or @sigs2@ by using the provided algebras as appropriate.
 {-# INLINE heither #-}
-heither :: forall xeffs yeffs f a b . KnownNat (Length yeffs)
-  => (Effs xeffs f a -> b) -> (Effs yeffs f a -> b) -> (Effs (xeffs :++ yeffs) f a -> b)
+heither :: forall sigs1 sigs2 f a b . KnownNat (Length sigs2)
+  => (Effs sigs1 f a -> b) -> (Effs sigs2 f a -> b) -> (Effs (sigs1 :++ sigs2) f a -> b)
 heither xalg yalg (Effn n op)
   | n < m     = yalg (Effn n op)
   | otherwise = xalg (Effn (n - m) op)
   where
-    -- m = fromInteger (fromSNat (natSing @(Length yeffs)))
-    m = fromInteger (natVal' (proxy#@(Length yeffs)))
+    -- m = fromInteger (fromSNat (natSing @(Length sigs2)))
+    m = fromInteger (natVal' (proxy#@(Length sigs2)))
 
 -- | This type witnesses that two effect lists can be appended together.
 type Append xs ys = (KnownLength (xs :++ ys), KnownNat (Length ys), KnownNat (Length xs))
 
-type family KnownLength effs :: Constraint where
-  KnownLength (eff:effs) = (KnownLength effs, KnownNat (1 + Length effs))
-  KnownLength effs = KnownNat (Length effs)
+type family KnownLength sigs :: Constraint where
+  KnownLength (sig:sigs) = (KnownLength sigs, KnownNat (1 + Length sigs))
+  KnownLength sigs = KnownNat (Length sigs)

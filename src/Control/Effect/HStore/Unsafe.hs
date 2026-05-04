@@ -11,7 +11,7 @@ of /any (lifted) type/.  This implementation is unsafe because references from
 different executions may be wrongly mixed. For example,
 
 @
-goWrong :: forall sig. Members '[New, Get, Put] sig => Prog sig Int
+goWrong :: forall sigs. Members '[New, Get, Put] sigs => Prog sigs Int
 goWrong = do iRef <- new @Int 0
              return (handle hstore (get iRef))
 
@@ -29,12 +29,12 @@ Another way of how things can go wrong is when there is 'multiple-shot algebraic
 import qualified Control.Effect.State as St
 import Control.Effect.Nondet
 
-goWrong2 :: forall sig.
+goWrong2 :: forall sigs.
             Members '[ New, Get, Put,
                        Choose,
                        St.Put (Maybe (Ref Int)), St.Get (Maybe (Ref Int))
-                     ] sig
-         => Prog sig Int
+                     ] sigs
+         => Prog sigs Int
 goWrong2 = do iRef <- new @Int 0
               or (do iRef' <- new @Int 0; St.put (Just iRef'); return 0)
                  (do r <- St.get;
@@ -104,7 +104,7 @@ instance HFunctor New where
   hmap _ (New a k) = New a k
 
 -- | Smart constructor for the t`New` operation.
-new :: forall a sig. Member New sig => a -> Prog sig (Ref a)
+new :: forall a sigs. Member New sigs => a -> Prog sigs (Ref a)
 new a = call (New a id)
 
 -- | Signature for the operation of updating a memory reference
@@ -119,7 +119,7 @@ instance HFunctor Put where
   hmap _ (Put r a k) = Put r a k
 
 -- | Smart constructor for the t`Put` operation.
-put :: forall a sig. Member Put sig => Ref a -> a -> Prog sig ()
+put :: forall a sigs. Member Put sigs => Ref a -> a -> Prog sigs ()
 put r a = call (Put r a ())
 
 -- | Signature for the operation of reading a memory reference.
@@ -133,7 +133,7 @@ instance HFunctor Get where
   hmap _ (Get r k) = Get r k
 
 -- | Smart constructor for the t`Get` operation.
-get :: forall a sig. Member Get sig => Ref a -> Prog sig a
+get :: forall a sigs. Member Get sigs => Ref a -> Prog sigs a
 get r = call (Get r id)
 
 -- | Internally the store is implemented by a map from locations to
@@ -149,7 +149,7 @@ hstore = handler' (flip St.evalStateT M.empty) hstoreAlg
 
 hstoreAlg
   :: Monad m
-  => (forall x. oeff m x -> m x)
+  => (forall x. osig m x -> m x)
   -> (forall x.  Effs [Put, Get, New] (St.StateT Mem m) x -> St.StateT Mem m x)
 hstoreAlg _ op
   | Just (Put r a p) <- prj op =

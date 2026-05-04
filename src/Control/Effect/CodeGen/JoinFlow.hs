@@ -74,13 +74,13 @@ instance HFunctor JoinFlow where
 -- | If @x@ is a type isomorphic to @(Up a11, ..., a1n1) + .. + (Up an1, ... , Up amn_m)@,
 -- @joinFlow p@ creates a join point for each of the summand (each receiving a value of
 -- the corresponding product type) and resumes the code generation from these join points.
-joinFlow :: forall x sig. (Member JoinFlow sig, IsSOP x)
-         => Prog sig x -> Prog sig x
+joinFlow :: forall x sigs. (Member JoinFlow sigs, IsSOP x)
+         => Prog sigs x -> Prog sigs x
 joinFlow p = call (JoinFlow p id)
 
 -- | @joinFlow@ on a monad @m@.
-joinFlowM :: forall x sig m. Member JoinFlow sig
-          => IsSOP x => Algebra sig m -> m x -> m x
+joinFlowM :: forall x sigs m. Member JoinFlow sigs
+          => IsSOP x => Algebra sigs m -> m x -> m x
 joinFlowM alg p = callM alg (JoinFlow p id)
 
 -- | Join operation on the monad `Gen`.

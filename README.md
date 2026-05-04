@@ -39,7 +39,7 @@ by `getLine` is output to the terminal using `putStrLn` until a blank line is
 received by
 `getLine`:
 ```haskell
-echo :: (Members '[GetLine, PutStrLn] sig) => Prog sig ()
+echo :: (Members '[GetLine, PutStrLn] sigs) => Prog sigs ()
 echo = do str <- getLine
           case str of
             [] -> return ()
@@ -54,10 +54,10 @@ the corresponding `getLine` and `putStrLn` operations.
 In this example, `getLine` and `putStrLn` are user-defined operations
 with the following types:
 ```haskell ignore
-getLine  :: Member GetLine sig  => Prog sig String
-putStrLn :: Member PutStrLn sig => String -> Prog sig ()
+getLine  :: Member GetLine sigs  => Prog sigs String
+putStrLn :: Member PutStrLn sigs => String -> Prog sigs ()
 ```
-This states that they are programs whose signature `sig` contain
+This states that they are programs whose signature `sigs` contain
 `GetLine` and `PutStrLn`, respectively. Later, we will see
 how these are defined.
 
@@ -90,18 +90,18 @@ that are produced (`Alg IO`).
 ```haskell
 type GetLine = Alg GetLine_
 data GetLine_ k  = GetLine_ (String -> k) deriving Functor
-pattern GetLine :: Member GetLine eff => (String -> k) -> Effs eff m k
+pattern GetLine :: Member GetLine sigs => (String -> k) -> Effs sigs m k
 pattern GetLine k <- (prj -> Just (Alg (GetLine_ k)))
   where GetLine k = inj (Alg (GetLine_ k))
-getLine :: Members '[GetLine] sig => Prog sig String
+getLine :: Members '[GetLine] sigs => Prog sigs String
 getLine = call (Alg (GetLine_ id))
 
 type PutStrLn = Alg PutStrLn_
 data PutStrLn_ k = PutStrLn_ String k     deriving Functor
-pattern PutStrLn :: Member PutStrLn eff => String -> k -> Effs eff m k
+pattern PutStrLn :: Member PutStrLn sigs => String -> k -> Effs sigs m k
 pattern PutStrLn str k <- (prj -> Just (Alg (PutStrLn_ str k)))
   where PutStrLn str k = inj (Alg (PutStrLn_ str k))
-putStrLn :: Members '[PutStrLn] sig => String -> Prog sig ()
+putStrLn :: Members '[PutStrLn] sigs => String -> Prog sigs ()
 putStrLn str = call (Alg (PutStrLn_ str ()))
 ```
 Much of this is standard boilerplate code.
@@ -174,12 +174,12 @@ Programs and Handlers
 The type of the `echoTick` program is `() ! '[GetLine, PutStrLn, Tick]`, which is in
 fact a synonym roughly equivalent to:
 ```haskell ignore
-echoTick :: forall effs. (Member GetLine effs, Member PutStrLn effs, Member Tick effs)
-         => Prog effs ()
+echoTick :: forall sigs. (Member GetLine sigs, Member PutStrLn sigs, Member Tick sigs)
+         => Prog sigs ()
 ```
-The `a ! sig` datatype thus describes a *family* of programs which contains
-all the operations given in `sig`. No order of the members is
-implied (because the constraints are not ordered), and nor is the list necessarily exhaustive (because `sig` could contain other operations).
+The `a ! sigs` datatype thus describes a *family* of programs which contains
+all the operations given in `sigs`. No order of the members is
+implied (because the constraints are not ordered), and nor is the list necessarily exhaustive (because `sigs` could contain other operations).
 
 The `ticker` and `unticker` handlers have the following types:
 ```haskell ignore
@@ -206,7 +206,7 @@ The signature of the handler tells us how it behaves:
   `'Apply [t3, t2, t1] m a = t3 (t2 (t1 m a))`.
 * **Input/output types**: The input/output types are the types of the return values
   of an effectful program before/after applying the handler. When `ticker` is used
-  to handle a program of type `Prog effs a`, the output will be the type `(Int, a)`.
+  to handle a program of type `Prog sigs a`, the output will be the type `(Int, a)`.
 
 A handler is applied to a program using the `handle` function or its variants.
 In `exampleEchoTick`, the `handleIO` function is used because `GetLine` and `PutStrLn`
@@ -214,8 +214,8 @@ are operations that relate to `IO`.
 ```haskell ignore
 handleIO
   :: (...)
-  => Handler effs '[Alg IO] ts a b
-  -> Prog effs a -> IO b
+  => Handler sigs '[Alg IO] ts a b
+  -> Prog sigs a -> IO b
 ```
 So far, we have been working with examples of _impure_ effects that ultimately
 rely on `IO`. Another important class of effects is the class of _pure_ effects,
@@ -228,10 +228,10 @@ Working with Pure Handlers
 A pure handler can be applied when all the effects in a program are
 processed, and when none are produced:
 ```haskell ignore
-handle :: forall effs ts fs a .
-  (Monad (Apply ts Identity), HFunctor (Effs effs))
-  => Handler effs '[] ts fs
-  -> Prog effs a
+handle :: forall sigs ts fs a .
+  (Monad (Apply ts Identity), HFunctor (Effs sigs))
+  => Handler sigs '[] ts fs
+  -> Prog sigs a
   -> Apply fs a
 ```
 
@@ -287,7 +287,7 @@ which does not return the final state:
 state_ :: s -> Handler [Put s, Get s] '[] '[StateT s] '[]
 ```
 Here the final wrapper is `'[]`, and so applying this to a program
-of type `Prog sig a` will simply return a value of type `a`.
+of type `Prog sigs a` will simply return a value of type `a`.
 ```console
 ghci> handle (state_ "Hello!") getStringLength
 6
@@ -350,7 +350,7 @@ underlying signature `Tick_`. The convention is to add an *underscore* for the *
 A pattern synonym `Tick` is defined that projects `Alg Tick_` into
 an `Effs` type, which is the type used to assemble multiple effects into one:
 ```haskell
-pattern Tick :: Member Tick eff => k -> Effs eff m k
+pattern Tick :: Member Tick sigs => k -> Effs sigs m k
 pattern Tick p <- (prj -> Just (Alg (Tick_ p)))
   where Tick p = inj (Alg (Tick_ p))
 ```
@@ -402,16 +402,16 @@ handler `h2`.
 ticker :: Handler '[Tick] '[] '[StateT Int] a (Int, a)
 ticker = tickState ||> state (0 :: Int)
 ```
-Given `h1 :: Handler eff1 oeff1 t1 f1` and `h2 :: Handler eff2 oeff2 t2 f2`, the
-result of `h1 ||> h2` is a handler that recognises all of `eff1`, the input
-effects of `h1`, and passes any effects `oeff1` produced by `h1` to be processed
+Given `h1 :: Handler sigs1 osigs1 t1 f1` and `h2 :: Handler sigs2 osigs2 t2 f2`, the
+result of `h1 ||> h2` is a handler that recognises all of `sigs1`, the input
+effects of `h1`, and passes any effects `osigs1` produced by `h1` to be processed
 by `h2`. Here are the types involved:
 ```haskell ignore
 (||>) :: ...
-  => Handler effs1 oeffs1 ts1 fs1    -- h1
-  -> Handler effs2 oeffs2 ts2 fs2    -- h2
-  -> Handler effs1
-             ((oeffs1 :\\ effs2) `Union` oeffs2)
+  => Handler sigs1 osigs1 ts1 fs1    -- h1
+  -> Handler sigs2 osigs2 ts2 fs2    -- h2
+  -> Handler sigs1
+             ((osigs1 :\\ sigs2) `Union` osigs2)
              (ts1 :++ ts2)
              (fs2 :++ fs1)
 ```
@@ -517,7 +517,7 @@ getLineState = interpret $ \(GetLine k) ->
 
 The signature of `getLineState` says that it is a handler that recognizes
 `GetLine` operations and interprets them in terms of some output effects in
-`oeff`, which consist of `Get [String]` and `Put [String]`. Interpreting
+`osig`, which consist of `Get [String]` and `Put [String]`. Interpreting
 effects in terms of other, more primitive, effects allows other handlers to
 deal with those more primitive effects.
 
@@ -707,7 +707,7 @@ operations in that program. For example, the `Censor` effect is
 introduced by the accompanying `censor` operation, and is handled
 using the `censors` handler:
 ```
-censor  :: Member (Censor w) sig => (w -> w) -> Prog sig a -> Prog sig a
+censor  :: Member (Censor w) sigs => (w -> w) -> Prog sigs a -> Prog sigs a
 censors :: Monoid w => (w -> w) -> Handler '[Tell w, Censor w] '[Tell w] '[]
 ```
 The result of the `censors cipher` handler is to first apply the `cipher`
@@ -773,12 +773,12 @@ uncensors = hide (Proxy @'[Tell w]) (censors @w id |> writer_ @w)
 ```
 The key combinator here is `hide`:
 ```haskell ignore
-hide :: forall sigs effs oeffs f . (Injects (effs :\\ sigs) effs, Injects oeffs oeffs)
-     => Proxy sigs
-     -> Handler effs            oeffs f
-     -> Handler (effs :\\ sigs) oeffs f
+hide :: forall hsigs sigs osigs f . (Injects (sigs :\\ hsigs) sigs, Injects osigs osigs)
+     => Proxy hsigs
+     -> Handler sigs             osigs f
+     -> Handler (sigs :\\ hsigs) osigs f
 ```
-This takes in a handler, returns it where any effects provided by the type parameter `sigs`
+This takes in a handler, returns it where any effects provided by the type parameter `hsigs`
 are hidden. While this works, the version in `Control.Effect.Writer` processes
 any `censor` by ignoring its argument, and does not accumulate any output, and
 is therefore more efficient.
@@ -938,7 +938,7 @@ data Profile' k where
   Profile :: String -> k -> Profile' k
   deriving Functor
 
-profile :: Member Profile sig => String -> Prog sig a -> Prog sig a
+profile :: Member Profile sigs => String -> Prog sigs a -> Prog sigs a
 profile name p = call (Scp (Profile name p))
 ```
 
@@ -978,8 +978,8 @@ A new `profiler f instrument p` will inject the `instrument` before and after
 executed. These are then combined by the given function `f` and emitted using
 `ask`.
 ```haskell
-profiler :: (HFunctor (Effs oeffs), Injects oeffs (Tell [(String, b)] ': oeffs))
-  => (a -> a -> b) -> Prog oeffs a -> Handler '[Profile] (Tell [(String, b)] ': oeffs) '[] c c
+profiler :: (HFunctor (Effs osigs), Injects osigs (Tell [(String, b)] ': osigs))
+  => (a -> a -> b) -> Prog osigs a -> Handler '[Profile] (Tell [(String, b)] ': osigs) '[] c c
 profiler f instrument = interpretM $ \oalg (Eff (Scp (Profile name p))) ->
   do t  <- eval oalg (weakenProg instrument)
      k  <- p
@@ -1007,19 +1007,19 @@ Members
 -------
 
 There are three scenarios to consider when trying to engineer a fit between a
-program (shaft) of type `Prog effs a` and a handler (hole) of type
-`Handler ieffs oeffs ts fs`, depending on how their interfaces correspond:
+program (shaft) of type `Prog sigs a` and a handler (hole) of type
+`Handler isigs osigs ts fs`, depending on how their interfaces correspond:
 
-1. *Transition* (`effs = ieffs`): The program and the handler have the same
+1. *Transition* (`sigs = isigs`): The program and the handler have the same
    signatures. In the effective library, every effect is
    handled sequentially, from left to right in the order dictated by the
    handler. Programs are defined using `Members` so that reorderings
    are dealt with by the constraints solver.
-2. *Clearance* (`effs < ieffs`): The handler can deal with more operations than
+2. *Clearance* (`sigs < isigs`): The handler can deal with more operations than
    required by the program. In these situations the handler or the program can
    be weakened. In the effective library, the program is weakened by
    the constraints solver due to the `Members` constraint.
-3. *Interference* (`effs > ieffs`): The handler cannot deal with all the
+3. *Interference* (`sigs > isigs`): The handler cannot deal with all the
    operations exposed by the program. Any residual effects will have to be
    handled later. In the effective library, a handler's interface can be
    extended using `fuse` and `pipe` with another handler, and residual

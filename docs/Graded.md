@@ -98,7 +98,7 @@ The definition of scoped operations fits neatly with member style operations,
 but a little more care is required. Consider the type of `catch`:
 ```haskell ignore
 catch
-  :: (Member Catch sig) => Prog sig a -> Prog sig a -> Prog sig a
+  :: (Member Catch sigs) => Prog sigs a -> Prog sigs a -> Prog sigs a
 catch p q = call (Scp (Catch (fmap return (p))
                                 (fmap return (q))))
 ```
@@ -106,17 +106,17 @@ The subprograms `p` and `q` will have their types unified with the output of
 `catch`. The type of the subprograms cannot be fixed in advance, which means
 that a `Member` constraint will be required. For the purposes of unification,
 it is convenient if the programs `p` and `q` have the same type signature,
-sharing `sig` with the overall type.
+sharing `sigs` with the overall type.
 
 A more precise type to `catch` can be given where the two subprograms can have
 differing types, so long as they can be injected into the final type.
 ```haskell
 catch
-  :: ( Member Catch sig''
-     , Injects sig  sig''
-     , Injects sig' sig''
-     , sig'' ~ Insert Catch (Union sig sig'))
-  => Prog sig a -> Prog sig' a -> Prog sig'' a
+  :: ( Member Catch sigs''
+     , Injects sigs  sigs''
+     , Injects sigs' sigs''
+     , sigs'' ~ Insert Catch (Union sigs sigs'))
+  => Prog sigs a -> Prog sigs' a -> Prog sigs'' a
 catch p q = call (Scp (Catch
   (fmap return (weakenProg p))
   (fmap return (weakenProg q))))

@@ -36,12 +36,12 @@ import GHC.Exts
 infixr 6 #
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
 {-# INLINE (#) #-}
-(#) :: forall eff1 eff2 m .
-  (Monad m, Append eff1 eff2)
-  => (Algebra eff1 m)
-  -> (Algebra eff2 m)
-  -> (Algebra (eff1 :++ eff2) m)
-falg # galg = heither @eff1 @eff2 (falg) (galg)
+(#) :: forall sigs1 sigs2 m .
+  (Monad m, Append sigs1 sigs2)
+  => (Algebra sigs1 m)
+  -> (Algebra sigs2 m)
+  -> (Algebra (sigs1 :++ sigs2) m)
+falg # galg = heither @sigs1 @sigs2 (falg) (galg)
 
 hcons :: (x h a -> b) -> (Effs xs h a -> b) -> (Effs (x ': xs) h a -> b)
 hcons alg algs (Eff x)   = alg x
@@ -51,20 +51,20 @@ hcons alg algs (Effs xs) = algs xs
 -- two effect lists together.
 type  Append :: [Effect] -> [Effect] -> Constraint
 class Append xs ys where
-  -- | Creates an alebra that can work with either signatures in @xeffs@
-  -- or @yeffs@ by using the provided algebras as appropriate.
+  -- | Creates an alebra that can work with either signatures in @sigs1@
+  -- or @sigs2@ by using the provided algebras as appropriate.
   heither :: (Effs xs h a -> b) -> (Effs ys h a -> b) -> (Effs (xs :++ ys) h a -> b)
 
-  -- | Weakens an an operation of type @Effs xeffs f a@ to one of type @Effs (xeffs :++ yeffs) f a@.
+  -- | Weakens an an operation of type @Effs sigs1 f a@ to one of type @Effs (sigs1 :++ sigs2) f a@.
   hinl :: Effs xs f a -> Effs (xs :++ ys) f a
 
-  -- | Weakens an an operation of type @Effs yeffs f a@ to one of type @Effs (xeffs :++ yeffs) f a@.
+  -- | Weakens an an operation of type @Effs sigs2 f a@ to one of type @Effs (sigs1 :++ sigs2) f a@.
   hinr :: Effs ys f a -> Effs (xs :++ ys) f a
 
-  -- | Attempts to project a value of type @Effs xeffs f a@ from a union of type @Effs (xeffs :++ yeffs) f a@.
+  -- | Attempts to project a value of type @Effs sigs1 f a@ from a union of type @Effs (sigs1 :++ sigs2) f a@.
   houtl :: Effs (xs :++ ys) f a -> Maybe (Effs xs f a)
 
-  -- | Attempts to project a value of type @Effs yeffs f a@ from a union of type @Effs (xeffs :++ yeffs) f a@.
+  -- | Attempts to project a value of type @Effs sigs2 f a@ from a union of type @Effs (sigs1 :++ sigs2) f a@.
   houtr :: Effs (xs :++ ys) f a -> Maybe (Effs ys f a)
 
 instance Append '[] ys where
@@ -113,24 +113,24 @@ instance Append xs ys => Append (x ': xs) ys where
   houtr (Eff x)  = Nothing
   houtr (Effs x) = houtr @xs @ys x
 
--- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
--- every effect in @xeffs@ is in @xyeffs@.
+-- | Weakens an algera that works on @sigs2@ to work on @sigs1@ when
+-- every effect in @sigs1@ is in @sigs2@.
 {-# INLINE weakenAlg #-}
 weakenAlg
-  :: forall xeffs xyeffs m x . (Injects xeffs xyeffs)
-  => (Effs xyeffs m x -> m x)
-  -> (Effs xeffs  m x -> m x)
+  :: forall sigs1 sigs2 m x . (Injects sigs1 sigs2)
+  => (Effs sigs2 m x -> m x)
+  -> (Effs sigs1  m x -> m x)
 weakenAlg alg = alg . injs
 
--- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
--- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
--- If an effect is in both @xeffs@ and @yeffs@, the algebra for @xeffs@ is used.
+-- | Constructs an algebra for the union containing @sigs1 `Union` sigs2@
+-- by using an algebra for the union @sigs1@ and aonther for the union @sigs2@.
+-- If an effect is in both @sigs1@ and @sigs2@, the algebra for @sigs1@ is used.
 {-# INLINE hunion #-}
-hunion :: forall xeffs yeffs f a b
-  .  ( Append xeffs (yeffs :\\ xeffs), Injects (yeffs :\\ xeffs) yeffs )
-  => (Effs xeffs f a -> b) -> (Effs yeffs f a -> b)
-  -> (Effs (xeffs `Union` yeffs) f a -> b)
-hunion xalg yalg = heither @xeffs @(yeffs :\\ xeffs) xalg (yalg . injs)
+hunion :: forall sigs1 sigs2 f a b
+  .  ( Append sigs1 (sigs2 :\\ sigs1), Injects (sigs2 :\\ sigs1) sigs2 )
+  => (Effs sigs1 f a -> b) -> (Effs sigs2 f a -> b)
+  -> (Effs (sigs1 `Union` sigs2) f a -> b)
+hunion xalg yalg = heither @sigs1 @(sigs2 :\\ sigs1) xalg (yalg . injs)
 
 -- | @Injects xs ys@ means that all of @xs@ is in @xys@.
 -- Some other effects may be in @xys@, so @xs <= xys@.
@@ -155,8 +155,8 @@ class Member sig sigs where
   -- operation @sig f a@, when @sig@ is in @sigs@.
   inj :: sig f a -> Effs sigs f a
 
-  -- | Attempts to project an operation of type @eff f a@ from a the union @Effs effs f a@,
-  -- when @eff@ is in @effs@.
+  -- | Attempts to project an operation of type @sig f a@ from a the union @Effs sigs f a@,
+  -- when @sig@ is in @sigs@.
   prj :: Effs sigs f a -> Maybe (sig f a)
 
 instance {-# OVERLAPPING #-} Member sig (sig ': sigs) where
@@ -180,6 +180,6 @@ instance (Member sig sigs) => Member sig (sig' : sigs) where
 
 -- | @Member sigs sigs'@ holds when every @sig@ which is a 'Member' of in @sigs@
 -- is also a 'Member' of @sigs'@.
-type family Members (xsigs :: [Effect]) (xysigs :: [Effect]) :: Constraint where
-  Members '[] xysigs       = ()
-  Members (xsig ': xsigs) xysigs = (Member xsig xysigs, Members xsigs xysigs)
+type family Members (sigs1 :: [Effect]) (sigs2 :: [Effect]) :: Constraint where
+  Members '[] sigs2       = ()
+  Members (sig ': sigs1) sigs2 = (Member sig sigs2, Members sigs1 sigs2)

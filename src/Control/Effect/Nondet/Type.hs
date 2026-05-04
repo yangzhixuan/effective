@@ -26,7 +26,7 @@ import Control.Effect.Internal.TH
 
 type Nondet = Alg Choose_
 
-pattern Nondet :: Member Nondet effs => k -> k -> Effs effs m k
+pattern Nondet :: Member Nondet sigs => k -> k -> Effs sigs m k
 pattern Nondet x y <- (prj -> Just (Alg (Choose_ x y)))
   where Nondet x y = inj (Alg (Choose_ x y))
 

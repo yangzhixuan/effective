@@ -51,20 +51,20 @@ codeApp cql@(Code ql) cqr@(Code qr) = Code $
 -- @put [|| ... ||]@ because the quotation by default has type @Code m@.
 -- So having some specialised operations is sometimes handy.
 
-putUp :: Member (Put (Up c)) sig => Up c -> Prog sig ()
+putUp :: Member (Put (Up c)) sigs => Up c -> Prog sigs ()
 putUp = put
 
-getUp :: Member (Get (Up c)) sig => Prog sig (Up c)
+getUp :: Member (Get (Up c)) sigs => Prog sigs (Up c)
 getUp = get
 
-askUp :: Member (Ask (Up c)) sig => Prog sig (Up c)
+askUp :: Member (Ask (Up c)) sigs => Prog sigs (Up c)
 askUp = ask
 
-localUp :: Member (Local (Up c)) sig => (Up c -> Up c) -> Prog sig (Up c) -> Prog sig (Up c)
+localUp :: Member (Local (Up c)) sigs => (Up c -> Up c) -> Prog sigs (Up c) -> Prog sigs (Up c)
 localUp = local
 
-throwUp :: Member (Throw (Up c)) sig => Up c -> Prog sig a
+throwUp :: Member (Throw (Up c)) sigs => Up c -> Prog sigs a
 throwUp = throw
 
-catchUp :: Member (Catch (Up c)) sig => Prog sig a -> (Up c -> Prog sig a) -> Prog sig a
+catchUp :: Member (Catch (Up c)) sigs => Prog sigs a -> (Up c -> Prog sigs a) -> Prog sigs a
 catchUp = catch

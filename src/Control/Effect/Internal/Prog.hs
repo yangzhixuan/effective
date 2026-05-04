@@ -41,12 +41,12 @@ import Control.Effect.Internal.Prog.ProgImp
 
 import Control.Effect.Internal.Effs
 
--- | A family of programs that may contain at least the effects in @effs@ in any
+-- | A family of programs that may contain at least the effects in @sigs@ in any
 -- order, and that returns an @a@
-type a ! effs = Progs effs a
+type a ! sigs = Progs sigs a
 
--- | A family of programs that may contain at least the effects in @effs@ in any
+-- | A family of programs that may contain at least the effects in @sigs@ in any
 -- order, and that returns an @a@
-type Progs effs -- ^ A list of effects the program may use
+type Progs sigs -- ^ A list of effects the program may use
            a    -- ^ The return value of the program
-  = forall effs' . Members effs effs' => Prog effs' a
+  = forall sigs' . Members sigs sigs' => Prog sigs' a

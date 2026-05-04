@@ -110,40 +110,40 @@ shiftGenM f = GenM $ (\g -> unGenM g id) . f
 type CodeGen = Alg Gen
 
 -- | Generic code-generation operation.
-liftGen :: Member CodeGen sig => Gen a -> Prog sig a
+liftGen :: Member CodeGen sigs => Gen a -> Prog sigs a
 liftGen o = call (Alg o)
 
 -- | Generate a let-binding.
-genLet :: Member CodeGen sig => Up a -> Prog sig (Up a)
+genLet :: Member CodeGen sigs => Up a -> Prog sigs (Up a)
 genLet = liftGen . genLet_
 
 -- | Generate a recursive let-binding.
-genLetRec :: Member CodeGen sig => (Up a -> Up a) -> Prog sig (Up a)
+genLetRec :: Member CodeGen sigs => (Up a -> Up a) -> Prog sigs (Up a)
 genLetRec = liftGen . genLetRec_
 
 -- | Perform code generation on a monad @m@.
-liftGenA :: Member CodeGen sig => Algebra sig m -> Gen a -> m a
+liftGenA :: Member CodeGen sigs => Algebra sigs m -> Gen a -> m a
 liftGenA alg o = callM alg (Alg o)
 
 -- | Generate a let-binding on a monad @m@.
-genLetM :: forall sig m a . Member CodeGen sig
-        => Algebra sig m -> Up a -> m (Up a)
+genLetM :: forall sigs m a . Member CodeGen sigs
+        => Algebra sigs m -> Up a -> m (Up a)
 genLetM alg = callM alg . Alg .  genLet_
 
 -- | Generate a recursive let-binding on a monad @m@.
-genLetRecM :: forall sig n a . Member CodeGen sig
-           => Algebra sig n -> (Up a -> Up a) -> n (Up a)
+genLetRecM :: forall sigs n a . Member CodeGen sigs
+           => Algebra sigs n -> (Up a -> Up a) -> n (Up a)
 genLetRecM alg = callM alg . Alg .  genLetRec_
 
 -- | The effect of generating code of type @m a@.
 type CodeGenM m = Alg (GenM m)
 
 -- | Generic code-generation operation.
-liftGenM :: forall m sig a. Member (CodeGenM m) sig => GenM m a -> Prog sig a
+liftGenM :: forall m sigs a. Member (CodeGenM m) sigs => GenM m a -> Prog sigs a
 liftGenM o = call (Alg o)
 
 -- | Generate a do-binding.
-genDo :: (Monad m, Member (CodeGenM m) sig) => Up (m a) -> Prog sig (Up a)
+genDo :: (Monad m, Member (CodeGenM m) sigs) => Up (m a) -> Prog sigs (Up a)
 genDo = liftGenM . genDo_
 
 -- | Whenever we have an effect @CodeGenM m@, we can use the effect `CodeGen` as

@@ -6,14 +6,14 @@ Maintainer  : Nicolas Wu
 Stability   : experimental
 
 This module defines The family of algebraic operations. For every functor
-@sig :: Type -> Type@, an algebraic operation of signature @sig@ on a monad
-@m@ is a function @op :: forall a. sig (m a) -> m a@ satisfying the following
+@sigs :: Type -> Type@, an algebraic operation of signature @sigs@ on a monad
+@m@ is a function @op :: forall a. sigs (m a) -> m a@ satisfying the following
 property:
 
 > op x >>= k  ==  op (fmap (>>= k) x)
 
-for all @x :: sig (m a)@ and @k :: a -> m b@. Such operations are in bijection
-with polymorphic functions of type @forall a. sig a -> m a@, witnessed by
+for all @x :: sigs (m a)@ and @k :: a -> m b@. Such operations are in bijection
+with polymorphic functions of type @forall a. sigs a -> m a@, witnessed by
 `algOpIso` below.
 
 An important property of algebraic operations is that they can always be
@@ -36,19 +36,19 @@ import Data.HFunctor
 import Control.Monad.Trans.Class ( MonadTrans(..) )
 import Control.Effect.Internal.Effs.Sum.Type (Algebra, Effs(..))
 
--- | @Alg sig@ is the (higher-order) signature of algebraic operations of
--- (first-order) signature @sig@.
+-- | @Alg sigs@ is the (higher-order) signature of algebraic operations of
+-- (first-order) signature @sigs@.
 
-newtype Alg (sig :: Type -> Type)
+newtype Alg (sigs :: Type -> Type)
          (f :: Type -> Type)
          k
-         = Alg (sig k)
+         = Alg (sigs k)
 
-instance Functor sig => Functor (Alg sig f) where
+instance Functor sigs => Functor (Alg sigs f) where
   {-# INLINE fmap #-}
   fmap f (Alg op) = Alg (fmap f op)
 
-instance Functor sig => HFunctor (Alg sig) where
+instance Functor sigs => HFunctor (Alg sigs) where
   {-# INLINE hmap #-}
   hmap f (Alg op) = Alg op
 
@@ -56,7 +56,7 @@ instance Functor sig => HFunctor (Alg sig) where
 -- We mark this instance as incoherent because for specific monad transformers we may
 -- have more general lifting instances. For example, we trivially have
 --
--- > instance Forward eff IdentityT
+-- > instance Forward sigs IdentityT
 --
 -- And this is not strictly more speicific than @Forward (Alg f) t@ so we need the
 -- instance here to be incoherent.
@@ -64,11 +64,11 @@ instance {-# INCOHERENT #-} MonadTrans t => Forward (Alg f) t where
   {-# INLINE fwd #-}
   fwd alg (Alg op) = lift (alg (Alg op))
 
--- | Functions @forall x. Alg sig m x -> m x@ are the same as @forall x. sig x -> m x@,
--- and they are in bijection with functions @op :: forall x. sig (m x) -> m x@ satisfying
+-- | Functions @forall x. Alg sigs m x -> m x@ are the same as @forall x. sigs x -> m x@,
+-- and they are in bijection with functions @op :: forall x. sigs (m x) -> m x@ satisfying
 -- the equation @op x >>= k  ==  op (fmap (>>= k) x)@.
-algOpIso :: (Functor sig, Monad m)
-         => Iso (forall x. Alg sig m x -> m x) (forall x. sig (m x) -> m x)
+algOpIso :: (Functor sigs, Monad m)
+         => Iso (forall x. Alg sigs m x -> m x) (forall x. sigs (m x) -> m x)
 algOpIso = Iso
   (\a sm -> a (Alg sm) >>= id)
   (\b (Alg s) -> b (fmap return s))

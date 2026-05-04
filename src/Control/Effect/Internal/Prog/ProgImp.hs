@@ -41,35 +41,35 @@ import Control.Applicative
 import Control.Monad
 
 -- | The impredicative-encoding of effectful programs
-newtype Prog (effs :: [Effect]) a = Prog { runProg :: forall m. Monad m => Algebra effs m -> m a }
+newtype Prog (sigs :: [Effect]) a = Prog { runProg :: forall m. Monad m => Algebra sigs m -> m a }
 
--- | Construct a program of type @Prog effs a@ using an operation @eff@.
+-- | Construct a program of type @Prog sigs a@ using an operation @sig@.
 {-# INLINE call #-}
-call :: forall eff effs a . (Member eff effs, HFunctor eff) => eff (Prog effs) a -> Prog effs a
-call x = Prog $ \(alg :: Algebra effs m) ->
-  let r :: forall x. Prog effs x -> m x
+call :: forall sig sigs a . (Member sig sigs, HFunctor sig) => sig (Prog sigs) a -> Prog sigs a
+call x = Prog $ \(alg :: Algebra sigs m) ->
+  let r :: forall x. Prog sigs x -> m x
       r p = runProg p alg
   in alg (inj (hmap r x))
 
 -- | A variant of `call` with an continuation argument given as return values.
 -- Semantically, @callJ = join . `call`@.
 {-# INLINE callJ #-}
-callJ :: forall eff effs a . (Member eff effs, HFunctor eff)
-     => eff (Prog effs) (Prog effs a) -> Prog effs a
+callJ :: forall sig sigs a . (Member sig sigs, HFunctor sig)
+     => sig (Prog sigs) (Prog sigs a) -> Prog sigs a
 callJ = join . call
 
 -- | A variant of `call` with an continuation argument given as a function.
 -- Semantically, @callK x k = `call` x >>= k@.
 {-# INLINE callK #-}
-callK :: forall eff effs a b . (Member eff effs, HFunctor eff)
-      => eff (Prog effs) a -> (a -> Prog effs b) -> Prog effs b
+callK :: forall sig sigs a b . (Member sig sigs, HFunctor sig)
+      => sig (Prog sigs) a -> (a -> Prog sigs b) -> Prog sigs b
 callK x k = call x >>= k
 
 -- | Construct a program from an operation in a union.
 {-# INLINE progAlg #-}
-progAlg :: forall effs. HFunctor (Effs effs) => Algebra effs (Prog effs)
-progAlg x = Prog $ \(alg :: Algebra effs m) ->
-  let r :: forall x. Prog effs x -> m x
+progAlg :: forall sigs. HFunctor (Effs sigs) => Algebra sigs (Prog sigs)
+progAlg x = Prog $ \(alg :: Algebra sigs m) ->
+  let r :: forall x. Prog sigs x -> m x
       r p = runProg p alg
   in alg (hmap r x)
 
@@ -78,37 +78,37 @@ instance Functor (Prog sigs) where
   fmap :: (a -> b) -> Prog sigs a -> Prog sigs b
   fmap f p = Prog $ \alg -> fmap f (runProg p alg)
 
-instance Applicative (Prog effs) where
+instance Applicative (Prog sigs) where
   {-# INLINE pure #-}
-  pure :: a -> Prog effs a
+  pure :: a -> Prog sigs a
   pure a = Prog $ \alg -> return a
 
   {-# INLINE (<*>) #-}
-  (<*>) :: Prog effs (a -> b) -> Prog effs a -> Prog effs b
+  (<*>) :: Prog sigs (a -> b) -> Prog sigs a -> Prog sigs b
   (<*>) = ap
 
-instance Monad (Prog effs) where
+instance Monad (Prog sigs) where
   {-# INLINE return #-}
   return = pure
 
   {-# INLINE (>>=) #-}
   p >>= k = Prog $ \alg -> runProg p alg >>= (\a -> runProg (k a) alg)
 
--- | Weaken a program of type @Prog effs a@ so that it can be used in
--- place of a program of type @Prog effs a@, when every @effs@ is a member of @effs'@.
-weakenProg :: forall effs effs' a
-  . ( Injects effs effs'
-    , HFunctor (Effs effs)
+-- | Weaken a program of type @Prog sigs a@ so that it can be used in
+-- place of a program of type @Prog sigs a@, when every @sigs@ is a member of @sigs'@.
+weakenProg :: forall sigs sigs' a
+  . ( Injects sigs sigs'
+    , HFunctor (Effs sigs)
     )
-  => Prog effs a -> Prog effs' a
+  => Prog sigs a -> Prog sigs' a
 weakenProg p = Prog $ \alg -> runProg p (alg . injs)
 
 -- | Evaluate a program using the supplied algebra. This is the
 -- universal property from initial monad @Prog sig a@ equipped with
--- the algebra @Eff effs m -> m@.
+-- the algebra @Eff sigs m -> m@.
 {-# INLINE eval #-}
 eval
-  :: forall effs m a . (Monad m, HFunctor (Effs effs))
-  => Algebra effs m
-  -> Prog effs a -> m a
+  :: forall sigs m a . (Monad m, HFunctor (Effs sigs))
+  => Algebra sigs m
+  -> Prog sigs a -> m a
 eval alg p = runProg p alg

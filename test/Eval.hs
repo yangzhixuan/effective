@@ -15,7 +15,7 @@ type Var = Alg Var_
 var :: Member Var sig => String -> Prog sig a
 var name = call (Alg (Var_ name))
 
-pattern Var :: Member Var effs => String -> Effs effs m k
+pattern Var :: Member Var sigs => String -> Effs sigs m k
 pattern Var name <- (prj -> Just (Alg (Var_ name)))
   where Var name = inj (Alg (Var_ name))
 -}
@@ -28,7 +28,7 @@ type Add = Alg Add_
 add :: Member Add sig => Prog sig a -> Prog sig a -> Prog sig a
 add x y = callJ (Alg (Add_ x y))
 
-pattern Add :: Member Add effs => k -> k -> Effs effs m k
+pattern Add :: Member Add sigs => k -> k -> Effs sigs m k
 pattern Add x y <- (prj -> Just (Alg (Add_ x y)))
   where Add x y = inj (Alg (Add_ x y))
 

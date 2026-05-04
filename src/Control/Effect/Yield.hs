@@ -29,16 +29,16 @@ yieldAlg (MapYield f g k) = Y.mapYield f g k
 yieldAT :: AlgTrans '[Yield a b, MapYield a b] '[] '[YResT a b] Monad
 yieldAT = AlgTrans (\_ -> yieldAlg)
 
-pingpongWith :: forall oeffs a b c y .
-                ( HFunctor (Effs oeffs)
+pingpongWith :: forall osigs a b c y .
+                ( HFunctor (Effs osigs)
 #ifdef INDEXED
-                , KnownNat (Length oeffs) , KnownNat (1 + Length oeffs)
+                , KnownNat (Length osigs) , KnownNat (1 + Length osigs)
 #endif
-                , ForwardsM oeffs '[YResT b a] )
-             => (a -> Prog ('[Yield b a, MapYield b a] :++ oeffs) y)
-             -> Handler '[Yield a b, MapYield a b] oeffs '[YResT a b] c (Either y c)
+                , ForwardsM osigs '[YResT b a] )
+             => (a -> Prog ('[Yield b a, MapYield b a] :++ osigs) y)
+             -> Handler '[Yield a b, MapYield a b] osigs '[YResT a b] c (Either y c)
 
 pingpongWith q = handler run (\_ -> yieldAlg) where
-  run :: forall m . Monad m => Algebra oeffs m
+  run :: forall m . Monad m => Algebra osigs m
       -> (YResT a b m c -> m (Either y c))
-  run oalg p = pingpong p (eval (yieldAlg # getAT (fwds @oeffs @'[YResT b a]) oalg) . q)
+  run oalg p = pingpong p (eval (yieldAlg # getAT (fwds @osigs @'[YResT b a]) oalg) . q)

@@ -50,36 +50,36 @@ import Data.Iso
 
 -- | A variant of `call'` for which the effect is on a given monad rather than the `Prog` monad.
 {-# INLINE callM #-}
-callM :: forall eff effs a m . Member eff effs
-      => Algebra effs m -> eff m a -> m a
+callM :: forall sig sigs a m . Member sig sigs
+      => Algebra sigs m -> sig m a -> m a
 callM oalg x = oalg (inj x)
 
 -- | A variant of `callJ` for which the effect is on a given monad rather than the `Prog` monad.
 {-# INLINE callJM #-}
-callJM :: forall eff effs a m . (Monad m, Member eff effs)
-      => Algebra effs m -> eff m (m a) -> m a
+callJM :: forall sig sigs a m . (Monad m, Member sig sigs)
+      => Algebra sigs m -> sig m (m a) -> m a
 callJM oalg x = join (oalg (inj x))
 
 -- | A variant of `callK'` for which the effect is on a given monad rather than the `Prog` monad.
 {-# INLINE callKM #-}
-callKM :: forall eff effs a b m . (Monad m, Member eff effs)
-      => Algebra effs m -> eff m a -> (a -> m b) -> m b
+callKM :: forall sig sigs a b m . (Monad m, Member sig sigs)
+      => Algebra sigs m -> sig m a -> (a -> m b) -> m b
 callKM oalg x k = oalg (inj x) >>= k
 
--- | An obvious isomorphism between two representations of an algebra for a single effect @eff@.
+-- | An obvious isomorphism between two representations of an algebra for a single effect @sig@.
 {-# INLINE singAlgIso #-}
 singAlgIso ::
 #ifdef INDEXED
-  forall eff m. HFunctor eff =>
+  forall sig m. HFunctor sig =>
 #endif
-  Iso  (Algebra '[eff] m) (forall x. eff m x -> m x)
+  Iso  (Algebra '[sig] m) (forall x. sig m x -> m x)
 
 singAlgIso = Iso fwd bwd where
   {-# INLINE fwd #-}
-  fwd :: Algebra '[eff] m -> (forall x. eff m x -> m x)
+  fwd :: Algebra '[sig] m -> (forall x. sig m x -> m x)
   fwd alg e = alg (Eff e)
 
   {-# INLINE bwd #-}
-  bwd :: (forall x. eff m x -> m x) -> Algebra '[eff] m
+  bwd :: (forall x. sig m x -> m x) -> Algebra '[sig] m
   bwd alg (Eff e) = alg e
 

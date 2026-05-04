@@ -43,7 +43,7 @@ $(makeAlg [e| cutFail :: 0 |])
 $(makeScp [e| cutCall :: 1 |])
 
 -- | Perform a cut operation, pruning the search space.
-cut :: (Members [Empty, Choose, CutFail] sig) => Prog sig ()
+cut :: (Members [Empty, Choose, CutFail] sigs) => Prog sigs ()
 cut = skip <|> cutFail
 
 -- | A no-op computation that does nothing.
@@ -53,7 +53,7 @@ skip = return ()
 -- | The `cutListAlg` function defines the algebra for handling the t`CutListT` monad transformer.
 -- It clears the `cut` at the boundary of a `cutCall`.
 cutListAlg
-  :: Monad m => (forall x. oeff m x -> m x)
+  :: Monad m => (forall x. osig m x -> m x)
   -> forall x. Effs [Empty, Choose, CutFail, CutCall] (CutListT m) x -> CutListT m x
 cutListAlg oalg Empty          = empty
 cutListAlg oalg (Choose xs ys) = xs <|> ys

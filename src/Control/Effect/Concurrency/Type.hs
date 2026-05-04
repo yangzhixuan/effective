@@ -56,7 +56,7 @@ getActionName (CoAction a) = a
 $(makeGen [e| act :: forall a. a -> () |])
 -- Generated smart constructor has type:
 -- @
--- act :: Member (Act a) sig => a -> Prog sig ()
+-- act :: Member (Act a) sigs => a -> Prog sigs ()
 -- @
 
 $(makeScp [e| par :: 2 |])
@@ -72,7 +72,7 @@ data JPar_ x = JPar_ x x deriving (Functor, Foldable, Traversable)
 -- is harder to forward along monad transformers compared to `par`. It is recommended
 -- to use `par` if possible.
 {-# INLINE jpar #-}
-jpar :: Member JPar sig => Prog sig x -> Prog sig x -> Prog sig (x, x)
+jpar :: Member JPar sigs => Prog sigs x -> Prog sigs x -> Prog sigs (x, x)
 jpar l r = call (Distr (JPar_ l r) (\(JPar_ x y) -> (x , y)))
 
 pattern JPar x y k <- (prj -> Just (Distr (JPar_ x y) k)) where

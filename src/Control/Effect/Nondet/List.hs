@@ -53,13 +53,13 @@ nondet' = handler' runListT' (\oalg -> nondet'Alg oalg)
 
 {-# INLINE nondet'Alg #-}
 nondet'Alg
-  :: forall oeffs
+  :: forall osigs
   . forall m. Monad m
-  => Algebra oeffs m -> Algebra [Empty, Choose, Nondet] (ListT m)
-nondet'Alg oalg eff
-  | (Just (Alg Empty_))          <- prj eff = empty
-  | (Just (Scp (Choose_ xs ys))) <- prj eff = xs <|> ys
-  | (Just (Alg (Choose_ xs ys))) <- prj eff = pure xs <|> pure ys
+  => Algebra osigs m -> Algebra [Empty, Choose, Nondet] (ListT m)
+nondet'Alg oalg sigs
+  | (Just (Alg Empty_))          <- prj sigs = empty
+  | (Just (Scp (Choose_ xs ys))) <- prj sigs = xs <|> ys
+  | (Just (Alg (Choose_ xs ys))) <- prj sigs = pure xs <|> pure ys
 
 -- | The `nondet` handler transforms nondeterministic effects t`Empty` and t`Choose`
 -- into the t`ListT` monad transformer, which collects all possible results.
@@ -69,12 +69,12 @@ nondet = handler' runListT' nondetAlg
 
 {-# INLINE nondetAlg #-}
 nondetAlg
-  :: forall oeffs
+  :: forall osigs
   . forall m. Monad m
-  => Algebra oeffs m -> Algebra [Empty, Nondet] (ListT m)
-nondetAlg oalg eff
-  | (Just (Alg Empty_))          <- prj eff = empty
-  | (Just (Alg (Choose_ xs ys))) <- prj eff = pure xs <|> pure ys
+  => Algebra osigs m -> Algebra [Empty, Nondet] (ListT m)
+nondetAlg oalg sigs
+  | (Just (Alg Empty_))          <- prj sigs = empty
+  | (Just (Alg (Choose_ xs ys))) <- prj sigs = pure xs <|> pure ys
 
 {-# INLINE nondetAT #-}
 -- | The algebra transformer underlying the 'alternative' handler. This uses an
@@ -90,7 +90,7 @@ backtrack :: Handler [Empty, Choose, Nondet, Once] '[] '[ListT] a [a]
 backtrack = handler' runListT' (\oalg -> alternativeAlg oalg # nondetAlg' # onceAlg')
 
 nondetAlg' :: Monad m => Algebra '[Nondet]  (ListT m)
-nondetAlg' eff | Just (Alg (Choose_ x y)) <- prj eff = pure x <|> pure y
+nondetAlg' sigs | Just (Alg (Choose_ x y)) <- prj sigs = pure x <|> pure y
 
 onceAlg' :: Monad m => Algebra '[Once]  (ListT m)
 onceAlg' (Once xs) = ListT $ do
@@ -109,7 +109,7 @@ backtrack' = handler' runListT' backtrackAlg
 -- | `backtrackAlg` defines the semantics of backtracking for the t`Empty`,
 -- t`Choose`, and t`Once` effects in the context of the t`ListT` monad transformer.
 backtrackAlg
-  :: Monad m => (forall x. oeff m x -> m x)
+  :: Monad m => (forall x. osig m x -> m x)
   -> (forall x. Effs [Empty, Nondet, Once] (ListT m) x -> ListT m x)
 backtrackAlg oalg Empty = empty
 backtrackAlg oalg (Nondet xs ys) = pure xs <|> pure ys
@@ -131,7 +131,7 @@ backtrackOnce = handler' runListT' backtrackOnceAlg
 -- effect in the context of the t`ListT` monad transformer.
 backtrackOnceAlg
   :: Monad m
-  => (forall x . oeff m x -> m x)
+  => (forall x . osig m x -> m x)
   -> (forall x . Effs '[Once] (ListT m) x -> ListT m x)
 backtrackOnceAlg oalg op
   | Just (Scp (Once_ p)) <- prj op =

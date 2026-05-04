@@ -133,14 +133,14 @@ isEmptySubst = isEmptyTCvSubst
 
 data EffGiven = EffGiven
   { effCon :: Type
-  , eff :: Type
-  , es :: Type
+  , sig :: Type
+  , sigs :: Type
   }
 
 data EffWanted = EffWanted
   { effCon :: Type
-  , eff :: Type
-  , es :: Type
+  , sig :: Type
+  , sigs :: Type
   , loc :: CtLoc
   }
 
@@ -286,8 +286,8 @@ resolveEagerly pd cls allGivens allWanteds = timed pd $ do
 #else
                cs = zipWith mkNomEqPred (snd wanted) tys'
 #endif
-           es <- forM cs (newWanted (fst wanted))
-           return (map mkNonCanonical es) 
+           sigs <- forM cs (newWanted (fst wanted))
+           return (map mkNonCanonical sigs) 
       _ -> pure []
   pure (mkSolveResult (concat cts))
 
@@ -405,68 +405,68 @@ emitEqConstraint :: IORef [Ct] -> EffWanted -> EffGiven -> TcPluginM ()
 emitEqConstraint solutions wanted given = do
   let predTy =
 #if __GLASGOW_HASKELL__ <= 912
-        mkPrimEqPred wanted.eff given.eff
+        mkPrimEqPred wanted.sig given.sig
 #else
-        mkNomEqPred wanted.eff given.eff
+        mkNomEqPred wanted.sig given.sig
 #endif
   printSingle "Emitting constraint" predTy
   ev <- newWanted wanted.loc predTy
   tcPluginIO $ modifyIORef' solutions (mkNonCanonical ev :)
 
--- | Separate givens based on whether they're of the form @e :> es@ or not.
+-- | Separate givens based on whether they're of the form @e :> sigs@ or not.
 groupGivens :: Class -> Ct -> Either OtherGiven EffGiven
 groupGivens elemCls = \case
 #if __GLASGOW_HASKELL__ < 908
   CDictCan
     { cc_class = cls
-    , cc_tyargs = [eff, es]
+    , cc_tyargs = [sig, sigs]
     }
     | cls == elemCls ->
 #else
   CDictCan DictCt
     { di_cls = cls
-    , di_tys = [eff, es]
+    , di_tys = [sig, sigs]
     }
     | cls == elemCls ->
 #endif
     Right EffGiven
-      { effCon = fst $ splitAppTys eff
-      , eff = eff
-      , es = es
+      { effCon = fst $ splitAppTys sig
+      , sig = sig
+      , sigs = sigs
       }
   ct -> Left OtherGiven
     { ty = ctPred ct
     }
 
--- | Separate wanteds based on whether they're of the form @e :> es@ or not.
+-- | Separate wanteds based on whether they're of the form @e :> sigs@ or not.
 groupWanteds :: Class -> Ct -> Either OtherWanted EffWanted
 groupWanteds elemCls = \case
 #if __GLASGOW_HASKELL__ < 908
   CDictCan
     { cc_ev = CtWanted { ctev_loc = loc }
     , cc_class = cls
-    , cc_tyargs = [eff, es]
+    , cc_tyargs = [sig, sigs]
     }
     | cls == elemCls ->
 #elif __GLASGOW_HASKELL__ <= 912
   CDictCan DictCt
     { di_ev = CtWanted { ctev_loc = loc }
     , di_cls = cls
-    , di_tys = [eff, es]
+    , di_tys = [sig, sigs]
     }
     | cls == elemCls ->
 #else
   CDictCan DictCt
     { di_ev = CtWanted WantedCt { ctev_loc = loc }
     , di_cls = cls
-    , di_tys = [eff, es]
+    , di_tys = [sig, sigs]
     }
     | cls == elemCls ->
 #endif
     Right EffWanted
-      { effCon = fst $ splitAppTys eff
-      , eff = eff
-      , es = es
+      { effCon = fst $ splitAppTys sig
+      , sig = sig
+      , sigs = sigs
       , loc = loc
       }
   ct ->
@@ -507,21 +507,21 @@ wantedIsCls elemCls = \case
     Nothing
 
 -- | We don't get appropriate given constraints when dealing with concrete (or
--- partially concrete) effect lists like (A : B : C : es), so they need to be
+-- partially concrete) effect lists like (A : B : C : sigs), so they need to be
 -- manually added (GHC will resolve them later).
 extendEffGivens :: [EffWanted] -> [EffGiven] -> [EffGiven]
-extendEffGivens wanteds givens = loop givens . nubType $ map (.es) wanteds
+extendEffGivens wanteds givens = loop givens . nubType $ map (.sigs) wanteds
   where
     loop :: [EffGiven] -> [Type] -> [EffGiven]
     loop acc = \case
       [] -> acc
       fullEs : rest ->
         let extractGivens :: Type -> [EffGiven]
-            extractGivens es = case splitAppTys es of
-              (_colon, [_kind, eff, esTail]) -> EffGiven
-                { effCon = fst $ splitAppTys eff
-                , eff = eff
-                , es = fullEs
+            extractGivens sigs = case splitAppTys sigs of
+              (_colon, [_kind, sig, esTail]) -> EffGiven
+                { effCon = fst $ splitAppTys sig
+                , sig = sig
+                , sigs = fullEs
                 } : extractGivens esTail
               _ -> []
         in loop (extractGivens fullEs ++ acc) rest
@@ -567,8 +567,8 @@ findCandidates wanted = loop []
     loop acc = \case
       [] -> Right acc
       given : rest ->
-        if wanted.effCon `eqType` given.effCon && wanted.es `eqType` given.es
-        then case tcUnifyTyNoSkolems wanted.eff given.eff of
+        if wanted.effCon `eqType` given.effCon && wanted.sigs `eqType` given.sigs
+        then case tcUnifyTyNoSkolems wanted.sig given.sig of
           Just subst
             | isEmptySubst subst -> Left given
             | otherwise -> loop ((given, subst) : acc) rest
@@ -582,12 +582,12 @@ findDownCandidates wanted = loop []
     loop acc = \case
       [] -> Right acc
       given : rest ->
-        case case tcUnifyTyNoSkolems wanted.eff given.eff
+        case case tcUnifyTyNoSkolems wanted.sig given.sig
 
 
 
-        if wanted.effCon `eqType` given.effCon && wanted.es `eqType` given.es
-        then case tcUnifyTyNoSkolems wanted.eff given.eff of
+        if wanted.effCon `eqType` given.effCon && wanted.sigs `eqType` given.sigs
+        then case tcUnifyTyNoSkolems wanted.sig given.sig of
           Just subst
             | isEmptySubst subst -> Left given
             | otherwise -> loop ((given, subst) : acc) rest
@@ -672,11 +672,11 @@ printLn _ = pure ()
 
 instance O.Outputable EffWanted where
   ppr wanted =
-    O.text "[W]" O.<+> O.ppr wanted.eff O.<+> O.text ":>" O.<+> O.ppr wanted.es
+    O.text "[W]" O.<+> O.ppr wanted.sig O.<+> O.text ":>" O.<+> O.ppr wanted.sigs
 
 instance O.Outputable EffGiven where
   ppr given =
-    O.text "[G]" O.<+> O.ppr given.eff O.<+> O.text ":>" O.<+> O.ppr given.es
+    O.text "[G]" O.<+> O.ppr given.sig O.<+> O.text ":>" O.<+> O.ppr given.sigs
 
 instance O.Outputable OtherGiven where
   ppr given =

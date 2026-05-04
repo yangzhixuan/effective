@@ -67,7 +67,7 @@ example_backtrack1 = property $ (handle backtrack $ knapsack 3 [3, 2, 1] :: [[In
 
 example_backtrack2 :: Property
 example_backtrack2 = property $ handle backtrack p === [1, 2] where
-  p :: (Alternative (Prog sig), Members '[Once] sig) => Prog sig Int
+  p :: (Alternative (Prog sigs), Members '[Once] sigs) => Prog sigs Int
   p = do x <- once (return 0 <|> return 5)
          (return (x + 1)) <|> (return (x + 2))
 -- ghci> exampleOnce
@@ -75,7 +75,7 @@ example_backtrack2 = property $ handle backtrack p === [1, 2] where
 
 example_Once' :: Property
 example_Once' = property $ handle onceNondet p === [1, 2] where
-  p :: Members '[Choose, Empty, Once] sig => Prog sig Int
+  p :: Members '[Choose, Empty, Once] sigs => Prog sigs Int
   p = do x <- once ((return 0) <|> (return 5))
          (return (x + 1)) <|> (return (x + 2))
 -- ghci> exampleOnce'
@@ -83,13 +83,13 @@ example_Once' = property $ handle onceNondet p === [1, 2] where
 
 example_Once'' :: Property
 example_Once'' = property $ handle onceNondet p === [1, 2] where
-  p :: Members '[Choose, Empty, Once] sig => Prog sig Int
+  p :: Members '[Choose, Empty, Once] sigs => Prog sigs Int
   p = do x <- once ((return 0) <|> (return 5))
          (return (x + 1)) <|> (return (x + 2))
 
 example_Once''' :: Property
 example_Once''' = property $ handle onceNondet p === [1, 2] where
-  p :: Members '[Choose, Empty, Once] sig => Prog sig Int
+  p :: Members '[Choose, Empty, Once] sigs => Prog sigs Int
   p = do x <- once ((return 0) <|> (return 5))
          (return (x + 1)) <|> (return (x + 2))
 

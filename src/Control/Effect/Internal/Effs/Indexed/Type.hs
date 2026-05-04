@@ -24,29 +24,29 @@ import GHC.Exts
 -- | The type of higher-order effects.
 type Effect = (Type -> Type) -> (Type -> Type)
 
--- | A higher-order algebra for the union of effects @effs@ with
+-- | A higher-order algebra for the union of effects @sigs@ with
 -- carrier being the functor @f@.
-type Algebra effs f =
-  forall x . Effs effs f x -> f x
+type Algebra sigs f =
+  forall x . Effs sigs f x -> f x
 
--- | @Effs effs f a@ creates a union of the effect signatures in the list @effs@.
+-- | @Effs sigs f a@ creates a union of the effect signatures in the list @sigs@.
 type Effs :: [Effect] -> Effect
-data Effs effs f a where
+data Effs sigs f a where
   -- | @`Effn` n op@ places an operation @n@ away from the last element of the list.
-  Effn :: {-# UNPACK #-} !Int -> !(eff f a) -> Effs effs f a
+  Effn :: {-# UNPACK #-} !Int -> !(sig f a) -> Effs sigs f a
 
--- | @`EffIndex` eff effs@ finds the index of @eff@ in @effs@, where
--- the last element has index @0@, and the head element has index @Length effs - 1@.
-type family EffIndex (eff :: a) (effs :: [a]) :: Nat where
-  EffIndex eff (eff ': effs) = Length effs
-  EffIndex eff (_ ': effs)   = EffIndex eff effs
+-- | @`EffIndex` sig sigs@ finds the index of @sig@ in @sigs@, where
+-- the last element has index @0@, and the head element has index @Length sigs - 1@.
+type family EffIndex (sig :: a) (sigs :: [a]) :: Nat where
+  EffIndex sig (sig ': sigs) = Length sigs
+  EffIndex sig (_ ': sigs)   = EffIndex sig sigs
 
--- | Given @xeffs@ which is a subset of effects in @yeffs@, @`EffIndexes` xeffs
--- yeffs@ finds the index @`EffIndex` eff yeffs@ for each @eff@ in @xeffs@, and
+-- | Given @sigs1@ which is a subset of effects in @sigs2@, @`EffIndexes` sigs1
+-- sigs2@ finds the index @`EffIndex` sig sigs2@ for each @sig@ in @sigs1@, and
 -- returns this as a list of indices.
-type family EffIndexes (xeffs :: [a]) (yeffs :: [a]) :: [Nat] where
-  EffIndexes '[] yeffs            = '[]
-  EffIndexes (eff ': xeffs) yeffs = EffIndex eff yeffs ': EffIndexes xeffs yeffs
+type family EffIndexes (sigs1 :: [a]) (sigs2 :: [a]) :: [Nat] where
+  EffIndexes '[] sigs2            = '[]
+  EffIndexes (sig ': sigs1) sigs2 = EffIndex sig sigs2 ': EffIndexes sigs1 sigs2
 
 -- | A value of type @Effs '[] f x@ cannot be created, and this is the
 -- absurd destructor for this type.
@@ -54,12 +54,12 @@ type family EffIndexes (xeffs :: [a]) (yeffs :: [a]) :: [Nat] where
 absurdEffs :: Effs '[] f x -> a
 absurdEffs x = case x of {}
 
--- | @Member eff effs@ holds when @eff@ is contained in @effs@.
+-- | @Member sig sigs@ holds when @sig@ is contained in @sigs@.
 type Member :: Effect -> [Effect] -> Constraint
-type Member eff effs = (KnownNat (EffIndex eff effs))
+type Member sig sigs = (KnownNat (EffIndex sig sigs))
 
--- | @Member effs effs'@ holds when every @eff@ which is a 'Member' of in @effs@
--- is also a 'Member' of @effs'@.
-type family Members (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint where
-  Members '[] xyeffs       = ()
-  Members (xeff ': xeffs) xyeffs = (Member xeff xyeffs, Members xeffs xyeffs)
+-- | @Member sigs sigs'@ holds when every @sig@ which is a 'Member' of in @sigs@
+-- is also a 'Member' of @sigs'@.
+type family Members (sigs1 :: [Effect]) (sigs2 :: [Effect]) :: Constraint where
+  Members '[] sigs2       = ()
+  Members (sig ': sigs1) sigs2 = (Member sig sigs2, Members sigs1 sigs2)

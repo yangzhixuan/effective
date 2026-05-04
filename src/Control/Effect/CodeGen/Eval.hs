@@ -48,61 +48,61 @@ genMAlg o
   | Just up      <- prj @(UpOp m) o     = bwd upIso genDo_ up
 
 
-type EvalGen# effs oeffs =
-  ( HFunctor (Effs (effs `Union` GenEffects))
-  , WithFwds# effs oeffs GenEffects )
+type EvalGen# sigs osigs =
+  ( HFunctor (Effs (sigs `Union` GenEffects))
+  , WithFwds# sigs osigs GenEffects )
 
 -- | Evaluate a program with an algebra transformer, with `Gen` at the bottom
 -- of monad transformer stack.
-evalGen :: forall effs oeffs ts cs a.
+evalGen :: forall sigs osigs ts cs a.
            ( cs Gen
            , Monad (Apply ts Gen)
            , ForwardsC ((~) Gen) GenEffects ts
-           , Injects (oeffs `Union` GenEffects) GenEffects
-           , EvalGen# effs oeffs )
-        => AlgTrans effs oeffs ts cs
-        -> Prog (effs `Union` GenEffects) a -> Apply ts Gen a
+           , Injects (osigs `Union` GenEffects) GenEffects
+           , EvalGen# sigs osigs )
+        => AlgTrans sigs osigs ts cs
+        -> Prog (sigs `Union` GenEffects) a -> Apply ts Gen a
 evalGen at = evalAT genAlg (withFwds (Proxy @GenEffects) (weakenC @((~) Gen) at))
 
 -- | Stage a meta-level program into an object-level monadic computation via `Gen`.
-stage :: forall m effs oeffs ts cs a.
+stage :: forall m sigs osigs ts cs a.
          ( cs Gen
          , Monad (Apply ts Gen)
          , ForwardsC ((~) Gen) GenEffects ts
-         , Injects (oeffs `Union` GenEffects) GenEffects
+         , Injects (osigs `Union` GenEffects) GenEffects
          , Apply ts Gen $~> m
-         , EvalGen# effs oeffs )
-      => AlgTrans effs oeffs ts cs
-      -> Prog (effs `Union` GenEffects) (Up a)
+         , EvalGen# sigs osigs )
+      => AlgTrans sigs osigs ts cs
+      -> Prog (sigs `Union` GenEffects) (Up a)
       -> Up (m a)
 stage alg = down . evalGen alg
 
-type EvalGenM# effs oeffs m =
-  ( HFunctor (Effs (effs `Union` GenMEffects m))
-  , WithFwds# effs oeffs (GenMEffects m) )
+type EvalGenM# sigs osigs m =
+  ( HFunctor (Effs (sigs `Union` GenMEffects m))
+  , WithFwds# sigs osigs (GenMEffects m) )
 
 -- | Evaluate a program with an algebra transformer, with `GenM m` at the bottom
 -- of monad transformer stack.
-evalGenM :: forall m effs oeffs ts cs a.
+evalGenM :: forall m sigs osigs ts cs a.
             ( cs (GenM m), Monad m
             , Monad (Apply ts (GenM m))
             , ForwardsC ((~) (GenM m)) (GenMEffects m) ts
-            , Injects (oeffs `Union` GenMEffects m) (GenMEffects m)
-            , EvalGenM# effs oeffs m )
-         => AlgTrans effs oeffs ts cs
-         -> Prog (effs `Union` GenMEffects m) a -> Apply ts (GenM m) a
+            , Injects (osigs `Union` GenMEffects m) (GenMEffects m)
+            , EvalGenM# sigs osigs m )
+         => AlgTrans sigs osigs ts cs
+         -> Prog (sigs `Union` GenMEffects m) a -> Apply ts (GenM m) a
 evalGenM at = evalAT genMAlg (withFwds (Proxy @(GenMEffects m)) (weakenC @((~) (GenM m)) at))
 
 -- | Stage a meta-level program into an object-level monadic computation via `GenM`.
-stageM :: forall m m' effs oeffs ts cs a.
+stageM :: forall m m' sigs osigs ts cs a.
             ( cs (GenM m), Monad m
             , Monad (Apply ts (GenM m))
             , ForwardsC ((~) (GenM m)) (GenMEffects m) ts
-            , Injects (oeffs `Union` GenMEffects m) (GenMEffects m)
+            , Injects (osigs `Union` GenMEffects m) (GenMEffects m)
             , Apply ts (GenM m) $~> m'
-            , EvalGenM# effs oeffs m )
+            , EvalGenM# sigs osigs m )
          => Proxy m
-         -> AlgTrans effs oeffs ts cs
-         -> Prog (effs `Union` GenMEffects m) (Up a)
+         -> AlgTrans sigs osigs ts cs
+         -> Prog (sigs `Union` GenMEffects m) (Up a)
          -> Up (m' a)
 stageM _ at = down . evalGenM @m at

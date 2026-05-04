@@ -24,16 +24,16 @@ main = return ()
 data ActNames = Handshake deriving (Show, Eq, Ord)
 type HS = CCSAction ActNames
 
-handshake :: Member (Act HS) sig => Prog sig ()
+handshake :: Member (Act HS) sigs => Prog sigs ()
 handshake = act (Action Handshake)
 
-shakehand :: Member (Act HS) sig => Prog sig ()
+shakehand :: Member (Act HS) sigs => Prog sigs ()
 shakehand = act (CoAction Handshake)
 
-resHS :: Member (Res HS) sig => Prog sig x -> Prog sig x
+resHS :: Member (Res HS) sigs => Prog sigs x -> Prog sigs x
 resHS x = res (Action Handshake) (res (CoAction Handshake) x)
 
-prog :: Members '[Par, Act HS, Res HS, Tell String] sig => Prog sig ()
+prog :: Members '[Par, Act HS, Res HS, Tell String] sigs => Prog sigs ()
 prog = resHS (par (do tell "A"; handshake; tell "C")
                   (do tell "B"; shakehand; tell "D"))
 
@@ -59,7 +59,7 @@ test33 = handle (fuse (resumpWith (False : False : True : True : [])) (writer @S
 test34 :: (String, ActsMb HS ())
 test34 = handle (fuse (resumpWith (False : False : True : False : [])) (writer @String)) prog
 
-prog2 :: Members '[Par, Alg IO] sig => Prog sig ()
+prog2 :: Members '[Par, Alg IO] sigs => Prog sigs ()
 prog2 =
   do p <- io (QSem.newQSem 0)
      q <- io (QSem.newQSem 0)
@@ -75,10 +75,10 @@ prog2 =
 test4 :: IO ()
 test4 = handleIO' (Proxy @IOPar) ioPar (identity @'[]) prog2
 
-tell' :: forall w sig. (Member ("t2" :@ (Tell w)) sig, Monoid w) => w -> Prog sig ()
+tell' :: forall w sigs. (Member ("t2" :@ (Tell w)) sigs, Monoid w) => w -> Prog sigs ()
 tell' w = callPAlg (Proxy @"t2") (Tell_ w ())
 
-prog3 :: Members '[Par, Act HS, Res HS, Tell String, "t2" :@ (Tell String)] sig => Prog sig ()
+prog3 :: Members '[Par, Act HS, Res HS, Tell String, "t2" :@ (Tell String)] sigs => Prog sigs ()
 prog3 = resHS (par (do tell "A"; handshake; tell' "C")
                    (do tell "B"; shakehand; tell' "D"))
 
@@ -87,7 +87,7 @@ prog3 = resHS (par (do tell "A"; handshake; tell' "C")
 test5 :: (String, ListActs HS (String, ()))
 test5 = handle (renameEffs (Proxy @"t2") writer |> resump |> writer) prog3
 
-prog4 :: Member (Alg IO) sig => Prog sig ()
+prog4 :: Member (Alg IO) sigs => Prog sigs ()
 prog4 = io (putChar 'x')
 
 test6 :: IO ()
@@ -97,7 +97,7 @@ test7 :: IO (Either String ())
 test7 = handleIO' (Proxy @IOPar) ioPar (ccsByQSem @ActNames |> writerIO) (prog >> io (putStrLn ""))
 
 
-prog5 :: Members '[JPar, Act HS, Res HS, Tell String] sig => Prog sig (Int, Int)
+prog5 :: Members '[JPar, Act HS, Res HS, Tell String] sigs => Prog sigs (Int, Int)
 prog5 = resHS (jpar (do tell "A"; handshake; tell "C"; return 0)
                     (do tell "B"; shakehand; tell "D"; return 1))
 
@@ -107,12 +107,12 @@ test8 = handle (jresump |> writer @String) prog5
 test9 :: IO (Either String (Int, Int))
 test9 = handleIO' (Proxy @IOPar) ioPar (ccsByQSem @ActNames |> writerIO) prog5
 
-prog6 :: Members '[Yield Int Int, Alg IO] sig => Int -> Prog sig Int
+prog6 :: Members '[Yield Int Int, Alg IO] sigs => Int -> Prog sigs Int
 prog6 n = do io (putStrLn ("Ping " ++ show n))
              n' <- yield (n + 1)
              prog6 n'
 
-prog6' :: Members '[Yield Int Int, Alg IO] sig => Int -> Prog sig Int
+prog6' :: Members '[Yield Int Int, Alg IO] sigs => Int -> Prog sigs Int
 prog6' n
   | n > 100   = do io (putStrLn "Too big"); return n
   | otherwise = do io (putStrLn ("Pong " ++ show n))

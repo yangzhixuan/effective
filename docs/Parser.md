@@ -23,17 +23,17 @@ char = do
     (x:xs) -> do put xs
                  return x
 
-symbol :: Members [Get [Char], Put [Char], Empty, Choose] sig => Char -> Prog sig Char
+symbol :: Members [Get [Char], Put [Char], Empty, Choose] sigs => Char -> Prog sigs Char
 symbol c = do
   c' <- char
   if c == c'
     then return c
     else empty
 
-digit :: Members [Get [Char], Put [Char], Empty, Choose] sig => Prog sig Char
+digit :: Members [Get [Char], Put [Char], Empty, Choose] sigs => Prog sigs Char
 digit = foldr (<|>) empty (fmap symbol ['0' .. '9'])
 
-int, expr, term, fact :: Members [Get [Char], Put [Char], Empty, Choose] sig => Prog sig Int
+int, expr, term, fact :: Members [Get [Char], Put [Char], Empty, Choose] sigs => Prog sigs Int
 int  = do ds <- some digit ; return (read ds)
 expr = (do i <- term ; symbol '+' ; j <- expr ; return (i + j))
    <|> (do i <- term ; return i)
@@ -42,12 +42,12 @@ term = (do i <- fact ; symbol '*' ; j <- term ; return (i * j))
 fact = (int)
    <|> (do symbol '(' ; i <- expr ; symbol ')' ; return i)
 
--- int', expr', term', fact' :: forall sig .
---   ( Member ((Get [Char])) sig
---   , Member ((Put [Char])) sig
---   , Member (Empty) sig
---   , Member (Choose) sig)
---   => Prog sig Int
+-- int', expr', term', fact' :: forall sigs .
+--   ( Member ((Get [Char])) sigs
+--   , Member ((Put [Char])) sigs
+--   , Member (Empty) sigs
+--   , Member (Choose) sigs)
+--   => Prog sigs Int
 --
 -- int'  = read <$> some digit
 -- expr' = ((+) <$> term' <* symbol '+' <*> expr') <|> term'
@@ -85,9 +85,9 @@ example_NotParse = property $
     ("",[])
 
 -- This example demonstrates the use of Cut
-expr', term', fact' :: forall sig .
-  Members [Get [Char], Put [Char], Empty, Choose, CutFail, CutCall] sig
-  => Prog sig Int
+expr', term', fact' :: forall sigs .
+  Members [Get [Char], Put [Char], Empty, Choose, CutFail, CutCall] sigs
+  => Prog sigs Int
 expr' = do i <- term'
            cutCall ((do symbol '+' ; cut; j <- expr' ; return (i + j)) <|>
                     (do return i))

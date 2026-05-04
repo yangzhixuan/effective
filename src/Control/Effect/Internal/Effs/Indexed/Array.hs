@@ -27,23 +27,23 @@ import Data.Array.ST
 import Data.Array
 
 
--- | Injects xeffs yeffs means that all of xeffs is in xyeffs
--- Some other effects may be in xyeffs, so xeffs <= yeffs
-class KnownNat (Length xeffs) => Injects xeffs xyeffs where
-  injs :: Effs xeffs f a -> Effs xyeffs f a
+-- | Injects sigs1 sigs2 means that all of sigs1 is in sigs2
+-- Some other effects may be in sigs2, so sigs1 <= sigs2
+class KnownNat (Length sigs1) => Injects sigs1 sigs2 where
+  injs :: Effs sigs1 f a -> Effs sigs2 f a
   ixs :: Array Int Int
 
-instance (KnownNats (EffIndexes xeffs xyeffs), KnownNat (Length xeffs))
-  => Injects xeffs xyeffs where
+instance (KnownNats (EffIndexes sigs1 sigs2), KnownNat (Length sigs1))
+  => Injects sigs1 sigs2 where
   {-# INLINE injs #-}
-  injs (Effn n op) = Effn (ixs @xeffs @xyeffs ! n) op
+  injs (Effn n op) = Effn (ixs @sigs1 @sigs2 ! n) op
 
   {-# INLINE ixs #-}
   ixs = runSTArray $ do arr <- newArray_ (0, m - 1)
-                        natVals (proxy# :: Proxy# (EffIndexes xeffs xyeffs)) arr
+                        natVals (proxy# :: Proxy# (EffIndexes sigs1 sigs2)) arr
                         return arr
     where
-      m = fromInteger (natVal' (proxy# :: Proxy# (Length xeffs)))
+      m = fromInteger (natVal' (proxy# :: Proxy# (Length sigs1)))
 
 -- | A class that witnesses that all the type level nats @ns@ can be reflected
 -- into a value level list. Indexing starts from the end of the list, so that

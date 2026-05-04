@@ -95,9 +95,9 @@ alternativeAT = AlgTrans alternativeAlg
 
 {-# INLINE alternativeAlg #-}
 alternativeAlg
-  :: forall oeffs t . (forall m . Monad m => Alternative (t m))
+  :: forall osigs t . (forall m . Monad m => Alternative (t m))
   => forall m. Monad m
-  => Algebra oeffs m -> Algebra [Empty, Choose] (t m)
+  => Algebra osigs m -> Algebra [Empty, Choose] (t m)
 alternativeAlg oalg Empty          = Ap.empty
 alternativeAlg oalg (Choose xs ys) = xs <|> ys
 

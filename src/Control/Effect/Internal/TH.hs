@@ -283,7 +283,7 @@ makeGenPiecesFromDec baseName dec = do
 -- @
 -- type Put s = Alg (Put_ s)
 --
--- pattern Put :: Member (Put s) effs => s -> k -> Effs effs m k
+-- pattern Put :: Member (Put s) sigs => s -> k -> Effs sigs m k
 -- pattern Put s k <- (prj -> Just (Alg (Put_ s k)))
 --   where Put s k = inj (Alg (Put_ s k))
 --

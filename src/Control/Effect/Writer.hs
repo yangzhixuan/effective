@@ -71,10 +71,10 @@ writerAT = AlgTrans writerAlg
 {-# INLINE writerAlg #-}
 writerAlg
   :: (Monad m, Monoid w)
-  => (forall x. oeff m x -> m x)
+  => (forall x. osig m x -> m x)
   -> (forall x.  Effs '[Tell w] (W.WriterT w m) x -> W.WriterT w m x)
-writerAlg _ eff
-  | Just (Alg (Tell_ w x)) <- prj eff =
+writerAlg _ sigs
+  | Just (Alg (Tell_ w x)) <- prj sigs =
       do W.tell w
          return x
 

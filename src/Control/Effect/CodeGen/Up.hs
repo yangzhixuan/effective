@@ -105,21 +105,21 @@ upAlgIso :: forall n m. Functor n => Iso (Algebra '[UpOp m] n)  (forall x. Up (m
 upAlgIso = trans singAlgIso upIso
 
 -- | Syntactic up-operations on (meta-)programs.
-up :: Member (UpOp m) sig => Up (m a) -> Prog sig (Up a)
+up :: Member (UpOp m) sigs => Up (m a) -> Prog sigs (Up a)
 up = Iso.fwd upIso call
 
 -- | Syntactic up-operations on (meta-)programs with an additional continuation
 -- argument @Up a -> x@.
-up' :: Member (UpOp m) sig => Up (m a) -> (Up a -> x) -> Prog sig x
+up' :: Member (UpOp m) sigs => Up (m a) -> (Up a -> x) -> Prog sigs x
 up' u k = call (Alg (UpOp u k))
 
 -- | Up-operations on a monad @n@.
-upM :: forall m sig n a. (Member (UpOp m) sig, Functor n)
-    => Algebra sig n -> Up (m a) -> n (Up a)
+upM :: forall m sigs n a. (Member (UpOp m) sigs, Functor n)
+    => Algebra sigs n -> Up (m a) -> n (Up a)
 upM alg = Iso.fwd upIso (callM alg)
 
 -- | Up-operations on a monad @n@ with an additional continuation argument.
-upM' :: Member (UpOp m) sig => Algebra sig n -> Up (m a) -> (Up a -> x) -> n x
+upM' :: Member (UpOp m) sigs => Algebra sigs n -> Up (m a) -> (Up a -> x) -> n x
 upM' alg u k = callM alg (Alg (UpOp u k))
 
 -- * Algebra transformers for the up-operation
@@ -296,8 +296,8 @@ instance HFunctor Reset where
   hmap f (Reset o k) = Reset (f o) k
 
 -- | Reset code generation.
-reset :: forall x sig. Member Reset sig
-      => Prog sig (Up x) -> Prog sig (Up x)
+reset :: forall x sigs. Member Reset sigs
+      => Prog sigs (Up x) -> Prog sigs (Up x)
 reset p = call (Reset p id)
 
 -- | Resetting is interpreted as @up@ followed by @down@.
@@ -326,15 +326,15 @@ resetAT' = algTrans1 $ \(oalg :: Algebra '[UpOp m, CodeGen] n) (Reset p k) ->
 -- operations on @n@ at the meta-level of course don't know how to deal with
 -- object-level @m@-code.
 -- An imperfect fix is that if we have the code of an object-level scoped operation
--- @sig (m x) -> m x@, we can define a meta-level operation of type
+-- @sigs (m x) -> m x@, we can define a meta-level operation of type
 --
--- > sig (FreeUp m (Up x)) -> FreeUp m (Up x)
+-- > sigs (FreeUp m (Up x)) -> FreeUp m (Up x)
 --
 -- by first downing the arguments to the object level and invoke the object-level
 -- scoped operation, and then up result back. This is not ideal because we have missed
 -- the opportunity of optimising scoped operation by staging, and also at the meta-level
--- we don't have really scoped operations @sig (FreeUp m n x) -> FreeUp m n x@ but
--- only operations @sig (FreeUp m (Up x)) -> FreeUp m (Up x)@.
+-- we don't have really scoped operations @sigs (FreeUp m n x) -> FreeUp m n x@ but
+-- only operations @sigs (FreeUp m (Up x)) -> FreeUp m (Up x)@.
 
 -- | @FreeUpT m n@ is the monad of interleaving the monad @n@ with object-level @m@-programs.
 newtype FreeUpT m n a = FreeUpT { unFreeUpT :: ResT (UpOp_ m) n a }
@@ -358,12 +358,12 @@ upFree :: forall m. AlgTrans '[UpOp m] '[] '[FreeUpT m] Monad
 upFree = algTrans1 $ \_ -> Iso.bwd upIso upFreeAlg
 
 -- | Operations on @FreeUpT m n@ obtained from object-level operations on @m@.
-freeUpOpAlg :: forall m n meff oeff.
-               (Monad n, meff (FreeUpT m n) $~> oeff m)
-            => (forall x. Up (oeff m x -> m x))
-            -> (forall x. meff (FreeUpT m n) (Up x) -> FreeUpT m n (Up x))
+freeUpOpAlg :: forall m n msig osig.
+               (Monad n, msig (FreeUpT m n) $~> osig m)
+            => (forall x. Up (osig m x -> m x))
+            -> (forall x. msig (FreeUpT m n) (Up x) -> FreeUpT m n (Up x))
 freeUpOpAlg objalg op =
-  let objop = down @(meff (FreeUpT m n)) @(oeff m) op
+  let objop = down @(msig (FreeUpT m n)) @(osig m) op
   in upFreeAlg [|| $$objalg $$objop ||]
 
 -- | `freeUpOpAlg` specialised for scoped operations.
@@ -442,7 +442,7 @@ instance Monad n => Monad (CacheT m n) where
 instance MonadTrans (CacheT m) where
   lift = Iso.bwd cacheConversion
 
-instance Functor sig => Forward (Scp sig) (CacheT m) where
+instance Functor sigs => Forward (Scp sigs) (CacheT m) where
   fwd alg op = Iso.bwd cacheConversion (alg (hmap (Iso.fwd cacheConversion) op))
   -- Note that the following is wrong
   --
@@ -451,7 +451,7 @@ instance Functor sig => Forward (Scp sig) (CacheT m) where
   -- because the scoped operation is only applied to the @n@ part while semantically
   -- it should apply to both the @n@-part and also the cached computation.
 
-instance Functor sig => Forward (Distr sig) (CacheT m) where
+instance Functor sigs => Forward (Distr sigs) (CacheT m) where
   fwd alg op = Iso.bwd cacheConversion (alg (hmap (Iso.fwd cacheConversion) op))
 
 instance (Functor n, Monad m, n $~>> m) => CacheT m n $~> m where

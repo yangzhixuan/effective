@@ -48,7 +48,7 @@ import Data.Kind (Type)
 import Data.HFunctor
 import Data.Iso
 
--- TODO: Operations of the form @sig (m (Up a)) -> m (Up a)@ should probably be a new
+-- TODO: Operations of the form @sigs (m (Up a)) -> m (Up a)@ should probably be a new
 -- operation family.
 
 -- | Signature for the restricted par operation
@@ -62,7 +62,7 @@ instance HFunctor ParUp where
   hmap f (ParUp p q k) = ParUp (f p) (f q) k
 
 -- | Restricted par operation
-parUp :: Member ParUp sig => Prog sig (Up x) -> Prog sig (Up x) -> Prog sig (Up x)
+parUp :: Member ParUp sigs => Prog sigs (Up x) -> Prog sigs (Up x) -> Prog sigs (Up x)
 parUp p q = call (ParUp p q id)
 
 -- | The operation `par` on `CResT` needs to perform pattern matching on the resumption

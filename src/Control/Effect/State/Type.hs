@@ -27,7 +27,7 @@ data Put_ s k where
 -- | Signature for putting a value into the state.
 type Put s = Alg (Put_ s)
 
-pattern Put :: Member (Put s) effs => s -> k -> Effs effs m k
+pattern Put :: Member (Put s) sigs => s -> k -> Effs sigs m k
 pattern Put s k <- (prj -> Just (Alg (Put_ s k)))
   where Put s k = inj (Alg (Put_ s k))
 
@@ -56,7 +56,7 @@ newtype Get_ s k where
 -- | Signature for getting a value from the state.
 type Get s = Alg (Get_ s)
 
-pattern Get :: Member (Get s) effs => (s -> k) -> Effs effs m k
+pattern Get :: Member (Get s) sigs => (s -> k) -> Effs sigs m k
 pattern Get k <- (prj -> Just (Alg (Get_ k)))
   where Get k = inj (Alg (Get_ k))
 
