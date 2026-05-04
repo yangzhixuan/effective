@@ -36,8 +36,8 @@ import Control.Effect.Family.Algebraic
 import qualified Control.Monad.Trans.State.Lazy as Lazy
 
 -- | The `state` handler deals with stateful operations and
--- returns the final state @s@.
-state :: s -> Handler [Put s, Get s] '[] '[Lazy.StateT s] a (s, a)
+-- returns the result and final state @s@.
+state :: s -> Handler [Put s, Get s] '[] '[Lazy.StateT s] a (a, s)
 state s = Handler (stateRun s) stateAT
 
 -- | The `state_` handler deals with stateful operations and silenty
@@ -51,5 +51,5 @@ stateAT = algTrans' $ \case
   Put s p -> do Lazy.put s; return p
   Get   p -> do s <- Lazy.get; return (p s)
 
-stateRun :: s -> Runner '[] '[Lazy.StateT s] a (s, a) Monad
-stateRun s = runner' $ fmap (\ ~(x, y) -> (y, x)) . flip Lazy.runStateT s
+stateRun :: s -> Runner '[] '[Lazy.StateT s] a (a, s) Monad
+stateRun s = runner' $ flip Lazy.runStateT s

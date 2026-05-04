@@ -58,31 +58,31 @@ fact = (int)
 -- A parser!
 parse
   :: text -> a ! [Put text, Get text, Empty, Choose]
-  -> [(text, a)]
+  -> [(a, text)]
 parse cs p = handle (state cs `fuse` list) p
 
 parseBacktrack
   :: text -> a ! [Put text, Get text, Empty, Choose, Once]
-  -> [(text, a)]
+  -> [(a, text)]
 parseBacktrack cs p = handle (unscope (Proxy @(Choose_)) |> state cs |> backtrack) p
 
 example_Parse1 :: Property
 example_Parse1 = property $
-    (parse "2+3*5" expr :: [(String, Int)])
+    (parse "2+3*5" expr :: [(Int, String)])
   ===
-    [("",17),("*5",5),("+3*5",2)]
+    [(17,""),(5,"*5"),(2,"+3*5")]
 
 -- Not a parser!
 notParse
   :: String -> Prog [Empty, Choose, Put String, Get String] a
-  -> (String, [a])
+  -> ([a], String)
 notParse cs p = handle (hide (Proxy @'[Once]) list |> state cs) p
 
 example_NotParse :: Property
 example_NotParse = property $
-    (notParse "2+3*5" expr :: (String, [Int]))
+    (notParse "2+3*5" expr :: ([Int], String))
   ===
-    ("",[])
+    ([],"")
 
 -- This example demonstrates the use of Cut
 expr', term', fact' :: forall sigs .
@@ -97,14 +97,14 @@ term' = do i <- fact'
 fact' = int <|> (do symbol '(' ; i <- expr' ; symbol ')' ; return i)
 --
 -- A different parser!
-parse' :: text -> Prog [Put text, Get text, Once, Empty, Choose, CutFail, CutCall] a -> [(text, a)]
+parse' :: text -> Prog [Put text, Get text, Once, Empty, Choose, CutFail, CutCall] a -> [(a, text)]
 parse' cs p  = handle (state cs `fuse` onceNondet) p
 
 example_Parse2 :: Property
 example_Parse2 = property $
-    (parse' "2+3*5" expr' :: [(String, Int)])
+    (parse' "2+3*5" expr' :: [(Int, String)])
   ===
-    [("",17)]
+    [(17,"")]
 
 examples :: Group
 examples = $$(discoverPrefix "example_")

@@ -141,7 +141,7 @@ echoTick =
 The idea is to execute this program using a specialised handler
 that counts the number of ticks:
 ```haskell
-exampleEchoTick :: IO (Int, ())
+exampleEchoTick :: IO ((), Int)
 exampleEchoTick = handleIO (ticker |> teletypeIO) echoTick
 ```
 When this is executed, it counts the number of lines received:
@@ -152,7 +152,7 @@ Hello
 world!
 world!
 
-(3,())
+((),3)
 ```
 This demonstrates how unhandled effects that are recognized by I/O can be
 forwarded and dealt with after the execution of the handler.
@@ -183,7 +183,7 @@ implied (because the constraints are not ordered), and nor is the list necessari
 
 The `ticker` and `unticker` handlers have the following types:
 ```haskell ignore
-ticker   :: Handler '[Tick] '[] '[StateT Int] a (Int, a)
+ticker   :: Handler '[Tick] '[] '[StateT Int] a (a, Int)
 unticker :: Handler '[Tick] '[] '[]           a a
 ```
 Here is what the different parameters mean for the `ticker` handler:
@@ -192,7 +192,7 @@ ticker   :: Handler '[Tick]         -- input effects
                     '[]             -- output effects
                     '[StateT Int]   -- transformers
                     a               -- input type
-                    (Int, a)        -- output type
+                    (a, Int)        -- output type
 ```
 
 The signature of the handler tells us how it behaves:
@@ -206,7 +206,7 @@ The signature of the handler tells us how it behaves:
   `'Apply [t3, t2, t1] m a = t3 (t2 (t1 m a))`.
 * **Input/output types**: The input/output types are the types of the return values
   of an effectful program before/after applying the handler. When `ticker` is used
-  to handle a program of type `Prog sigs a`, the output will be the type `(Int, a)`.
+  to handle a program of type `Prog sigs a`, the output will be the type `(a, Int)`.
 
 A handler is applied to a program using the `handle` function or its variants.
 In `exampleEchoTick`, the `handleIO` function is used because `GetLine` and `PutStrLn`
@@ -253,17 +253,17 @@ state is initialised to `s`:
 state :: s -> Handler '[Put s, Get s]   -- input effects
                       '[]               -- output effects
                       '[StateT s]       -- transformer
-                      '[(,) s]          -- wrapper
+                      a                 -- input type
+                      (a, s)            -- output type
 ```
 
 Executing the `incr` program with this handler can be achieved as follows:
 ```console
 ghci> handle (state (41 :: Int)) incr
-(42,())
+((),42)
 ```
 Since the program has type `() ! [Put Int, Get Int]`, with a pure value of `()`,
-the result of applying the handler is `((,) Int)` applied to `()`,
-thus giving back a value of type `(Int, ())`.
+the result of applying the handler is a value of type `((), Int)`.
 
 The type of the `state` handler promises to handle both `Put s` and `Get s`
 operations, and so it is able to work with programs that use both, or
@@ -276,10 +276,10 @@ getStringLength = do xs <- get @String
 It can be handled using `state`:
 ```console
 ghci> handle (state "Hello!") getStringLength
-("Hello!",6)
+(6,"Hello!")
 ```
-Notice that the `state` handler returns the final state as well as the final
-return value of the program.
+Notice that the `state` handler returns the final return value of the program
+as well as the final state.
 
 A variation of the `state` handler is `state_`,
 which does not return the final state:
@@ -399,7 +399,7 @@ the _pipe_ combinator, written `h1 ||> h2` to pipe the handler `h1` into the
 handler `h2`.
 
 ```haskell
-ticker :: Handler '[Tick] '[] '[StateT Int] a (Int, a)
+ticker :: Handler '[Tick] '[] '[StateT Int] a (a, Int)
 ticker = tickState ||> state (0 :: Int)
 ```
 Given `h1 :: Handler sigs1 osigs1 t1 f1` and `h2 :: Handler sigs2 osigs2 t2 f2`, the
@@ -466,7 +466,7 @@ getLineIncrState :: Handler '[GetLine]   -- input effects
                             '[GetLine]   -- output effects
                             '[StateT Int]
                             a
-                            (Int, a)
+                            (a, Int)
 getLineIncrState = getLineIncr ||> (state (0 :: Int))
 ```
 This can then be executed using `handleIO`, which will deal with
@@ -478,7 +478,7 @@ Hello
 world!
 world!
 
-(3,())
+((),3)
 ```
 The `getLineIncrState` has intercepted the `getLine` operation and
 incremented the state counter on each execution.
@@ -527,7 +527,7 @@ effects. These can be handled by a state handler. The output of the
 `getLineState` handler can be piped into the `state` handler to produce
 a new handler. Here are two variations:
 ```haskell
-getLinePure :: [String] -> Handler '[GetLine] '[] '[StateT [String]] a ([String], a)
+getLinePure :: [String] -> Handler '[GetLine] '[] '[StateT [String]] a (a, [String])
 getLinePure str = getLineState ||> (state str)
 
 getLinePure_ :: [String] -> Handler '[GetLine] '[] '[StateT [String]] a a
@@ -536,13 +536,13 @@ getLinePure_ str = getLineState ||> (state_ str)
 Now we have a means of executing a program that contains only a `GetLine` effect,
 and extracting the resulting string:
 ```haskell ignore
-handle (getLinePure ["hello", "world!"]) :: Prog '[GetLine] a -> ([String], a)
+handle (getLinePure ["hello", "world!"]) :: Prog '[GetLine] a -> (a, [String])
 ```
 Executing this will get the first line in the list of strings and return its length,
 and the same program can be executed either processed with IO.
 ```console
 ghci> handle (getLinePure ["Hello", "world!"]) getLineLength
-(["world!"],5)
+(5,["world!"])
 ```
 This consumes `"Hello"` as the result of `getLine`, and so the state retains
 `"world!"`.
@@ -652,14 +652,14 @@ teletypeTick
   -> Handler '[GetLine, PutStrLn] '[]
              '[StateT Int, StateT [String], WriterT [String]]
              a
-             ([String], (Int, a))
+             ([String], (a, Int))
 teletypeTick str = getLineIncrState |> teletype str
 ```
 This can be executed using `handle`, passing in the
 list of inputs to be fed to `getLine`:
 ```console
 ghci> handle (teletypeTick ["Hello", "world!"]) echo
-(["Hello","world!"],(3,()))
+(["Hello","world!"],((),3))
 ```
 <!--
 ```haskell
@@ -667,7 +667,7 @@ prop_teletypeTick :: Property
 prop_teletypeTick = property $ do
   xss <- forAll $ list (linear 0 1000) (string (linear 0 100) ascii)
   let xss' = takeWhile (/= "") xss
-  handle (teletypeTick xss) echo === (xss', (length xss' + 1, ()))
+  handle (teletypeTick xss) echo === (xss', ((), length xss' + 1))
 ```
 -->
 
@@ -1122,4 +1122,3 @@ References
 [^Gordon1992]: [Functional Programming and Input/Output. A. Gordon. PhD Thesis, King's College London. 1992](https://www.microsoft.com/en-us/research/uploads/prod/2016/11/fpio.pdf)
 
 [^Imports]: The language extensions and imports required are at the bottom of this file.
-

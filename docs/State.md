@@ -26,7 +26,7 @@ incr = do
 example_incr :: Property
 example_incr = property $ do
   n <- forAll $ Gen.int $ Range.linear 1 1000
-  handle (state n) incr === (n+1,())
+  handle (state n) incr === ((), n+1)
 
 decr :: () ! [Get Int, Put Int, Throw]
 decr = do
@@ -51,66 +51,66 @@ globalState
                   '[]
                   '[MaybeT, (StateT s)]
                   a
-                  (s, Maybe a)
+                  (Maybe a, s)
 globalState s = except `fuse` state s
 
 -- This is global state because the `Int` is decremented
 -- twice before the exception is thrown.
 example_globalState :: Property
 example_globalState = property $
-    (handle (globalState 2) catchDecr :: (Int, Maybe ()))
+    (handle (globalState 2) catchDecr :: (Maybe (), Int))
   ===
-    (0,Just ())
+    (Just (),0)
 
 localState
   :: s -> Handler '[Put s, Get s, Throw, Catch]
                   '[]
                   '[(StateT s), MaybeT]
                   a
-                  (Maybe (s, a))
+                  (Maybe (a, s))
 localState s = state s `fuse` except
 
 -- With local state, the state is reset to its value
 -- before the catch where the exception was raised.
 example_localState :: Property
 example_localState = property $
-    (handle (localState 2) catchDecr :: Maybe (Int, ()))
+    (handle (localState 2) catchDecr :: Maybe ((), Int))
   ===
-    Just (1, ())
+    Just ((), 1)
 
 example_localState' :: Property
 example_localState' = property $
-    (handle (localState 2) catchDecr :: Maybe (Int, ()))
+    (handle (localState 2) catchDecr :: Maybe ((), Int))
   ===
-    Just (1, ())
+    Just ((), 1)
 
 example_decr :: Property
 example_decr = property $ do
   n <- forAll $ Gen.int $ Range.linear (-1000) 1000
   if n > 0
-    then handle (localState n) decr === Just (n - 1,())
+    then handle (localState n) decr === Just ((), n - 1)
     else handle (localState n) decr === Nothing
 
 example_incrDecr :: Property
 example_incrDecr = property $ do
   n <- forAll $ Gen.int $ Range.linear (-1000) 1000
   if n >= 0
-    then handle (localState n) (do incr; decr) === Just (n, ())
+    then handle (localState n) (do incr; decr) === Just ((), n)
     else handle (localState n) (do incr; decr) === Nothing
 
 example_decr' :: Property
 example_decr' = property $ do
   n <- forAll $ Gen.int $ Range.linear (-1000) 1000
   if n > 0
-    then handle (globalState n) decr === (n - 1, Just ())
-    else handle (globalState n) decr === (n, Nothing)
+    then handle (globalState n) decr === (Just (), n - 1)
+    else handle (globalState n) decr === (Nothing, n)
 
 example_incrDecr' :: Property
 example_incrDecr' = property $ do
   n <- forAll $ Gen.int $ Range.linear 0 1000
   if n >= 0
-    then handle (globalState n) (do incr; decr) === (n, Just ())
-    else handle (globalState n) (do incr; decr) === (n+1, Nothing)
+    then handle (globalState n) (do incr; decr) === (Just (), n)
+    else handle (globalState n) (do incr; decr) === (Nothing, n+1)
 
 catchDecr44 :: () ! [Get Int, Put Int, Throw, Catch]
 catchDecr44 = do
@@ -124,9 +124,9 @@ catchDecr44 = do
 -- and a bit more ... and so on.
 example_Retry1 :: Property
 example_Retry1 = property $
-    (handle (fuse retry (state 2)) catchDecr44 :: (Int, Maybe ()))
+    (handle (fuse retry (state 2)) catchDecr44 :: (Maybe (), Int))
   ===
-    (42,Just ())
+    (Just (),42)
 
 getAsk :: (Int, Int) ! [Get Int, Local Int, Ask Int]
 getAsk = local (+ (100 :: Int)) (do x <- get ; y <- ask ; return (x , y) )

@@ -34,13 +34,12 @@ import Control.Effect.Family.Algebraic
 import Control.Effect.State.Type
 
 import qualified Control.Monad.Trans.State.Strict as Strict
-import Data.Tuple (swap)
 
 -- | The `state` handler deals with stateful operations and
--- returns the final state @s@.
+-- returns the result and final state @s@.
 {-# INLINE state #-}
-state :: s -> Handler [Put s, Get s] '[] '[Strict.StateT s] a (s, a)
-state s = Handler (runner' $ fmap swap . flip Strict.runStateT s) stateAT
+state :: s -> Handler [Put s, Get s] '[] '[Strict.StateT s] a (a, s)
+state s = Handler (runner' $ flip Strict.runStateT s) stateAT
 
 -- | The `state_` handler deals with stateful operations and silenty
 -- discards the final state.
