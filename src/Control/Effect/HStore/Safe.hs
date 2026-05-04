@@ -123,7 +123,7 @@ hstore = handler' (flip St.evalStateT M.empty) (\_ -> hstoreAlg)
 
 hstoreAlg :: forall m w.
      Monad m
-  => (forall x.  Effs (HSEffs w) (St.StateT Mem m) x -> St.StateT Mem m x)
+  => Algebra (HSEffs w) (St.StateT Mem m)
 hstoreAlg op
   | Just (Put r a p) <- prj @(Put w) op =
       do St.modify (\mem -> M.insert (unRef r) (unsafeCoerce a) mem)

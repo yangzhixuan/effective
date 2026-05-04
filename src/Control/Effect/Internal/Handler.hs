@@ -229,14 +229,13 @@ interpretAT1 rephrase = interpretAT (\(Eff e) -> rephrase e)
 {-# INLINE interpretM #-}
 -- | A generalisation of `interpret` for non-algebraic operations.
 -- The result of @interpretM mrephrase@ is a new @Handler sigs osigs '[] '[]@.
--- This is created by using the supplied @mrephrase :: (forall x . Effs osigs m x -> m x) -> Effs sigs m x -> m x@ parameter.
+-- This is created by using the supplied @mrephrase :: Algebra osigs m -> Algebra sigs m@ parameter.
 -- to rephrase @sigs@ into an arbitrary monad @m@.
--- When @mrephrase@ is used, it is given an @oalg :: Effs osigs m x -> m x@
+-- When @mrephrase@ is used, it is given an @oalg :: Algebra osigs m@
 -- parameter that makes it possible to create a value in @m@.
 interpretM
   :: forall sigs osigs a .
-     (forall m . Monad m => (forall x . Effs osigs m x -> m x)
-                         -> (forall x . Effs sigs m x -> m x))   -- ^ @mrephrase@
+     (forall m . Monad m => Algebra osigs m -> Algebra sigs m)   -- ^ @mrephrase@
   -> Handler sigs osigs '[] a a
 interpretM mrephrase
   = handler @sigs @osigs @'[] (const id) mrephrase
@@ -244,7 +243,7 @@ interpretM mrephrase
 {-# INLINE interpretM1 #-}
 interpretM1
   :: forall sig osigs a.
-     (forall m . Monad m => (forall x . Effs osigs m x -> m x)
+     (forall m . Monad m => Algebra osigs m
                          -> (forall x . sig m x -> m x))   -- ^ @mrephrase@
   -> Handler '[sig] osigs '[] a a
 interpretM1 mrephrase

@@ -110,7 +110,7 @@ backtrack' = handler' runListT' backtrackAlg
 -- t`Choose`, and t`Once` effects in the context of the t`ListT` monad transformer.
 backtrackAlg
   :: Monad m => (forall x. osig m x -> m x)
-  -> (forall x. Effs [Empty, Nondet, Once] (ListT m) x -> ListT m x)
+  -> Algebra [Empty, Nondet, Once] (ListT m)
 backtrackAlg oalg Empty = empty
 backtrackAlg oalg (Nondet xs ys) = pure xs <|> pure ys
 backtrackAlg oalg (Once p) = ListT $ do
@@ -132,7 +132,7 @@ backtrackOnce = handler' runListT' backtrackOnceAlg
 backtrackOnceAlg
   :: Monad m
   => (forall x . osig m x -> m x)
-  -> (forall x . Effs '[Once] (ListT m) x -> ListT m x)
+  -> Algebra '[Once] (ListT m)
 backtrackOnceAlg oalg op
   | Just (Scp (Once_ p)) <- prj op =
     ListT $ do mx <- runListT p

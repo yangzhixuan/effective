@@ -72,7 +72,7 @@ writerAT = AlgTrans writerAlg
 writerAlg
   :: (Monad m, Monoid w)
   => (forall x. osig m x -> m x)
-  -> (forall x.  Effs '[Tell w] (W.WriterT w m) x -> W.WriterT w m x)
+  -> Algebra '[Tell w] (W.WriterT w m)
 writerAlg _ sigs
   | Just (Alg (Tell_ w x)) <- prj sigs =
       do W.tell w
@@ -112,8 +112,8 @@ censors cipher = handler' run (getAT censorAT) where
 censorAT :: AlgTrans '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] Monad
 censorAT = AlgTrans alg where
   alg :: Monad m
-      => (forall x. Effs '[Tell w] m x -> m x)
-      -> (forall x. Effs '[Tell w, Censor w] (ReaderT (w -> w) m) x -> ReaderT (w -> w) m x)
+      => Algebra '[Tell w] m
+      -> Algebra '[Tell w, Censor w] (ReaderT (w -> w) m)
   alg oalg (Tell w k) = do
     cipher <- ask
     lift (oalg (Eff (Alg (Tell_ (cipher w) k))))

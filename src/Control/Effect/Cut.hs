@@ -54,7 +54,7 @@ skip = return ()
 -- It clears the `cut` at the boundary of a `cutCall`.
 cutListAlg
   :: Monad m => (forall x. osig m x -> m x)
-  -> forall x. Effs [Empty, Choose, CutFail, CutCall] (CutListT m) x -> CutListT m x
+  -> Algebra [Empty, Choose, CutFail, CutCall] (CutListT m)
 cutListAlg oalg Empty          = empty
 cutListAlg oalg (Choose xs ys) = xs <|> ys
 cutListAlg oalg CutFail        = CutListT (\cons nil zero -> zero)
@@ -78,8 +78,8 @@ onceCutAT = AlgTrans onceCutAlg
 -- | The algebra for handling the t`Once` effect with t`CutCall` and t`CutFail`.
 onceCutAlg :: forall m .
      Monad m
-  => (forall x. Effs '[CutCall, CutFail, Empty, Choose] m x -> m x)
-  -> (forall x. Effs '[Once] m x -> m x)
+  => Algebra '[CutCall, CutFail, Empty, Choose] m
+  -> Algebra '[Once] m
 onceCutAlg oalg (Once p) = cutCallM oalg $
   do x <- p
      eval oalg cut
