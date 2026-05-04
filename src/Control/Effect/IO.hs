@@ -63,28 +63,28 @@ handleIO
   -> Prog (sigs `Union` '[Alg IO]) a -> IO b
 handleIO = handleM @sigs ioAlg
 
-type HandleIO# sigs osigs sigs1 =
-  ( Injects (sigs1 :\\ sigs) sigs1
-  , Append sigs (sigs1 :\\ sigs)
-  , HFunctor (Effs (sigs `Union` sigs1)))
+type HandleIO# sigs osigs xsigs =
+  ( Injects (xsigs :\\ sigs) xsigs
+  , Append sigs (xsigs :\\ sigs)
+  , HFunctor (Effs (sigs `Union` xsigs)))
 
 -- | @`handleIO'` h p@ evaluates @p@ using the handler @h@. The handler may
 -- output some effects that are a subset of the IO effects and additionally
--- the program may also use a subset @sigs1@ of the IO effects (which must
+-- the program may also use a subset @xsigs@ of the IO effects (which must
 -- be forwardable through the monad transformer @ts@).
--- The type argument @sigs1@ usually can't be inferred and needs given
+-- The type argument @xsigs@ usually can't be inferred and needs to be given
 -- explicitly.
 -- This function is useful when you want to use some non-algebraic operations
 -- that come with the IO-monad. Otherwise `handleIO` should be used.
 handleIO'
-  :: forall sigs1 iosig sigs osigs ts a b
+  :: forall xsigs iosig sigs osigs ts a b
   . ( Injects osigs iosig
-    , ForwardsM sigs1 ts
+    , ForwardsM xsigs ts
     , Monad (Apply ts IO)
-    , Injects sigs1 iosig
-    , HandleIO# sigs osigs sigs1 )
-  => Proxy sigs1
+    , Injects xsigs iosig
+    , HandleIO# sigs osigs xsigs )
+  => Proxy xsigs
   -> Algebra iosig IO
   -> Handler sigs osigs ts a b
-  -> Prog (sigs `Union` sigs1) a -> IO b
+  -> Prog (sigs `Union` xsigs) a -> IO b
 handleIO' p ioAlg h = handleMFwds p ioAlg h

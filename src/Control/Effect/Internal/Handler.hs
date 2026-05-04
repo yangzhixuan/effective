@@ -43,8 +43,11 @@ import Data.Proxy
 -- * @sig@                 — one signature (e.g. in @Member sig sigs@).
 -- * @sigs@                — a list of signatures, the input to a handler (default).
 -- * @osig@ \/ @osigs@     — single \/ list of /output/ signatures from a handler.
+-- * @xsigs@               — e/x/ternal signatures supplied by an outside algebra,
+--                          monad, or residual program (e.g. @handleM@, @evalAT@).
 -- * @sigs1@, @sigs2@      — operands of a binary type operation (e.g. 'Union', ':\\'),
---                          or numbered handlers in compositions (e.g. @generalFuse@).
+--                          numbered handlers in compositions (e.g. @generalFuse@),
+--                          or paired rows where the old names were @xeffs@ and @yeffs@.
 --
 -- Combinator-specific prefixes appear only in the signature of the one
 -- function they name, distinguishing that function's parameter from the
@@ -446,41 +449,41 @@ handle :: forall sigs ts fs a b .
 handle (Handler run halg)
   = runIdentity . LL.getR run absurdEffs . eval (getAT halg (absurdEffs @Identity))
 
-type HandleM# sigs sigs1 =
-  ( Injects (sigs1 :\\ sigs) sigs1
-  , Append sigs (sigs1 :\\ sigs)
-  , HFunctor (Effs (sigs `Union` sigs1)))
+type HandleM# sigs xsigs =
+  ( Injects (xsigs :\\ sigs) xsigs
+  , Append sigs (xsigs :\\ sigs)
+  , HFunctor (Effs (sigs `Union` xsigs)))
 
 -- | @handleM xalg h p@ uses the handler @h@ to evaluate the program @p@ into some
--- monad @m@ (e.g. the @IO@ monad). The monad @m@ may come with some effects @sigs1@
+-- monad @m@ (e.g. the @IO@ monad). The monad @m@ may come with some effects @xsigs@
 -- and the program can make use of these effects, in addition to the effects @sigs@
--- handled by the handler @h@. The effects @sigs1@ on @m@ must be forwardable by
+-- handled by the handler @h@. The effects @xsigs@ on @m@ must be forwardable by
 -- the transformer stack @ts@.
--- (When an effect is both in @sigs@ and @sigs1@, it is handled by @h@).
-handleM :: forall sigs osigs sigs1 m ts fs a b .
+-- (When an effect is both in @sigs@ and @xsigs@, it is handled by @h@).
+handleM :: forall sigs osigs xsigs m ts fs a b .
   ( Monad m
   , Monad (Apply ts m)
-  , ForwardsM sigs1 ts
-  , Injects osigs sigs1
-  , HandleM# sigs sigs1
+  , ForwardsM xsigs ts
+  , Injects osigs xsigs
+  , HandleM# sigs xsigs
   )
-  => Algebra sigs1 m                 -- ^ Algebra @xalg@ for external effects @sigs1@
+  => Algebra xsigs m                 -- ^ Algebra @xalg@ for external effects @xsigs@
   -> Handler sigs osigs ts a b       -- ^ Handler @h@
-  -> Prog (sigs `Union` sigs1) a     -- ^ Program @p@ that contains @sigs1@
+  -> Prog (sigs `Union` xsigs) a     -- ^ Program @p@ that contains @xsigs@
   -> m b
 handleM xalg (Handler run halg)
   = getR run @m (xalg . injs)
-  . eval (hunion @sigs @sigs1 (getAT halg (xalg . injs)) (getAT (fwds @_ @ts) xalg))
+  . eval (hunion @sigs @xsigs (getAT halg (xalg . injs)) (getAT (fwds @_ @ts) xalg))
 
--- | A variant of @handleM@ where the program doesn't explictly use the effect
--- @sigs1@ on the monad @m@, but may output some effects @osigs@ ⊆ @sigs1@. Therefore
--- the transformer stack @ts@ doesn't have to forward the effects @sigs1@.
-handleM' :: forall sigs osigs sigs1 m ts a b .
+-- | A variant of @handleM@ where the program doesn't explicitly use the effect
+-- @xsigs@ on the monad @m@, but may output some effects @osigs@ ⊆ @xsigs@. Therefore
+-- the transformer stack @ts@ doesn't have to forward the effects @xsigs@.
+handleM' :: forall sigs osigs xsigs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
-  , Injects osigs sigs1
+  , Injects osigs xsigs
   , HFunctor (Effs sigs) )
-  => Algebra sigs1 m                 -- ^ Algebra @xalg@ for external effects @sigs1@
+  => Algebra xsigs m                 -- ^ Algebra @xalg@ for external effects @xsigs@
   -> Handler sigs osigs ts a b       -- ^ Handler @h@
   -> Prog sigs a
   -> m b
@@ -497,7 +500,7 @@ handleMFwds :: forall sigs2 sigs osigs sigs1 m ts a b .
   , Injects sigs2 sigs1
   , ForwardsM sigs2 ts
   , HandleM# sigs sigs2 )
-  => Proxy sigs2                     -- ^ @sigs2@ can't be infered so must be given explicitly
+  => Proxy sigs2                     -- ^ @sigs2@ can't be inferred so must be given explicitly
   -> Algebra sigs1 m                 -- ^ Algebra @xalg@ for external effects @sigs1@
   -> Handler sigs osigs ts a b        -- ^ Handler @h@
   -> Prog (sigs `Union` sigs2) a
@@ -507,73 +510,73 @@ handleMFwds _ xalg (Handler run halg)
   . eval (hunion @sigs @sigs2 (getAT halg (xalg . injs))
                               (getAT (fwds @_ @ts) (xalg . injs)))
 
-type HandleP# sigs sigs1 =
-  ( HandleM# sigs sigs1
-  , HFunctor (Effs sigs1)
-  , Monad (Prog sigs1) )
+type HandleP# sigs xsigs =
+  ( HandleM# sigs xsigs
+  , HFunctor (Effs xsigs)
+  , Monad (Prog xsigs) )
 
 -- | @handleP h p@ uses the handler @h@ to evaluate the program @p@, resulting
--- in a program with effects @sigs1@ that are not recognised by @h@.
--- If an effect is both in @sigs@ and @sigs1@, it is handled by @h@.
-handleP :: forall sigs osigs sigs1 ts fs a b .
-  ( Monad (Apply ts (Prog sigs1))
-  , ForwardsM sigs1 ts
-  , Injects osigs sigs1
-  , HandleP# sigs sigs1 )
+-- in a program with effects @xsigs@ that are not recognised by @h@.
+-- If an effect is both in @sigs@ and @xsigs@, it is handled by @h@.
+handleP :: forall sigs osigs xsigs ts fs a b .
+  ( Monad (Apply ts (Prog xsigs))
+  , ForwardsM xsigs ts
+  , Injects osigs xsigs
+  , HandleP# sigs xsigs )
   => Handler sigs osigs ts a b        -- ^ Handler @h@
-  -> Prog (sigs `Union` sigs1) a     -- ^ Program @p@ that contains @sigs1@
-  -> Prog sigs1 b
+  -> Prog (sigs `Union` xsigs) a     -- ^ Program @p@ that contains @xsigs@
+  -> Prog xsigs b
 handleP = handleM progAlg
 
 -- | A variant of @handleP'@ where the program only uses the effects provided
 -- by the handler @h@.
-handleP' :: forall sigs osigs sigs1 ts fs a b .
-  ( Monad (Apply ts (Prog sigs1))
-  , Forwards sigs1 ts
-  , Injects osigs sigs1
+handleP' :: forall sigs osigs xsigs ts fs a b .
+  ( Monad (Apply ts (Prog xsigs))
+  , Forwards xsigs ts
+  , Injects osigs xsigs
   , HFunctor (Effs sigs)
-  , HFunctor (Effs sigs1) )
+  , HFunctor (Effs xsigs) )
   => Handler sigs osigs ts a b       -- ^ Handler @h@
-  -> Prog sigs a                     -- ^ Program @p@ that contains @sigs1@
-  -> Prog sigs1 b
+  -> Prog sigs a                     -- ^ Program @p@ handled by @h@
+  -> Prog xsigs b
 
 handleP' = handleM' progAlg
 
 
-type HandleMApp# sigs sigs1 =
-  ( HFunctor (Effs (sigs :++ sigs1))
-  , Append sigs sigs1 )
+type HandleMApp# sigs xsigs =
+  ( HFunctor (Effs (sigs :++ xsigs))
+  , Append sigs xsigs )
 
--- | @handleMApp xalg h p@ is a variant of `handleM` where @sigs `Union` sigs1@ is replaced
+-- | @handleMApp xalg h p@ is a variant of `handleM` where @sigs `Union` xsigs@ is replaced
 -- by '(:++)'.
 -- In most cases, you should just use `handleM` but sometimes limitations regarding class
 -- constraints in GHC necessitate the use of @handleMApp@ (for example, in `Control.Effect.HOStore.Safe.handleHSM`.)
 
-handleMApp :: forall sigs osigs sigs1 m ts fs a b .
+handleMApp :: forall sigs osigs xsigs m ts fs a b .
   ( Monad m
   , Monad (Apply ts m)
-  , ForwardsM sigs1 ts
-  , Injects osigs sigs1
-  , HandleMApp# sigs sigs1 )
-  => Algebra sigs1 m                -- ^ Algebra @xalg@ for external effects @sigs1@
+  , ForwardsM xsigs ts
+  , Injects osigs xsigs
+  , HandleMApp# sigs xsigs )
+  => Algebra xsigs m                -- ^ Algebra @xalg@ for external effects @xsigs@
   -> Handler sigs osigs ts a b       -- ^ Handler @h@
-  -> Prog (sigs :++ sigs1) a        -- ^ Program @p@ that contains @sigs1@
+  -> Prog (sigs :++ xsigs) a        -- ^ Program @p@ that contains @xsigs@
   -> m b
 handleMApp xalg (Handler run halg)
   = getR run @m (xalg . injs)
-  . eval (heither @sigs @sigs1 (getAT halg (xalg . injs)) (getAT (fwds @_ @ts) xalg))
+  . eval (heither @sigs @xsigs (getAT halg (xalg . injs)) (getAT (fwds @_ @ts) xalg))
 
--- | @handleP' h p@ is a variant of `handleP` where @sigs `Union` sigs1@ is replaced
+-- | @handlePApp h p@ is a variant of `handleP` where @sigs `Union` xsigs@ is replaced
 -- by simply '(:++)'.
 -- In most cases, you should just use `handleP` but sometimes limitations regarding class
--- constraints in GHC necessitate the use of @handleP'@ (for example, in `Control.Effect.HOStore.Safe.handleHSM`.)
-handlePApp :: forall sigs osigs sigs1 ts fs a b .
-  ( ForwardsM sigs1 ts
-  , Monad (Apply ts (Prog sigs1))
-  , Injects osigs sigs1
-  , HandleMApp# sigs sigs1
-  , HFunctor (Effs sigs1)
+-- constraints in GHC necessitate the use of @handlePApp@ (for example, in `Control.Effect.HOStore.Safe.handleHSM`.)
+handlePApp :: forall sigs osigs xsigs ts fs a b .
+  ( ForwardsM xsigs ts
+  , Monad (Apply ts (Prog xsigs))
+  , Injects osigs xsigs
+  , HandleMApp# sigs xsigs
+  , HFunctor (Effs xsigs)
   ) => Handler sigs osigs ts a b        -- ^ Handler @h@
-  -> Prog (sigs :++ sigs1) a           -- ^ Program @p@ that contains @sigs1@
-  -> Prog sigs1 b
+  -> Prog (sigs :++ xsigs) a           -- ^ Program @p@ that contains @xsigs@
+  -> Prog xsigs b
 handlePApp = handleMApp progAlg

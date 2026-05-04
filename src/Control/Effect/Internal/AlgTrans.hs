@@ -27,12 +27,12 @@ import Control.Effect.Internal.Forward
 
 -- | Evaluating a program with an algebra transformer.
 {-# INLINE evalAT #-}
-evalAT :: forall sigs osigs sigs1 ts cs m a.
+evalAT :: forall sigs osigs xsigs ts cs m a.
        ( HFunctor (Effs sigs)
        , cs m
-       , Injects osigs sigs1
+       , Injects osigs xsigs
        , Monad (Apply ts m) )
-       => Algebra sigs1 m
+       => Algebra xsigs m
        -> AlgTrans sigs osigs ts cs
        -> Prog sigs a
        -> Apply ts m a
@@ -230,40 +230,40 @@ appendAT :: forall sigs1 sigs2 osigs1 osigs2 cs1 cs2 ts.
          -> AlgTrans (sigs1 :++ sigs2) (osigs1 :++ osigs2) ts (AndC cs1 cs2)
 appendAT at1 at2 = caseAT' (weakenAT @sigs1 at1) (weakenAT @sigs2 at2)
 
-type WithFwds# sigs osigs sigs1 =
-  ( CaseTrans# sigs sigs1
-  , Injects sigs1 sigs1
+type WithFwds# sigs osigs xsigs =
+  ( CaseTrans# sigs xsigs
+  , Injects xsigs xsigs
   , Injects sigs sigs
-  , Injects osigs (osigs `Union` sigs1)
-  , Injects sigs1 (osigs `Union` sigs1) )
+  , Injects osigs (osigs `Union` xsigs)
+  , Injects xsigs (osigs `Union` xsigs) )
 
--- | Bypassing some forwardable effects @sigs1@ along an algebra transformer.
--- Members of @sigs1@ that are already in @sigs@ or @sigs1@ are ignored.
+-- | Bypassing some forwardable effects @xsigs@ along an algebra transformer.
+-- Members of @xsigs@ that are already in @sigs@ or @xsigs@ are ignored.
 {-# INLINE withFwds #-}
-withFwds :: forall sigs1 sigs osigs ts cs.
-            ( ForwardsC cs sigs1 ts
-            , WithFwds# sigs osigs sigs1 )
-         => Proxy sigs1
+withFwds :: forall xsigs sigs osigs ts cs.
+            ( ForwardsC cs xsigs ts
+            , WithFwds# sigs osigs xsigs )
+         => Proxy xsigs
          -> AlgTrans sigs osigs ts cs
-         -> AlgTrans (sigs `Union` sigs1) (osigs `Union` sigs1) ts cs
-withFwds _ at = weakenC (unionAT at (fwds @sigs1))
+         -> AlgTrans (sigs `Union` xsigs) (osigs `Union` xsigs) ts cs
+withFwds _ at = weakenC (unionAT at (fwds @xsigs))
 
-type WithFwds'# sigs osigs sigs1 =
-  ( Append sigs sigs1
-  , Injects sigs1 sigs1
+type WithFwds'# sigs osigs xsigs =
+  ( Append sigs xsigs
+  , Injects xsigs xsigs
   , Injects sigs sigs
-  , Injects osigs (osigs :++ sigs1)
-  , Injects sigs1 (osigs :++ sigs1) )
+  , Injects osigs (osigs :++ xsigs)
+  , Injects xsigs (osigs :++ xsigs) )
 
 -- | Bypassing a forwardable effect along an algebra transformer.
 {-# INLINE withFwds' #-}
-withFwds' :: forall sigs1 sigs osigs ts cs.
-            ( ForwardsC cs sigs1 ts
-            , WithFwds'# sigs osigs sigs1 )
-         => Proxy sigs1
+withFwds' :: forall xsigs sigs osigs ts cs.
+            ( ForwardsC cs xsigs ts
+            , WithFwds'# sigs osigs xsigs )
+         => Proxy xsigs
          -> AlgTrans sigs osigs ts cs
-         -> AlgTrans (sigs :++ sigs1) (osigs :++ sigs1)ts cs
-withFwds' _ at = weakenC (appendAT at (fwds @sigs1))
+         -> AlgTrans (sigs :++ xsigs) (osigs :++ xsigs)ts cs
+withFwds' _ at = weakenC (appendAT at (fwds @xsigs))
 
 -- ** Fusion-based combinators
 type FuseAT# sigs1 sigs2 osigs1 osigs2 ts1 ts2 =
