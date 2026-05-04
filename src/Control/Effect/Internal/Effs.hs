@@ -24,6 +24,7 @@ module Control.Effect.Internal.Effs
   , Effect
   , Effs (Effs, Eff)
   , Algebra
+  , Algebra1
   , callM, callJM, callKM
   , singAlgIso
   , Injects (..)
@@ -72,14 +73,13 @@ singAlgIso ::
 #ifdef INDEXED
   forall sig m. HFunctor sig =>
 #endif
-  Iso  (Algebra '[sig] m) (forall x. sig m x -> m x)
+  Iso (Algebra '[sig] m) (Algebra1 sig m)
 
 singAlgIso = Iso fwd bwd where
   {-# INLINE fwd #-}
-  fwd :: Algebra '[sig] m -> (forall x. sig m x -> m x)
+  fwd :: Algebra '[sig] m -> Algebra1 sig m
   fwd alg e = alg (Eff e)
 
   {-# INLINE bwd #-}
-  bwd :: (forall x. sig m x -> m x) -> Algebra '[sig] m
+  bwd :: Algebra1 sig m -> Algebra '[sig] m
   bwd alg (Eff e) = alg e
-

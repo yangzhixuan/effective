@@ -36,6 +36,7 @@ module Control.Effect
 
   -- * Algebras
   , Algebra
+  , Algebra1
   , singAlgIso
   , (#)
   , weakenAlg

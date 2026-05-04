@@ -149,7 +149,7 @@ hstore = handler' (flip St.evalStateT M.empty) hstoreAlg
 
 hstoreAlg
   :: Monad m
-  => (forall x. osig m x -> m x)
+  => Algebra1 osig m
   -> Algebra [Put, Get, New] (St.StateT Mem m)
 hstoreAlg _ op
   | Just (Put r a p) <- prj op =

@@ -29,6 +29,11 @@ type Effect = (Type -> Type) -> (Type -> Type)
 type Algebra sigs f =
   forall x . Effs sigs f x -> f x
 
+-- | A higher-order algebra for a single effect @sig@ with
+-- carrier being the functor @f@.
+type Algebra1 sig f =
+  forall x . sig f x -> f x
+
 -- | @Effs sigs f a@ creates a union of the effect signatures in the list @sigs@.
 type Effs :: [Effect] -> Effect
 data Effs sigs f a where

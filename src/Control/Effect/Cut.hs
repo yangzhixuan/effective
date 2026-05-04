@@ -53,7 +53,7 @@ skip = return ()
 -- | The `cutListAlg` function defines the algebra for handling the t`CutListT` monad transformer.
 -- It clears the `cut` at the boundary of a `cutCall`.
 cutListAlg
-  :: Monad m => (forall x. osig m x -> m x)
+  :: Monad m => Algebra1 osig m
   -> Algebra [Empty, Choose, CutFail, CutCall] (CutListT m)
 cutListAlg oalg Empty          = empty
 cutListAlg oalg (Choose xs ys) = xs <|> ys

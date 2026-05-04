@@ -34,7 +34,7 @@ import Data.Iso
 import Data.Kind ( Type )
 import Data.HFunctor
 import Control.Monad.Trans.Class ( MonadTrans(..) )
-import Control.Effect.Internal.Effs.Sum.Type (Algebra, Effs(..))
+import Control.Effect.Internal.Effs.Sum.Type (Algebra, Algebra1, Effs(..))
 
 -- | @Alg sigs@ is the (higher-order) signature of algebraic operations of
 -- (first-order) signature @sigs@.
@@ -64,11 +64,11 @@ instance {-# INCOHERENT #-} MonadTrans t => Forward (Alg f) t where
   {-# INLINE fwd #-}
   fwd alg (Alg op) = lift (alg (Alg op))
 
--- | Functions @forall x. Alg sigs m x -> m x@ are the same as @forall x. sigs x -> m x@,
+-- | Functions @Algebra1 (Alg sigs) m@ are the same as @forall x. sigs x -> m x@,
 -- and they are in bijection with functions @op :: forall x. sigs (m x) -> m x@ satisfying
 -- the equation @op x >>= k  ==  op (fmap (>>= k) x)@.
 algOpIso :: (Functor sigs, Monad m)
-         => Iso (forall x. Alg sigs m x -> m x) (forall x. sigs (m x) -> m x)
+         => Iso (Algebra1 (Alg sigs) m) (forall x. sigs (m x) -> m x)
 algOpIso = Iso
   (\a sm -> a (Alg sm) >>= id)
   (\b (Alg s) -> b (fmap return s))

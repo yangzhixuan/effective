@@ -244,7 +244,7 @@ interpretM mrephrase
 interpretM1
   :: forall sig osigs a.
      (forall m . Monad m => Algebra osigs m
-                         -> (forall x . sig m x -> m x))   -- ^ @mrephrase@
+                         -> Algebra1 sig m)   -- ^ @mrephrase@
   -> Handler '[sig] osigs '[] a a
 interpretM1 mrephrase
   = handler @'[sig] @osigs @'[] (const id) (\oalg (Eff op) -> mrephrase oalg op)

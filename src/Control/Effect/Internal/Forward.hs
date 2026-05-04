@@ -51,8 +51,8 @@ class Forward (sig :: Effect) (t :: (Type -> Type) -> (Type -> Type)) where
   -- | @fwd@ constructs an @sig@-algebra on @t m@ given an @sig@-algebra on @m@, for every
   -- @m :: Type -> Type@ satisfying the constraint @FwdConstraint sig t@.
   fwd :: forall m . FwdConstraint sig t m
-       => (forall x . sig m x     -> m x)
-       -> (forall x . sig (t m) x -> t m x)
+       => Algebra1 sig m
+       -> Algebra1 sig (t m)
 
 {-
 -- In theory the following instance is very useful but it causes conflicting

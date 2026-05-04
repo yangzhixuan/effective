@@ -46,7 +46,7 @@ nondet = handler' observeAllT nondetAlg
 -- | `nondetAlg` defines the semantics of backtracking for the t`Empty`,
 -- t`Choose`, effects in the context of the t`LogicT` monad transformer.
 nondetAlg
-  :: Monad m => (forall x. osig m x -> m x)
+  :: Monad m => Algebra1 osig m
   -> Algebra [Empty, Nondet] (LogicT m)
 nondetAlg oalg op
   | Just (Alg Empty_)            <- prj op = empty
@@ -55,7 +55,7 @@ nondetAlg oalg op
 -- | `backtrackAlg` defines the semantics of backtracking for the t`Empty`,
 -- t`Choose`, and t`Once` effects in the context of the t`LogicT` monad transformer.
 backtrackAlg
-  :: Monad m => (forall x. osig m x -> m x)
+  :: Monad m => Algebra1 osig m
   -> Algebra [Empty, Nondet, Once] (LogicT m)
 backtrackAlg oalg op
   | Just (Alg Empty_)            <- prj op = empty
@@ -72,7 +72,7 @@ backtrackAlg oalg op
 -- effect in the context of the t`ListT` monad transformer.
 backtrackOnceAlg
   :: Monad m
-  => (forall x . osig m x -> m x)
+  => Algebra1 osig m
   -> Algebra '[Once] (LogicT m)
 backtrackOnceAlg oalg op
   | Just (Scp (Once_ p))         <- prj op =

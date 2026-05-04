@@ -92,7 +92,7 @@ exceptAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
 exceptAT = AlgTrans exceptAlg
 
 exceptAlg :: Monad m
-  => (forall x. osig m x -> m x)
+  => Algebra1 osig m
   -> Algebra [Throw e, Catch e] (ExceptT e m)
 exceptAlg _ (Throw e) = ExceptT (return (Left e))
 exceptAlg _ (Catch p q) = ExceptT $ do

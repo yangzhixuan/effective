@@ -71,7 +71,7 @@ writerAT = AlgTrans writerAlg
 {-# INLINE writerAlg #-}
 writerAlg
   :: (Monad m, Monoid w)
-  => (forall x. osig m x -> m x)
+  => Algebra1 osig m
   -> Algebra '[Tell w] (W.WriterT w m)
 writerAlg _ sigs
   | Just (Alg (Tell_ w x)) <- prj sigs =
@@ -106,7 +106,7 @@ instance U.Unary (Censor_ w) where
 -- will be consumed.
 censors :: forall w a . (w -> w) -> Handler '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] a a
 censors cipher = handler' run (getAT censorAT) where
-  run :: Monad m => (forall x. ReaderT (w -> w) m x -> m x)
+  run :: Monad m => Algebra1 (ReaderT (w -> w)) m
   run (ReaderT mx) = mx cipher
 
 censorAT :: AlgTrans '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] Monad

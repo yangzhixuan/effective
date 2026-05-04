@@ -120,7 +120,7 @@ caseAT' at1 at2 = AlgTrans \oalg -> heither (getAT at1 oalg) (getAT at2 oalg)
 -- | Algebra transformer for a single effect.
 {-# INLINE algTrans1 #-}
 algTrans1 :: forall sig osigs ts cs
-          .  (forall m. cs m => Algebra osigs m -> forall x. sig (Apply ts m) x -> Apply ts m x)
+          .  (forall m. cs m => Algebra osigs m -> Algebra1 sig (Apply ts m))
           -> AlgTrans '[sig] osigs ts cs
 algTrans1 at = AlgTrans \(oalg :: Algebra osigs m) (o :: Effs '[sig] (Apply ts m) x) ->
    case prj @sig o of Just o' -> at oalg o'
