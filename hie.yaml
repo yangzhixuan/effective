@@ -1,0 +1,10 @@
+cradle:
+  cabal:
+    - path: "./src"
+      component: "lib:effective"
+
+    - path: "./docs"
+      component: "test:docs"
+
+    - path: "./README.lhs"
+      component: "test:readme"
