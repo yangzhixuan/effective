@@ -81,7 +81,6 @@ data Handler sigs osigs ts a b =
   , halg :: AlgTrans sigs osigs ts Monad
   }
 
-
 -- * Building handlers
 
 -- | A wrapper of the @Handler@ constructor.
@@ -448,6 +447,7 @@ handle :: forall sigs ts fs a b .
   -> b
 handle (Handler run halg)
   = runIdentity . LL.getR run absurdEffs . eval (getAT halg (absurdEffs @Identity))
+  -- = runIdentity . LL.getR run absurdEffs . evalAT' @Identity halg
 
 type HandleM# sigs xsigs =
   ( Injects (xsigs :\\ sigs) xsigs
