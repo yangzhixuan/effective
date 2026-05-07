@@ -22,6 +22,12 @@ module Control.Effect.IO (
   io,
 
   -- * Semantics
+  -- ** Handlers
+  constIO,
+
+  -- ** Carriers
+  ConstIO (..),
+
   -- * Evaluation
   evalIO,
   handleIO,
@@ -45,6 +51,41 @@ ioAlg = nativeAlg
 -- | Treating an IO computation as an operation of signature `Alg IO`.
 io :: Members '[Alg IO] sig => IO a -> Prog sig a
 io op = call (Alg op)
+
+-- | A carrier that stores an `IO` action and ignores the lower monad.
+--
+-- This is useful as the final carrier in a handler stack when all remaining
+-- operations have been translated to `Alg IO`. It is not a monad transformer:
+-- there is no general way to lift an arbitrary lower-monad action into `IO`.
+newtype ConstIO m a = ConstIO { runConstIO :: IO a }
+
+instance Functor (ConstIO m) where
+  {-# INLINE fmap #-}
+  fmap f (ConstIO iox) = ConstIO (fmap f iox)
+
+instance Applicative (ConstIO m) where
+  {-# INLINE pure #-}
+  pure = ConstIO . pure
+
+  {-# INLINE (<*>) #-}
+  ConstIO iof <*> ConstIO iox = ConstIO (iof <*> iox)
+
+instance Monad (ConstIO m) where
+  {-# INLINE (>>=) #-}
+  ConstIO iox >>= f = ConstIO (iox >>= runConstIO . f)
+
+-- | Collect `Alg IO` operations into a final `IO` action.
+--
+-- This handler is intended to be used as the final handler of a stack, for example
+-- @handle (h |> constIO) p@. Any effects handled after this handler are ignored.
+constIO :: Handler '[Alg IO] '[] '[ConstIO] a (IO a)
+constIO = Handler run alg
+  where
+    run :: Runner '[] '[ConstIO] a (IO a) Monad
+    run = Runner (\_ -> pure . runConstIO)
+
+    alg :: AlgTrans '[Alg IO] '[] '[ConstIO] Monad
+    alg = algTrans1 (\_ (Alg iox) -> ConstIO iox)
 
 -- | @`evalIO` p@ evaluates all IO operations in @p@ in the `IO` monad
 -- using their standard semantics.
