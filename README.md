@@ -33,11 +33,23 @@ program makes use of.
 
 For example, creating a `Teletype` program is a rite of passage for monadic IO
 [^Gordon1992] where the challenge is to show how IO of reading from and writing
-to the terminal can be achieved. A program that interacts with the terminal is
-`echo`. This is a simple program that will continue to echo the input obtained
-by `getLine` is output to the terminal using `putStrLn` until a blank line is
-received by
-`getLine`:
+to the terminal can be achieved. The example uses two user-defined operations,
+`getLine` and `putStrLn`, which are generated from their operation signatures:
+```haskell
+$(makeGen [e| getLine  :: String |])
+$(makeGen [e| putStrLn :: String -> () |])
+```
+This generates operations with the following types:
+```haskell ignore
+getLine  :: Member GetLine sigs  => Prog sigs String
+putStrLn :: Member PutStrLn sigs => String -> Prog sigs ()
+```
+This states that they are programs whose signature `sigs` contains `GetLine`
+and `PutStrLn`, respectively. The generated code is shown explicitly in
+[Defining Operations](docs/Operations.md).
+
+Using these operations, the `echo` program will continue to echo the input
+obtained by `getLine` using `putStrLn` until a blank line is received:
 ```haskell
 echo :: (Members '[GetLine, PutStrLn] sigs) => Prog sigs ()
 echo = do str <- getLine
@@ -51,29 +63,13 @@ signature contains `[GetLine, PutStrLn]`, and returns a result of type `()`.
 The effect signature says that this is a program that may require
 the corresponding `getLine` and `putStrLn` operations.
 
-In this example, `getLine` and `putStrLn` are user-defined operations
-with the following types:
-```haskell ignore
-getLine  :: Member GetLine sigs  => Prog sigs String
-putStrLn :: Member PutStrLn sigs => String -> Prog sigs ()
-```
-This states that they are programs whose signature `sigs` contain
-`GetLine` and `PutStrLn`, respectively. Later, we will see
-how these are defined.
-
 In `effective`, a program is an entirely syntactic construction. To give
 it a semantics, a *handler* must be invoked that provides the interpretation
 of the syntax.
 
-The most obvious interpretation of `getLine` and `putLine` is to invoke their
+The most obvious interpretation of `getLine` and `putStrLn` is to invoke their
 corresponding values from the prelude:
 ```haskell
-getLineIO :: Handler '[GetLine] '[Alg IO] '[] a a
-getLineIO = interpret (\(GetLine k) -> do x <- io (Prelude.getLine); return (k x))
-
-putStrLnIO :: Handler '[PutStrLn] '[Alg IO] '[] a a
-putStrLnIO = interpret (\(PutStrLn xs k) -> do x <- io (Prelude.putStrLn xs); return k)
-
 teletypeIO :: Handler '[GetLine, PutStrLn] '[Alg IO] '[] a a
 teletypeIO = interpret
   (\case (GetLine k)     -> do x <- io (Prelude.getLine); return (k x)
@@ -85,32 +81,13 @@ but for the present purposes, the first parameter indicates the
 and the second parameter indicates the *output* effects
 that are produced (`Alg IO`).
 
-
-
-```haskell
-type GetLine = Alg GetLine_
-data GetLine_ k  = GetLine_ (String -> k) deriving Functor
-pattern GetLine :: Member GetLine sigs => (String -> k) -> Effs sigs m k
-pattern GetLine k <- (prj -> Just (Alg (GetLine_ k)))
-  where GetLine k = inj (Alg (GetLine_ k))
-getLine :: Members '[GetLine] sigs => Prog sigs String
-getLine = call (Alg (GetLine_ id))
-
-type PutStrLn = Alg PutStrLn_
-data PutStrLn_ k = PutStrLn_ String k     deriving Functor
-pattern PutStrLn :: Member PutStrLn sigs => String -> k -> Effs sigs m k
-pattern PutStrLn str k <- (prj -> Just (Alg (PutStrLn_ str k)))
-  where PutStrLn str k = inj (Alg (PutStrLn_ str k))
-putStrLn :: Members '[PutStrLn] sigs => String -> Prog sigs ()
-putStrLn str = call (Alg (PutStrLn_ str ()))
-```
-Much of this is standard boilerplate code.
-
-
-Now to execute the program all that remains is `handleIO`:
+The handler `teletypeIO` still does not run `IO`. It translates the teletype
+operations into `Alg IO` operations. To execute the whole program with plain
+`handle`, we add `constIO` as the final handler, which consumes those `Alg IO`
+operations and returns the collected `IO` action:
 ```haskell
 exampleIO :: IO ()
-exampleIO = handleIO teletypeIO echo
+exampleIO = handle (teletypeIO |> constIO) echo
 ```
 This will execute the `echo` program where input provided on the
 terminal by the user is immediately echoed back out to the terminal.
@@ -138,11 +115,12 @@ echoTick =
        _  -> do putStrLn str
                 echoTick
 ```
-The idea is to execute this program using a specialised handler
-that counts the number of ticks:
+The idea is to execute this program using a specialised handler that counts the
+number of ticks, before handling the teletype operations and collecting the
+remaining `Alg IO` operations with `constIO`:
 ```haskell
 exampleEchoTick :: IO ((), Int)
-exampleEchoTick = handleIO (ticker |> teletypeIO) echoTick
+exampleEchoTick = handle (ticker |> teletypeIO |> constIO) echoTick
 ```
 When this is executed, it counts the number of lines received:
 ```console
@@ -161,7 +139,7 @@ We can also emulate the behaviour of `echo` by ignoring all the ticks by using
 the `unticker` handler:
 ```haskell
 exampleEchoNoTick :: IO ()
-exampleEchoNoTick = handleIO (unticker |> teletypeIO) echoTick
+exampleEchoNoTick = handle (unticker |> teletypeIO |> constIO) echoTick
 ```
 Note that this is different to discarding the tick count by applying `fst`
 to the result of a program that counts ticks: the count is not even generated
@@ -209,13 +187,14 @@ The signature of the handler tells us how it behaves:
   to handle a program of type `Prog sigs a`, the output will be the type `(a, Int)`.
 
 A handler is applied to a program using the `handle` function or its variants.
-In `exampleEchoTick`, the `handleIO` function is used because `GetLine` and `PutStrLn`
-are operations that relate to `IO`.
+In `exampleEchoTick`, the pipeline is complete because `ticker` consumes `Tick`,
+`teletypeIO` translates `GetLine` and `PutStrLn` into `Alg IO`, and `constIO`
+consumes the remaining `Alg IO` operations at the end.
 ```haskell ignore
-handleIO
+handle
   :: (...)
-  => Handler sigs '[Alg IO] ts a b
-  -> Prog sigs a -> IO b
+  => Handler sigs '[] ts a b
+  -> Prog sigs a -> Apply ts Identity b
 ```
 So far, we have been working with examples of _impure_ effects that ultimately
 rely on `IO`. Another important class of effects is the class of _pure_ effects,
@@ -1092,7 +1071,11 @@ import Hedgehog (Property, Group(..), discover, property, forAll, checkParallel,
 import Hedgehog.Main (defaultMain)
 import Hedgehog.Gen hiding (map, maybe)
 import Hedgehog.Range
+```
+-->
 
+<!--
+```haskell
 props :: Group
 -- props = $$(discover)
 props = Group "README properties"

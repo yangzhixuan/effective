@@ -126,6 +126,8 @@ test-suite readme
   ghc-options:   -threaded -pgmL markdown-unlit
   main-is:       README.lhs
   default-extensions: DataKinds
+  if impl(ghc >=9.10.1)
+    default-extensions: RequiredTypeArguments
   default-language: GHC2021
   hs-source-dirs:  .
   build-depends:
@@ -151,7 +153,7 @@ test-suite docs
     Nondet,
     Parser,
     State,
-    IO
+    Operations
 
 test-suite concur
   type:          exitcode-stdio-1.0
