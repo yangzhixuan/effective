@@ -20,7 +20,7 @@ The operation generators in `effective` turn a compact operation signature into
 boilerplate that includes an effect signature, a pattern synonym, and
 a smart constructor for programs.
 
-For example, the operations from the [README](../README.md) are generated like this:
+For example, the operations for [teletype](../README.md) are generated like this:
 ```haskell
 $(makeGen [e| getLine  :: String |])
 $(makeGen [e| putStrLn :: String -> () |])

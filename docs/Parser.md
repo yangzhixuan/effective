@@ -13,8 +13,6 @@ import Hedgehog
 
 import Prelude hiding (or)
 
-import Control.Applicative
-
 char :: Char ! [Get [Char], Put [Char], Empty, Choose]
 char = do
   xxs <- get

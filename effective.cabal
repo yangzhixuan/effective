@@ -15,6 +15,12 @@ extra-source-files:
   README.md
 extra-doc-files:
   ChangeLog.md
+  docs/README.md
+  docs/Handlers.md
+  docs/Members.md
+  docs/Profiling.md
+  docs/ScopedOperations.md
+  docs/TeletypePure.md
 
 source-repository head
   type: git
@@ -150,9 +156,14 @@ test-suite docs
   build-tool-depends: markdown-unlit:markdown-unlit
   other-modules:
     Error,
+    Handlers,
+    Members,
     Nondet,
     Parser,
+    Profiling,
+    ScopedOperations,
     State,
+    TeletypePure,
     Operations
 
 test-suite concur
