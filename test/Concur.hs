@@ -7,6 +7,7 @@ import Control.Effect.IO
 import Control.Effect.Writer
 import Control.Effect.Concurrency
 import Control.Effect.Except
+import Control.Effect.State
 import Control.Effect.Internal.AlgTrans (weakenC)
 import Control.Effect.Family.Algebraic
 import Control.Monad
@@ -161,11 +162,6 @@ ccsWithTell =
     |> ccsByQSem @ActNames
     |> writerIO
 
-bohem :: () ! [Act HR, Res HR, Par, Tell String]
-bohem = par (resHS $ par (do tell "I am just a poor boy"; handshake)
-                         (do shakehand; tell "I need no sympathy"))
-            (tell "Oh poor boy")
-
 intro1 :: IO (Either String ())
 intro1 = handleIO' (Proxy @'[Par]) ioPar (ccsByQSem @ActNames |> writerIO) bohem
 
@@ -219,9 +215,9 @@ stagedIntro =
 -- Fully staged
 
 stagedIntroFull :: IO (Either String ())
-stagedIntroFull = $$(stageHM' (Proxy @'[Par]) (parGenIO :# genMAlg)
+stagedIntroFull = $$(stageHML (Proxy @'[Par]) (parGenIO :# genMAlg)
   ((ccsByQSemS @ActNames \\ reader (M.empty :: QSemMapS ActNames) \\ except @(CodeQ String)) |> writerGenIO)
-  bohemGen)
+  bohem)
 
 {-
     do let childProc_airv

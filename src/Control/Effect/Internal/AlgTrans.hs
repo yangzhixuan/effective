@@ -198,7 +198,7 @@ interpretAT1
   .  ( HFunctor eff )
   => (forall m x . eff m x -> Prog oeffs x)
   -> AlgTrans '[eff] oeffs '[] Monad
-interpretAT1 rephrase = interpretAT (rephrase :% endCase)
+interpretAT1 rephrase = AlgTrans (\oalg -> singAlg (eval oalg . rephrase))
 
 type HideAT# effs effs' = (Injects (effs :\\ effs') effs)
 

@@ -25,7 +25,6 @@ module Control.Effect.State.Strict
   ) where
 
 import Control.Effect
-import Control.Effect.Family.Algebraic
 import Control.Effect.State.Type
 
 import qualified Control.Monad.Trans.State.Strict as Strict

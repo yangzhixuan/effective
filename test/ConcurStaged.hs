@@ -18,6 +18,11 @@ type IOPar = '[Alg IO, Par, JPar]
 data ActNames = Handshake | Raisehand deriving (Show, Eq, Ord)
 type HR = CCSAction ActNames
 
+bohem :: () ! [Act HR, Res HR, Par, Tell String]
+bohem = par (resHS $ par (do tell "I am just a poor boy"; handshake)
+                         (do shakehand; tell "I need no sympathy"))
+            (tell "Oh poor boy")
+
 handshake :: Member (Act HR) sig => Prog sig ()
 handshake = act (Action Handshake)
 
@@ -25,7 +30,7 @@ shakehand :: Member (Act HR) sig => Prog sig ()
 shakehand = act (CoAction Handshake)
 
 resHS :: Member (Res HR) sig => Prog sig x -> Prog sig x
-resHS x = res (Action Handshake) (res (CoAction Handshake) x)
+resHS x = res (Action Handshake) x
 
 
 ioParC :: AlgebraC IOPar IO
@@ -79,11 +84,6 @@ threadIdC = interpretM1C $ \alg -> [|| NT $ \(Par a b) ->
 
 
 -- Fully staged version of bohem
-
-bohemGen :: CodeQ () ! [Act HR, Res HR, Par, Tell String]
-bohemGen = par (resHS $ par (do tell "I am just a poor boy"; handshake; return [||()||])
-                        (do shakehand; tell "I need no sympathy"; return [||()||]))
-                 (do tell "Oh poor boy"; return [||()||])
 
 type QSemMapS a = M.Map a (CodeQ QSem, CodeQ QSem)
 

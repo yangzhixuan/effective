@@ -27,6 +27,7 @@ import Control.Effect.Internal.Handler ( HandleM# )
 import Data.Functor.Identity
 import Data.Iso
 import Data.List.Kind
+import Language.Haskell.TH.Syntax (Lift (..))
 
 -- | The effects supported by the monad `Gen`.
 type GenEffects = [CodeGen, UpOp Identity]
@@ -152,4 +153,23 @@ stageHM' :: forall m f g xeffs yeffs effs oeffs ts a b.
       -> CodeQ (m (g b))
 stageHM' _ alg h p =
   let cb = handleMFwds (Proxy @yeffs) alg h p
+  in down @(GenM m) @m (fmap down cb)
+
+-- | A variant of `stageHM` that works with `Lift`.
+stageHML :: forall m f g xeffs yeffs effs oeffs ts a b.
+         ( Lift a
+         , Monad (Apply ts (GenM m))
+         , Monad m
+         , f $~> g
+         , Injects oeffs xeffs
+         , Injects yeffs xeffs
+         , ForwardsM yeffs ts
+         , HandleM# effs yeffs)
+      => Proxy yeffs
+      -> Algebra xeffs (GenM m)
+      -> Handler effs oeffs ts (CodeQ a) (f (CodeQ b))
+      -> Prog (effs `Union` yeffs) a
+      -> CodeQ (m (g b))
+stageHML _ alg h p =
+  let cb = handleMFwds (Proxy @yeffs) alg h (fmap liftTyped p)
   in down @(GenM m) @m (fmap down cb)
