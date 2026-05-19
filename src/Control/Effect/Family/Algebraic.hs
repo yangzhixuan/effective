@@ -78,4 +78,4 @@ nativeAlg :: Algebra '[Alg m] m
 nativeAlg = (\(Alg op) -> op) :# endAlg
 
 nativeAlgC :: AlgebraC '[Alg m] m
-nativeAlgC = [|| NT $ (\(Alg op) -> op) ||] $:# EndAC
+nativeAlgC = [|| NT $ (\(Alg op) -> op) ||] :#$ EndAC

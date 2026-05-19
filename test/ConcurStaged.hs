@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs  #-}
 module ConcurStaged where
 
 import Prelude hiding (log )
@@ -34,7 +35,7 @@ resHS x = res (Action Handshake) x
 
 
 ioParC :: AlgebraC IOPar IO
-ioParC = ioAlgC $# parIOAlgC $# jparIOAlgC
+ioParC = ioAlgC #$ parIOAlgC #$ jparIOAlgC
 
 tellWithLockC :: HandlerC '[Tell String] '[Tell String, Act HR, Par, Res HR] '[] a a
 tellWithLockC = HandlerC
@@ -46,12 +47,12 @@ tellWithLockC = HandlerC
     in do $$(callMC oalg) (Res (Action Raisehand) $
             $$(callMC oalg) (Par p daemon))
   ||])
-  (algTrans1C $ \oalg -> [|| NT $ \(Tell s k) ->
+  (algTrans1C $ \(oalg@(a :#$ _)) -> [|| NT $ \(Tell s k) ->
     do $$(callMC oalg) (Act (Action Raisehand) ())
        -- I don't know why in GHC 9.8.4 and 9.10.1 the following causes an error of
        -- overlapping instances.
        -- $$(callMC oalg) (Tell s ())
-       at $$(fst oalg) (Tell s ())
+       at $$a (Tell s ())
        $$(callMC oalg) (Act (CoAction Raisehand) ())
        return k
   ||])

@@ -102,7 +102,7 @@ instance ( HFunctor eff
   fwdEffs = AlgTrans $ \(alg :# algs) -> fwd alg :# getAT fwdEffs algs
 
   fwdEffsC :: AlgTransC (eff : effs) (eff : effs) '[t] (FwdEffsConstraint (eff : effs) t)
-  fwdEffsC = AlgTransC $ \(ca, cas) -> (fwdC ca, getATC fwdEffsC cas)
+  fwdEffsC = AlgTransC $ \(ca :#$ cas) -> fwdC ca :#$ getATC fwdEffsC cas
 
 -- | This class builds a forwarder for an t`Effs` along a list @ts@ of transformers
 -- by ensuring that each transformer in @ts@ can forward @effs@.

@@ -125,8 +125,8 @@ asker r = interpret1 $ \(Ask k) -> return (k r)
 readerC :: CodeQ r -> HandlerC [Ask r, Local r] '[] '[R.ReaderT r] a a
 readerC r = HandlerC
   (RunnerC $ \_ -> [|| flip R.runReaderT $$r ||])
-  (AlgTransC $ \_ -> [|| NT askAlg ||] $:#. ([|| NT localAlg ||]))
+  (AlgTransC $ \_ -> [|| NT askAlg ||] :#.$ ([|| NT localAlg ||]))
 
 askerC :: CodeQ r -> HandlerC '[Ask r] '[] '[] a a
 askerC r = HandlerC (RunnerC $ \_ -> [|| id ||])
-  (AlgTransC $ \_ -> ([|| NT $ \(Ask p) -> return (p $$r) ||] $:# EndAC))
+  (AlgTransC $ \_ -> ([|| NT $ \(Ask p) -> return (p $$r) ||] :#$ EndAC))

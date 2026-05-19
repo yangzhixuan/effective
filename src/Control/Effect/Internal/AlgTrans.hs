@@ -87,8 +87,7 @@ weakenAT :: forall effs' oeffs' cs' effs oeffs cs ts.
 weakenAT at = AlgTrans \oalg -> weakenAlg (getAT at (weakenAlg oalg))
 
 type CaseTrans# effs1 effs2 =
-  ( Append effs1 (effs2 :\\ effs1)
-  , Injects (effs2 :\\ effs1) effs2 )
+  ( Injects (effs2 :\\ effs1) effs2 )
 
 -- | Case splitting on the union of two effect rows. Note that `Union` is defined
 -- two be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
@@ -101,13 +100,11 @@ caseAT :: forall effs1 effs2 cs1 cs2 oeffs ts.
        -> AlgTrans (effs1 `Union` effs2) oeffs ts (AndC cs1 cs2)
 caseAT at1 at2 = AlgTrans \oalg -> unionAlg (getAT at1 oalg) (getAT at2 oalg)
 
-type CaseTrans'# effs1 effs2 = (Append effs1 effs2)
 
 -- | Case splitting on the concatenation of two effect rows.
 {-# INLINE caseAT' #-}
 caseAT' :: forall effs1 effs2 cs1 cs2 oeffs ts.
-          (CaseTrans'# effs1 effs2)
-        => AlgTrans effs1 oeffs ts cs1
+           AlgTrans effs1 oeffs ts cs1
         -> AlgTrans effs2 oeffs ts cs2
         -> AlgTrans (effs1 :++ effs2) oeffs ts (AndC cs1 cs2)
 caseAT' at1 at2 = AlgTrans \oalg -> appendAlg (getAT at1 oalg) (getAT at2 oalg)
@@ -125,7 +122,7 @@ algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) -> at oalg :# endAlg
 algTrans1C :: forall eff oeffs ts cs
           .  (forall m. cs m => AlgebraC oeffs m -> CodeQ (eff (Apply ts m) -.> Apply ts m))
           -> AlgTransC '[eff] oeffs ts cs
-algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg $:# EndAC
+algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg :#$ EndAC
 
 -- | Algebra transformer that doesn't need an output effect.
 {-# INLINE algTrans' #-}
@@ -224,8 +221,7 @@ caseATSameC at1 at2 = weakenC (caseAT at1 at2)
 {-# INLINE caseATSameC' #-}
 caseATSameC'
        :: forall effs1 effs2 cs oeffs ts.
-           CaseTrans'# effs1 effs2
-        => AlgTrans effs1 oeffs ts cs
+           AlgTrans effs1 oeffs ts cs
         -> AlgTrans effs2 oeffs ts cs
         -> AlgTrans (effs1 :++ effs2) oeffs ts cs
 caseATSameC' at1 at2 = weakenC (caseAT' at1 at2)
@@ -248,7 +244,7 @@ type AppendAT# effs1 effs2 oeffs1 oeffs2 =
   ( Injects effs1 effs1, Injects effs2 effs2
   , Injects oeffs1 (oeffs1 :++ oeffs2)
   , Injects oeffs2 (oeffs1 :++ oeffs2)
-  , CaseTrans'# effs1 effs2)
+  )
 
 -- | The most general form of case splitting on the concatenation of input effects.
 appendAT :: forall effs1 effs2 oeffs1 oeffs2 cs1 cs2 ts.
@@ -277,8 +273,7 @@ withFwds :: forall xeffs effs oeffs ts cs.
 withFwds _ at = weakenC (unionAT at (fwds @xeffs))
 
 type WithFwds'# effs oeffs xeffs =
-  ( Append effs xeffs
-  , Injects xeffs xeffs
+  ( Injects xeffs xeffs
   , Injects effs effs
   , Injects oeffs (oeffs :++ xeffs)
   , Injects xeffs (oeffs :++ xeffs) )
@@ -367,7 +362,7 @@ fuseAppAT at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 :++ oeffs2) m) ->
 {-# INLINE fuseAppATC #-}
 fuseAppATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
               ( CompAT# ts1 ts2, ForwardsC cs1 effs2 ts1, ForwardsC cs2 oeffs1 ts2
-              , Append oeffs1 oeffs2, Append effs1 effs2)
+              , HasSplitAlgC oeffs1 oeffs2 )
        => AlgTransC effs1 oeffs1 ts1 cs1
        -> AlgTransC effs2 oeffs2 ts2 cs2
        -> AlgTransC (effs1 :++ effs2)
@@ -386,7 +381,6 @@ type PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 =
    ( Injects (oeffs1 :\\ effs2) ((oeffs1 :\\ effs2) `Union` oeffs2)
    , Injects oeffs2 ((oeffs1 :\\ effs2) `Union` oeffs2)
    , Injects oeffs1 ((oeffs1 :\\ effs2) :++ effs2)
-   , Append (oeffs1 :\\ effs2) effs2
    , forall m . Assoc ts1 ts2 m )
 
 -- | @pipeAT at1 at2@ composes @at1@ and @at2@ in a way that
@@ -438,7 +432,6 @@ type PassAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 =
    ( Injects (effs2 :\\ effs1) effs2
    , Injects oeffs2 (oeffs1 `Union` oeffs2)
    , Injects oeffs1 (oeffs1 `Union` oeffs2)
-   , Append effs1 (effs2 :\\ effs1)
    , forall m. Assoc ts1 ts2 m )
 
 -- | @passAT at1 at2@ composes @at1@ and @at2@ in a way that
@@ -467,7 +460,6 @@ type PassAT'# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 =
     , Injects oeffs2 (oeffs1 `Union` oeffs2)
     , Injects oeffs1 (oeffs1 `Union` oeffs2)
     , Injects (effs1 `Union` effs2) (effs2 `Union` effs1)
-    , Append effs2 (effs1 :\\ effs2)
     , forall m . Assoc ts1 ts2 m )
 
 infixr 9 `passAT'`
@@ -491,10 +483,8 @@ passAT' at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 `Union` oeffs2) m) ->
      (getAT at1 (getAT (fwds @oeffs1 @ts2) (weakenAlg oalg)))
 
 type GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
-   ( Append effs1 (feffs :\\ effs1)
-   , Injects (feffs :\\ effs1) feffs
+   ( Injects (feffs :\\ effs1) feffs
    , forall m . Assoc ts1 ts2 m
-   , Append (oeffs1 :\\ ieffs) ieffs
    , Injects oeffs1 ((oeffs1 :\\ ieffs) :++ ieffs)
    , Injects oeffs2             ((oeffs1 :\\ ieffs) :++ (oeffs2 :\\ (oeffs1 :\\ ieffs)))
    , Injects (oeffs1 :\\ ieffs) ((oeffs1 :\\ ieffs) :++ (oeffs2 :\\ (oeffs1 :\\ ieffs)))

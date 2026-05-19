@@ -60,9 +60,9 @@ state_ s = Handler (runner' $ flip Strict.evalStateT s) stateAT
 stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a (s, a)
 stateC cs = HandlerC
   (RunnerC $ \_ -> [|| fmap swap . flip Strict.runStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] $:# [|| NT $ getAlg ||] $:# EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)
 
 stateC_ :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a a
 stateC_ cs = HandlerC
   (RunnerC $ \_ -> [|| flip Strict.evalStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] $:# [|| NT $ getAlg ||] $:# EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)

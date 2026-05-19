@@ -78,9 +78,9 @@ nondetAT = algTrans' (emptyAlg :#. nondetOrAlg)
 nondetC :: HandlerC [Empty, NondetOr] '[] '[ListT] a [a]
 nondetC = HandlerC
   (RunnerC $ \_ -> [|| runListT' ||])
-  (AlgTransC $ \_ -> [|| NT emptyAlg ||] $:# [|| NT nondetOrAlg ||] $:# EndAC)
+  (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT nondetOrAlg ||] :#$ EndAC)
 
 listC :: HandlerC [Empty, Choose] '[] '[ListT] a [a]
 listC = HandlerC
   (RunnerC $ \_ -> [|| runListT' ||])
-  (AlgTransC $ \_ -> [|| NT emptyAlg ||] $:# [|| NT $ \(Choose a b) -> (a <|> b) ||] $:# EndAC)
+  (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT $ \(Choose a b) -> (a <|> b) ||] :#$ EndAC)

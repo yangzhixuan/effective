@@ -166,7 +166,7 @@ ccsByQSemC :: forall n a . Ord n
                      '[R.ReaderT (QSemMap n), E.ExceptT String]
                      a
                      (Either String a)
-ccsByQSemC = (interpretMC (\o -> actionAlg o $:#. resAlg o) \\$ R.readerC [||M.empty||]) \\$ E.exceptC where
+ccsByQSemC = (interpretMC (\o -> actionAlg o :#.$ resAlg o) \\$ R.readerC [||M.empty||]) \\$ E.exceptC where
   actionAlg :: Monad m => AlgebraC '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO ] m
             -> CodeQ (Act (CCSAction n) m -.> m)
   actionAlg oalg = [|| NT $ \(Act a p) ->
@@ -202,7 +202,7 @@ parIOAlg :: Algebra '[Par] IO
 parIOAlg = singAlg $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l
 
 parIOAlgC :: AlgebraC '[Par] IO
-parIOAlgC = [|| NT $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l ||] $:# EndAC
+parIOAlgC = [|| NT $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l ||] :#$ EndAC
 
 -- | Interprets t`Control.Effect.Concurrency.JPar` using the native concurrency API.
 -- from "Control.Concurrent". The result from the child thread is passed back to the
@@ -211,7 +211,7 @@ jparIOAlg :: Algebra '[JPar] IO
 jparIOAlg = singAlg $ \(JPar l r c) -> jparIOImp l r c
 
 jparIOAlgC :: AlgebraC '[JPar] IO
-jparIOAlgC = [|| NT $ \(JPar l r c) -> jparIOImp l r c ||] $:# EndAC
+jparIOAlgC = [|| NT $ \(JPar l r c) -> jparIOImp l r c ||] :#$ EndAC
 
 jparIOImp :: IO x -> IO x -> (JPar_ x -> b) -> IO b
 jparIOImp l r c =

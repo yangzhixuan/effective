@@ -33,7 +33,7 @@ module Control.Effect
   , Member(..)
   , Members(..)
   , Injects(..)
-  , Append (..)
+  , HasSplitAlgC (..)
 
   -- * Algebras
   , Algebra, Algebra_, AlgebraArray
@@ -116,12 +116,10 @@ module Control.Effect
   -- * Lightweight staging
   , CodeQ
   , AlgebraC (..)
-  , EndAC (..)
-  , NatTrans (..)
-  , type (-.>)
-  , ($#), ($:#),  ($:#.)
-  , unionAlgC
-  , GenAlgebra (..)
+  , (#$), pattern (:#.$)
+  , NatTrans (..), type (-.>)
+  , unionAlgC, appendAlgC
+  , genAlgebra
 
   -- * Template Haskell
   , makeGen

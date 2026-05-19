@@ -67,8 +67,7 @@ handleIO
 handleIO = handleM @effs ioAlg
 
 type HandleIO# effs oeffs xeffs =
-  ( Injects (xeffs :\\ effs) xeffs
-  , Append effs (xeffs :\\ effs) )
+  ( Injects (xeffs :\\ effs) xeffs )
 
 -- | @`handleIO'` h p@ evaluates @p@ using the handler @h@. The handler may
 -- output some effects that are a subset of the IO effects and additionally

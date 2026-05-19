@@ -101,4 +101,4 @@ retryAT = algTrans' $ throwAlg :#. retryAlg
 exceptC :: HandlerC '[Throw, Catch] '[] '[MaybeT] a (Maybe a)
 exceptC = HandlerC
   (RunnerC $ \_ -> [|| runMaybeT ||])
-  (AlgTransC $ \_ -> [|| NT throwAlg ||] $:# [|| NT catchAlg ||] $:# EndAC)
+  (AlgTransC $ \_ -> [|| NT throwAlg ||] :#$ [|| NT catchAlg ||] :#$ EndAC)

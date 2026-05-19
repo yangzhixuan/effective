@@ -78,7 +78,7 @@ writer = handler' (fmap swap . W.runWriterT) (tellAlg :# endAlg)
 writerC :: Monoid w => HandlerC '[Tell w] '[] '[W.WriterT w] a (w, a)
 writerC = HandlerC
   (RunnerC $ \_ -> [|| fmap swap . W.runWriterT ||])
-  (AlgTransC $ \_ -> [|| NT tellAlg ||] $:# EndAC)
+  (AlgTransC $ \_ -> [|| NT tellAlg ||] :#$ EndAC)
 
 -- | The `writer_` handler deals with `tell` operations, and
 -- silently discards the final state.
@@ -88,7 +88,7 @@ writer_ = handler' (fmap fst . W.runWriterT) (tellAlg :# endAlg)
 writerC_ :: Monoid w => HandlerC '[Tell w] '[] '[W.WriterT w] a a
 writerC_ = HandlerC
   (RunnerC $ \_ -> [|| fmap fst . W.runWriterT ||])
-  (AlgTransC $ \_ -> [|| NT tellAlg ||] $:# EndAC)
+  (AlgTransC $ \_ -> [|| NT tellAlg ||] :#$ EndAC)
 
 -- | The `writerIO` handler translates `tell` operations to
 -- physical IO printing.

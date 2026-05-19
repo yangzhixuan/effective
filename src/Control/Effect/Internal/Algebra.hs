@@ -182,13 +182,13 @@ instance {-# OVERLAPPING #-} Member eff (eff : effs) where
   {-# INLINE memberIndex #-}
   memberIndex = 0
 
-  dispatchC (c, _) = c
+  dispatchC (c :#$ _) = c
 
 instance Member eff effs => Member eff (eff' : effs) where
   {-# INLINE memberIndex #-}
   memberIndex = 1 + (memberIndex @eff @effs)
 
-  dispatchC (_, cs) = dispatchC @eff @effs cs
+  dispatchC (_ :#$ cs) = dispatchC @eff @effs cs
 
 -- | @Member sigs sigs'@ holds when every @sig@ which is a 'Member' of in @sigs@
 -- is also a 'Member' of @sigs'@.
@@ -307,12 +307,6 @@ instance KnownEffs effs => KnownEffs (eff : effs) where
   {-# INLINE lengthEffs #-}
   lengthEffs = 1 + lengthEffs @effs
 
-class Append (xs :: [Effect]) (ys :: [Effect]) where
-  -- | Concatenating two static algebras.
-  appendAlgC :: AlgebraC xs m -> AlgebraC ys m -> AlgebraC (xs :++ ys) m
-
-  splitAlgC :: AlgebraC (xs :++ ys) m -> (AlgebraC xs m, AlgebraC ys m)
-
 {-# INLINE appendCases #-}
 appendCases :: Sequence s => Case_ s xeffs m x y -> Case_ s yeffs m x y
           -> Case_ s (xeffs :++ yeffs) m x y
@@ -338,20 +332,6 @@ splitAlg :: forall xeffs yeffs m s. (Sequence s, KnownEffs xeffs)
 splitAlg (Algebra (Case s))
   = let (l, r) = split s (lengthEffs @xeffs)
     in (Algebra (Case l), Algebra (Case r))
-
-instance Append '[] ys where
-  appendAlgC :: AlgebraC '[] m -> AlgebraC ys m -> AlgebraC ('[] :++ ys) m
-  appendAlgC EndAC cbs = cbs
-
-  splitAlgC :: AlgebraC ('[] :++ ys) m -> (AlgebraC '[] m, AlgebraC ys m)
-  splitAlgC cbs = (EndAC, cbs)
-
-instance Append xs ys => Append (x ': xs) ys where
-  appendAlgC :: AlgebraC (x : xs) m -> AlgebraC ys m -> AlgebraC ((x : xs) :++ ys) m
-  appendAlgC (ca, cas) cbs = (ca, appendAlgC cas cbs)
-
-  splitAlgC :: AlgebraC ((x : xs) :++ ys) m -> (AlgebraC (x : xs) m, AlgebraC ys m)
-  splitAlgC (ca, cabs) = let (cas, cbs) = splitAlgC cabs in ((ca, cas), cbs)
 
 infixr 6 #
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
@@ -384,7 +364,7 @@ instance (Member xeff xyeffs, Injects xeffs xyeffs) => Injects (xeff : xeffs) (x
   {-# INLINE weakenAlg #-}
   weakenAlg xyAlg = dispatch xyAlg :# weakenAlg @xeffs @xyeffs xyAlg
 
-  weakenAlgC cxys = (dispatchC @xeff @xyeffs cxys, weakenAlgC @xeffs @xyeffs cxys)
+  weakenAlgC cxys = dispatchC @xeff @xyeffs cxys :#$ weakenAlgC @xeffs @xyeffs cxys
 
 instance {-# OVERLAPPING #-} Injects (xeff : xeffs) (xeff : xeffs) where
   {-# INLINE weakenAlg #-}
@@ -410,109 +390,53 @@ unionAlg xalg yalg = appendAlg @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
 newtype NatTrans f g = NT { at :: forall x. f x -> g x }
 type (-.>) = NatTrans
 
-type family AlgebraC (effs :: [Effect]) (f :: Type -> Type) = result | result -> effs f where
-  AlgebraC '[] f = EndAC '[] f
-  AlgebraC (eff ': effs) f = (CodeQ (eff f -.> f), AlgebraC effs f)
+infixr 5 :#$
+data AlgebraC (effs :: [Effect]) (f :: Type -> Type) where
+  EndAC :: AlgebraC '[] f
+  (:#$) :: CodeQ (eff m -.> m) -> AlgebraC effs m -> AlgebraC (eff ': effs) m
 
-type family CaseC (effs :: [Effect]) (f :: Type -> Type) a b = result | result -> effs f a b where
-  CaseC '[] f a b = EndCC '[] f a b
-  CaseC (eff ': effs) f a b = (CodeQ (eff f a -> b), CaseC effs f a b)
+data CaseC (effs :: [Effect]) (f :: Type -> Type) a b where
+  EndCC :: CaseC '[] f a b
+  (:#%) :: CodeQ (eff f a -> b) -> CaseC effs f a b -> CaseC (eff ': effs) f a b
 
--- | This is just a unit type, but it has two phantom type variables which are useful
--- for type inference.
-data EndAC (effs :: [Effect]) (f :: Type -> Type) = EndAC
-
-data EndCC (effs :: [Effect]) (f :: Type -> Type) a b = EndCC
-
-infixr 6 $#
+infixr 6 #$
 -- | @alg1 #$ alg2@ joins together code of algebras @alg1@ and @alg2@.
-($#) :: forall eff1 eff2 m .
-    (Monad m, Append eff1 eff2)
-  => AlgebraC eff1 m
+(#$), appendAlgC :: forall eff1 eff2 m .
+     AlgebraC eff1 m
   -> AlgebraC eff2 m
   -> AlgebraC (eff1 :++ eff2) m
-falg $# galg = appendAlgC @eff1 @eff2 falg galg
+EndAC #$ galg = galg
+(a :#$ as) #$ galg = a :#$ (as #$ galg)
 
-infixr 5 $:#
-{- INLINE $:# -}
-($:#) :: CodeQ (eff m -.> m) -> AlgebraC effs m -> AlgebraC (eff ': effs) m
-a $:# as = (a, as)
+appendAlgC = (#$)
 
-infixr 5 $:#.
+infixr 5 :#.$
 {- INLINE $:# -}
-($:#.) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff, eff']) m
-a $:#. as = (a, (as, EndAC))
+pattern (:#.$) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff, eff']) m
+pattern a :#.$ as = (a :#$ (as :#$ EndAC))
 
 -- | Static version of `unionAlg`.
 unionAlgC :: forall xeffs yeffs m a b
-  .  ( Append xeffs (yeffs :\\ xeffs), Injects (yeffs :\\ xeffs) yeffs )
+  .  ( Injects (yeffs :\\ xeffs) yeffs )
   => AlgebraC xeffs m -> AlgebraC yeffs m
   -> AlgebraC (xeffs `Union` yeffs) m
-unionAlgC xalg yalg = appendAlgC @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
+unionAlgC xalg yalg = (#$) @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
 
--- * Coproducts (aka open union) of effects
---------------------------------------------------------------------------------
+-- | To split a static algebra we need to perform induction on |xs|, so
+-- we need to create a typeclass.
+-- TODO: rename this typeclass.
+class HasSplitAlgC (xs :: [Effect]) (ys :: [Effect]) where
+  splitAlgC :: AlgebraC (xs :++ ys) m -> (AlgebraC xs m, AlgebraC ys m)
 
--- | @Effs s [eff1, ..., eff_n]@ is the coproduct of @eff1@, ..., @eff_n@, represented
--- using Church encoding:
--- @
---   Effs s [eff1, ..., eff_n] f x
--- = eff1 f x + ... + eff_n f x
--- = forall y. (eff1 f x -> y, ... , eff_n f x -> y) -> y
--- = forall y. Cases f x y -> y
--- @
+instance HasSplitAlgC '[] ys where
+  splitAlgC :: AlgebraC ('[] :++ ys) m -> (AlgebraC '[] m, AlgebraC ys m)
+  splitAlgC cbs = (EndAC, cbs)
 
-{-
-newtype Effs
-  (s :: Type -> Type)
-  (effs :: [Effect])
-  (f :: Type -> Type)
-  (x :: Type)
-  = Effs { unEffs :: forall y. Cases s effs f x y -> y }
+instance HasSplitAlgC xs ys => HasSplitAlgC (x ': xs) ys where
+  splitAlgC :: AlgebraC ((x : xs) :++ ys) m -> (AlgebraC (x : xs) m, AlgebraC ys m)
+  splitAlgC (ca :#$ cabs) = let (cas, cbs) = splitAlgC cabs in ((ca :#$ cas), cbs)
 
-{-# INLINE absurdEffs #-}
-absurdEffs :: forall f a b s. Sequence s => Effs s '[] f a -> b
-absurdEffs (Effs k) = k endCase
-
--- This was called just @Eff@ previously
-{-# INLINE hereEff #-}
-hereEff :: Sequence s => eff f x -> Effs s (eff ': effs) f x
-hereEff op = Effs $ \cs -> headCase cs op
-
--- This was called just @Effs@ previously
-{-# INLINE thereEff #-}
-thereEff :: Sequence s => Effs s effs f x -> Effs s (eff ': effs) f x
-thereEff op = Effs $ \cs -> unEffs op (tailCase cs)
-
-{-# INLINE tabulateAlgebra #-}
-tabulateAlgebra :: (KnownEffs effs, Sequence s)
-                => (forall x. Effs s effs m x -> m x) -> Algebra_ s effs m
-tabulateAlgebra f = Algebra (makeCases f)
-
-{-# INLINE applyAlgebra #-}
-applyAlgebra :: Algebra_ s effs m -> (forall x. Effs s effs m x -> m x)
-applyAlgebra (Algebra alg) f = unEffs f alg
-
-instance (Sequence s, KnownEffs effs) => HFunctor (Effs s effs) where
-  {-# INLINE hmap #-}
-  hmap phi (Effs g) = Effs (g . hmapCases phi)
-
-instance (Sequence s, Functor f, KnownEffs effs) => Functor (Effs s effs f) where
-  {-# INLINE fmap #-}
-  fmap h (Effs g) = Effs (g . fmapCases1 h)
--}
-
-
--- * Definitions related to staged algebras
--------------------------------------------
-
-class GenAlgebra effs where
-  genAlgebra :: AlgebraC effs f -> CodeQ (Algebra effs f)
-
-instance GenAlgebra '[] where
-  genAlgebra :: AlgebraC '[] f -> CodeQ (Algebra '[] f)
-  genAlgebra EndAC = [|| endAlg ||]
-
-instance (GenAlgebra effs) => GenAlgebra (eff ': effs) where
-  genAlgebra :: AlgebraC (eff : effs) f -> CodeQ (Algebra (eff : effs) f)
-  genAlgebra (ac, acs) = [|| at $$ac :# $$(genAlgebra acs) ||]
+-- | Generating a code of an algebra from a static algebra
+genAlgebra :: AlgebraC effs f -> CodeQ (Algebra effs f)
+genAlgebra EndAC = [|| endAlg ||]
+genAlgebra (ac :#$ acs) = [|| at $$ac :# $$(genAlgebra acs) ||]

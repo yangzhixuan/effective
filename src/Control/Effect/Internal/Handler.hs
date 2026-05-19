@@ -156,8 +156,7 @@ hide
 hide _ h = weaken h
 
 type Bypass# beffs effs oeffs =
-  ( Append effs (beffs :\\ effs)
-  , Injects (beffs :\\ effs) beffs
+  ( Injects (beffs :\\ effs) beffs
   , Injects beffs beffs
   , Injects effs effs
   , Injects oeffs (oeffs `Union` beffs)
@@ -241,7 +240,7 @@ interpretM1C
                          -> CodeQ (eff m -.> m))   -- ^ @mrephrase@
   -> HandlerC '[eff] oeffs '[] a a
 interpretM1C mrephrase
-  = HandlerC (RunnerC $ \_ -> [|| id ||]) (AlgTransC (\oalgc -> mrephrase oalgc $:# EndAC ))
+  = HandlerC (RunnerC $ \_ -> [|| id ||]) (AlgTransC (\oalgc -> mrephrase oalgc :#$ EndAC ))
 
 -- | Case splitting on the union of two effect rows. Note that `Union` is defined
 -- two be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
@@ -369,7 +368,7 @@ fuseAppC, (++>$)
     , forall m . Monad m => MonadApply ts2 m
     , CompAT# ts1 ts2
     , ForwardsM effs2 ts1, ForwardsM oeffs1 ts2
-    , Append effs1 effs2, Append oeffs1 oeffs2)
+    , HasSplitAlgC oeffs1 oeffs2)
   => HandlerC effs1 oeffs1 ts1 a1 a2   -- ^ @h1@
   -> HandlerC effs2 oeffs2 ts2 a2 a3   -- ^ @h2@
   -> HandlerC (effs1 :++ effs2)
@@ -506,7 +505,7 @@ handle (Handler run halg)
   = runIdentity . LL.getR run endAlg. eval (getAT halg (endAlg @Identity))
 
 handleC :: forall effs ts a b .
-           ( Monad (Apply ts Identity), GenAlgebra effs )
+           ( Monad (Apply ts Identity))
         => HandlerC effs '[] ts a b -> CodeQ (Prog effs a) -> CodeQ b
 handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
   [||
@@ -515,9 +514,7 @@ handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
   ||]
 
 type HandleM# effs xeffs =
-  ( Injects (xeffs :\\ effs) xeffs
-  , Append effs (xeffs :\\ effs)
-  )
+  ( Injects (xeffs :\\ effs) xeffs )
 
 -- | @handleM xalg h p@ uses the handler @h@ to evaluate the program @p@ into some
 -- monad @m@ (e.g. the @IO@ monad). The monad @m@ may come with some effects @xeffs@
@@ -578,7 +575,6 @@ handleMFwds _ xalg (Handler run halg)
 handleMFwdsC :: forall yeffs effs oeffs xeffs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
-  , GenAlgebra (effs `Union` yeffs)
   , Injects oeffs xeffs
   , Injects yeffs xeffs
   , ForwardsM yeffs ts
@@ -630,8 +626,6 @@ handleP' :: forall effs oeffs xeffs ts a b .
 handleP' = handleM' progAlg
 
 
-type HandleMApp# effs xeffs =
-  (Append effs xeffs)
 
 -- | @handleMApp xalg h p@ is a variant of `handleM` where @effs `Union` xeffs@ is replaced
 -- by '(:++)'.
@@ -643,7 +637,7 @@ handleMApp :: forall effs oeffs xeffs m ts a b .
   , Monad (Apply ts m)
   , ForwardsM xeffs ts
   , Injects oeffs xeffs
-  , HandleMApp# effs xeffs )
+  )
   => Algebra xeffs m                -- ^ Algebra @xalg@ for external effects @xeffs@
   -> Handler effs oeffs ts a b       -- ^ Handler @h@
   -> Prog (effs :++ xeffs) a        -- ^ Program @p@ that contains @xeffs@
@@ -660,7 +654,6 @@ handlePApp :: forall effs oeffs xeffs ts a b .
   ( ForwardsM xeffs ts
   , Monad (Apply ts (Prog xeffs))
   , Injects oeffs xeffs
-  , HandleMApp# effs xeffs
   , ProgAlg# xeffs
   ) => Handler effs oeffs ts a b        -- ^ Handler @h@
   -> Prog (effs :++ xeffs) a           -- ^ Program @p@ that contains @xeffs@
