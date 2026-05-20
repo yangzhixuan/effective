@@ -47,7 +47,6 @@ import Unsafe.Coerce
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 import Data.Kind (Type)
-import GHC.Base (Symbol)
 
 import Control.Effect.Internal.AlgTrans
 import Control.Effect.Internal.Runner
@@ -56,14 +55,14 @@ import Control.Effect.Internal.Runner
 -- This is useful when more than one instances of the same effect
 -- are needed in a program.
 newtype WithName
-  (name :: Symbol)
+  name
   (sig  :: Effect)
   (f    :: Type -> Type)
   (k    :: Type)
   = WithName { unWithName :: sig f k } deriving (Functor, HFunctor)
 
 -- A binary operator for @WithName@
-type (:@) :: Symbol -> Effect -> Effect
+type (:@) :: nameKind -> Effect -> Effect
 type name :@ sig = WithName name sig
 
 instance Forward sig t => Forward (WithName name sig) t where
@@ -71,13 +70,13 @@ instance Forward sig t => Forward (WithName name sig) t where
   fwd alg (WithName op) = fwd (alg . WithName) op
 
 -- | @Rename name sig sigs@ replaces (the first occurrence of) @sig@ in @sigs@ with @WithName name sig@.
-type family Rename (name :: Symbol) (sig :: Effect) (sigs :: [Effect]) :: [Effect] where
+type family Rename name (sig :: Effect) (sigs :: [Effect]) :: [Effect] where
   Rename name sig '[]            = '[]
   Rename name sig (sig : sigs')  = WithName name sig : sigs'
   Rename name sig (sig' : sigs') = sig' : Rename name sig sigs'
 
 -- | @RenameAll name sigs@ tags every effect in @sigs@ with the name @name@.
-type family RenameAll (name :: Symbol) (sigs :: [Effect]) :: [Effect] where
+type family RenameAll name (sigs :: [Effect]) :: [Effect] where
   RenameAll name '[] = '[]
   RenameAll name (sig : sigs') = WithName name sig : RenameAll name sigs'
 
