@@ -43,6 +43,9 @@ getAlg (Get p) = do s <- Strict.get; return (p s)
 stateAT :: AlgTrans [Put s, Get s] '[] '[Strict.StateT s] Monad
 stateAT = algTrans' $ putAlg :#. getAlg
 
+stateATC :: AlgTransC [Put s, Get s] '[] '[Strict.StateT s] Monad
+stateATC = AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC
+
 -- | The `state` handler deals with stateful operations and
 -- returns the final state @s@.
 {-# INLINE state #-}

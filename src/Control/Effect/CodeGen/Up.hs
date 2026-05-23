@@ -63,7 +63,7 @@ type UpOp m = Alg (UpOp_ m)
 -- | The (first-order) signature functor for the (algebraic) operation @up@.
 data UpOp_ (m :: Type -> Type) (x :: Type) where
   -- | Using left-Kan extension, functions @forall x. CodeQ (m x) -> n (CodeQ x)@
-  -- are in bijection with @forall x. exists. (CodeQ (m a), CodeQ a -> x) -> n x@.
+  -- are in bijection with @forall x. exists a. (CodeQ (m a), CodeQ a -> x) -> n x@.
   UpOp_   :: CodeQ (m a) -> (CodeQ a -> x) -> UpOp_ m x
 
   -- | The constructor @UpOpId c@ means the same thing as @UpOp_ c id@ and
