@@ -537,6 +537,7 @@ handleM xalg (Handler run halg)
   = getR run @m (weakenAlg xalg)
   . eval (unionAlg @effs @xeffs (getAT halg (weakenAlg xalg)) (getAT (fwds @_ @ts) xalg))
 
+
 -- | A variant of @handleM@ where the program doesn't explictly use the effect
 -- @xeffs@ on the monad @m@, but may output some effects @oeffs@ ⊆ @xeffs@. Therefore
 -- the transformer stack @ts@ doesn't have to forward the effects @xeffs@.
@@ -551,6 +552,25 @@ handleM' :: forall effs oeffs xeffs m ts a b .
   -> m b
 handleM' xalg (Handler run halg)
   = getR run @m (weakenAlg xalg) . eval (getAT halg (weakenAlg xalg))
+
+handleMC' :: forall effs oeffs xeffs m ts a b .
+  ( Monad m
+  , Monad (Apply ts m)
+  , Injects oeffs xeffs
+  , HandleM# effs xeffs
+  )
+  => AlgebraC xeffs m
+  -> HandlerC effs oeffs ts a b
+  -> CodeQ (Prog effs a)
+  -> CodeQ (m b)
+handleMC' xalgC (HandlerC (RunnerC r) (AlgTransC a)) p =
+  [||
+      let xalg = $$(genAlgebra xalgC)
+          alg = $$(genAlgebra (a (weakenAlgC xalgC)))
+      in $$(r (weakenAlgC xalgC)) (eval alg $$p)
+  ||]
+
+
 
 -- | `handleMFwds` is a middle ground between `handleM` and `handleM'`: a type argument
 -- @yeffs@ is given explicitly to specify the subset of @xeffs@ that the program really

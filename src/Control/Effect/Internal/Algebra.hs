@@ -233,66 +233,6 @@ callKM :: forall eff effs a b m s . (Monad m, Member eff effs, Sequence s)
       => Algebra_ s effs m -> eff m a -> (a -> m b) -> m b
 callKM oalg x k = callM oalg x >>= k
 
-
--- * Functions that need to be defined by induction on effect rows
---------------------------------------------------------------------------------
-
-{-
--- | TODO (Zhixuan): the whole interface below works by constructing and destructing
--- cases one by one, completely ignoring possible fast indexing. So it runs in quadratic
--- time or higher for all choices of @s@.
-class KnownEffs (effs :: [Effect]) where
-  -- | The length of @effs@.
-  lengthEffs :: Int
-
-  -- | @Cases s effs f x y@ is functorial in @g@ contra-variantly.
-  hmapCases :: (Functor f, Functor g, Sequence s)
-            => (forall x. f x -> g x) -> Cases s effs g x y -> Cases s effs f x y
-
-  -- | @Cases s effs f x y@ is functorial in @x@ contra-variantly.
-  fmapCases1 :: (Sequence s, Functor f)
-            => (z -> x) -> Cases s effs f x y -> Cases s effs f z y
-
-  -- | @Cases s effs f x y@ is functorial in @y@ co-variantly.
-  fmapCases2 :: (Sequence s)
-            => (y -> z) -> Cases s effs f x y -> Cases s effs f x z
-
-  -- | Tabulate a table of cases from a function that handles all cases.
-  makeCases :: Sequence s => (Effs s effs f x -> y) -> Cases s effs f x y
-
-instance KnownEffs '[] where
-  {-# INLINE lengthEffs #-}
-  lengthEffs = 0
-
-  {-# INLINE hmapCases #-}
-  hmapCases _ _ = endCase
-
-  {-# INLINE fmapCases1 #-}
-  fmapCases1 _ _ = endCase
-
-  {-# INLINE fmapCases2 #-}
-  fmapCases2 _ _ = endCase
-
-  {-# INLINE makeCases #-}
-  makeCases _ = endCase
-
-instance (HFunctor eff, KnownEffs effs) => KnownEffs (eff ': effs) where
-  {-# INLINE lengthEffs #-}
-  lengthEffs = 1 + lengthEffs @effs
-
-  {-# INLINE hmapCases #-}
-  hmapCases phi cs = consCase (\op -> headCase cs (hmap phi op)) (hmapCases @effs phi (tailCase cs))
-
-  {-# INLINE fmapCases1 #-}
-  fmapCases1 f cs = consCase (headCase cs . fmap f) (fmapCases1 @effs f (tailCase cs))
-
-  {-# INLINE fmapCases2 #-}
-  fmapCases2 f cs = consCase (f . headCase cs) (fmapCases2 @effs f (tailCase cs))
-
-  {-# INLINE makeCases #-}
-  makeCases f = consCase (f . hereEff) (makeCases @effs (f . thereEff))
--}
-
 -- * Concatenating cases and algebras
 --------------------------------------------------------------------------------
 
@@ -424,7 +364,6 @@ unionAlgC xalg yalg = (#$) @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
 
 -- | To split a static algebra we need to perform induction on |xs|, so
 -- we need to create a typeclass.
--- TODO: rename this typeclass.
 class HasSplitAlgC (xs :: [Effect]) (ys :: [Effect]) where
   splitAlgC :: AlgebraC (xs :++ ys) m -> (AlgebraC xs m, AlgebraC ys m)
 
