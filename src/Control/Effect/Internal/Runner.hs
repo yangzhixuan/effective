@@ -90,6 +90,24 @@ fuseR at2 r1 r2 = Runner \(oalg :: Algebra _ m)  ->
             (weakenAlg @(oeffs1 :\\ effs2) @_ oalg))
           (getAT at2 (weakenAlg @oeffs2 @_ oalg)))
 
+
+{-# INLINE fuseAppR #-}
+fuseAppR :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+          ( ForwardsC cs2 oeffs1 ts2
+          , Injects oeffs1 (oeffs1 :++ oeffs2)
+          , Injects oeffs2 (oeffs1 :++ oeffs2)
+          , forall m. Assoc ts1 ts2 m)
+       => AlgTrans effs2 oeffs2 ts2 cs2
+       -> Runner oeffs1 ts1 a1 a2 cs1
+       -> Runner oeffs2 ts2 a2 a3 cs2
+       -> Runner (oeffs1  :++ oeffs2)
+                 (ts1 :++ ts2)
+                 a1 a3
+                 (CompC ts2 cs1 cs2)
+fuseAppR at2 r1 r2 = Runner \(oalg :: Algebra (oeffs1 :++ oeffs2) m)  ->
+  getR r2 (oalg . injs) . getR r1 (getAT (fwds @(oeffs1) @ts2) (oalg . injs))
+
+
 type PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 =
    ( Injects oeffs1 (oeffs1 `Union` oeffs2)
    , Injects oeffs2 (oeffs1 `Union` oeffs2)

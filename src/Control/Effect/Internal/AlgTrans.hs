@@ -304,6 +304,24 @@ fuseAT' :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
 fuseAT' at1 at2 = weakenC (fuseAT at1 at2)
 
 
+{-# INLINE fuseAppAT #-}
+fuseAppAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+          (CompAT# ts1 ts2 effs1 cs2, Injects oeffs1 (oeffs1 :++ oeffs2)
+          , Injects oeffs2 (oeffs1 :++ oeffs2), Append effs1 effs2,
+          ForwardsC cs1 effs2 ts1, ForwardsC cs2 oeffs1 ts2)
+       => AlgTrans effs1 oeffs1 ts1 cs1
+       -> AlgTrans effs2 oeffs2 ts2 cs2
+       -> AlgTrans (effs1 :++ effs2)
+                   (oeffs1 :++ oeffs2)
+                   (ts1 :++ ts2)
+                   (CompC ts2 cs1 cs2)
+fuseAppAT at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 :++ oeffs2) m) ->
+    heither @effs1 @effs2 @(Apply (ts1 :++ ts2) m)
+       (getAT at1 (getAT (fwds @oeffs1 @ts2) (oalg . injs)))
+       (getAT (fwds @effs2 @ts1) (getAT at2 (oalg . injs)))
+
+
+
 infixr 9 `pipeAT`
 
 type PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 =

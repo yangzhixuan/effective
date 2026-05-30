@@ -369,8 +369,7 @@ generalFuse
      , ForwardsM (oeffs1 :\\ ieffs) ts2
      , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2
      , LL.FuseR# effs2 oeffs1 oeffs2 ts1 ts2
-     , Injects oeffs2 oeffs2
-     )
+     , Injects oeffs2 oeffs2 )
   => Proxy feffs -> Proxy ieffs
   -> Handler effs1 oeffs1 ts1 a1 a2
   -> Handler effs2 oeffs2 ts2 a2 a3
@@ -381,6 +380,28 @@ generalFuse
 generalFuse p1 p2 (Handler r1 a1) (Handler r2 a2)
   = Handler (LL.weakenRC (LL.fuseR (weakenIEffs @ieffs a2) r1 r2))
             (LL.weakenC (LL.generalFuseAT p1 p2 a1 a2))
+
+infixr 9 `fuseApp`, ++>
+{-# INLINE fuseApp #-}
+fuseApp, (++>)
+  :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3
+  . ( forall m . Monad m => MonadApply ts1 m
+    , forall m . Monad m => MonadApply ts2 m
+    , ForwardsM effs2 ts1, ForwardsM oeffs1 ts2
+    , CompAT# ts1 ts2 effs1 Monad, Injects oeffs1 (oeffs1 :++ oeffs2)
+    , Injects oeffs2 (oeffs1 :++ oeffs2), Append effs1 effs2
+    )
+  => Handler effs1 oeffs1 ts1 a1 a2   -- ^ @h1@
+  -> Handler effs2 oeffs2 ts2 a2 a3   -- ^ @h2@
+  -> Handler (effs1 :++ effs2)
+             (oeffs1 :++ oeffs2)
+             (ts1 :++ ts2)
+             a1 a3
+fuseApp (Handler run1 malg1) (Handler run2 malg2)
+  = Handler (weakenRC (LL.fuseAppR malg2 run1 run2)) (weakenC (LL.fuseAppAT malg1 malg2))
+
+{-# INLINE (++>) #-}
+(++>) = fuseApp
 
 recall
   :: forall reffs effs oeffs ts a b .
