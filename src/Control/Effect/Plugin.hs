@@ -120,6 +120,12 @@ import GHC.Driver.Config.Finder
 import GHC.Tc.Types.CtLoc
 #endif
 
+#if __GLASGOW_HASKELL__ >= 914
+import GHC.Builtin.Types (promotedConsDataCon)
+import GHC.Core.Coercion (mkUnivCo)
+import GHC.Core.Reduction (mkReduction)
+#endif
+
 #ifdef TIMING
 import GHC.Clock
 #endif
@@ -163,6 +169,7 @@ data PluginData = PluginData
   { elemClass :: Class
   , downClass :: Class
   , downTailClass :: Class
+  , deleteTyCon :: TyCon
   , totalTime :: !(IORef Double)
   }
 
@@ -170,7 +177,9 @@ plugin :: Plugin
 plugin = defaultPlugin
   { tcPlugin = \_ -> Just TcPlugin
     { tcPluginInit = initPlugin
-#if __GLASGOW_HASKELL__ > 902
+#if __GLASGOW_HASKELL__ >= 914
+    , tcPluginRewrite = \pd -> listToUFM [(pd.deleteTyCon, rewriteDelete pd)]
+#elif __GLASGOW_HASKELL__ > 902
     , tcPluginRewrite = \_ -> emptyUFM
 #endif
     , tcPluginSolve = disambiguateAll
@@ -186,6 +195,8 @@ initPlugin = do
   downMod <- lookupModule $ mkModuleName "Control.Effect.CodeGen.Down"
   downClass <- tcLookupClass =<< lookupOrig downMod (mkTcOcc "$~>")
   downTailClass <- tcLookupClass =<< lookupOrig downMod (mkTcOcc "$~>>")
+  listMod <- lookupModule $ mkModuleName "Data.List.Kind"
+  deleteTyCon <- tcLookupTyCon =<< lookupOrig listMod (mkTcOcc "Delete")
   totalTime <- tcPluginIO $ newIORef 0
   pure PluginData{..}
   where
@@ -263,7 +274,7 @@ resolveEagerly pd cls allGivens allWanteds = timed pd $ do
       wanteds = mapMaybe (wantedIsCls cls) . filter (not . isIP) $ allWanteds
   instEnvs <- getInstEnvs
   cts <- forM wanteds $ \wanted -> do
-    printSingle "Wanted" wanted
+    printSingle "Wanted" (snd wanted)
     case lookupInstEnv False instEnvs cls (snd wanted) of
 #if __GLASGOW_HASKELL__ == 902
       ([], [uniqUnifyingInst], []) ->
@@ -290,6 +301,39 @@ resolveEagerly pd cls allGivens allWanteds = timed pd $ do
            return (map mkNonCanonical sigs) 
       _ -> pure []
   pure (mkSolveResult (concat cts))
+
+#if __GLASGOW_HASKELL__ >= 914
+-- | Resolve a stuck @Delete x (y ': ys)@ family application by committing
+-- eagerly, in the spirit of 'resolveEagerly'. Such an application is stuck
+-- exactly when GHC can decide neither @x ~ y@ nor @x@ apart-from @y@, i.e.
+-- when @x@ and @y@ unify only by instantiating not-yet-disambiguated
+-- unification variables. In the intended uses of 'Data.List.Kind.Delete'
+-- (removing a handled effect from a signature) the deleted effect is the
+-- matching element, so we commit: reduce to @ys@ and emit @x ~ y@ as a new
+-- Wanted, which performs the disambiguating unification as a side effect.
+--
+-- Doing this in the rewriter rather than in 'disambiguateAll' matters on
+-- GHC 9.14: since the solver rework there, Wanted quantified constraints are
+-- eagerly converted to implications whose (possibly only partly solved)
+-- results are committed to /before/ 'tcPluginSolve' runs, so equalities
+-- emitted by 'disambiguateAll' come too late for constraints such as
+-- @forall m. Monad m => FwdsConstraint (sigs :\\ hsigs) ts m@ that contain a
+-- stuck 'Delete'. The rewriter, by contrast, is consulted during the eager
+-- implication solve, early enough to help.
+rewriteDelete :: PluginData -> RewriteEnv -> [Ct] -> [TcType] -> TcPluginM TcPluginRewriteResult
+rewriteDelete pd env _givens args@[_kind, x, ys]
+  | Wanted <- re_flavour env  -- a Given offers no licence to guess
+  , Just (tc, [_k, y, ys']) <- splitTyConApp_maybe ys
+  , tc == promotedConsDataCon
+  , Just subst <- tcUnifyTyNoSkolems x y
+  , not (isEmptySubst subst)
+  = do let eq = mkNomEqPred x y
+           co = mkUnivCo (PluginProv "effective-plugin") [] Nominal (mkTyConApp pd.deleteTyCon args) ys'
+       printSingle "Rewriting stuck Delete, emitting" eq
+       ev <- newWanted (re_loc env) eq
+       pure (TcPluginRewriteTo (mkReduction co ys') [mkNonCanonical ev])
+rewriteDelete _ _ _ _ = pure TcPluginNoRewrite
+#endif
 
 disambiguateEffects
   :: PluginData

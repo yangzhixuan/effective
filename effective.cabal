@@ -118,13 +118,13 @@ library
     src
 
   build-depends:
-    base               >= 4.16   && < 4.22,
+    base               >= 4.16   && < 4.23,
     transformers       >= 0.4    && < 0.7,
     array              >= 0.5    && < 0.6,
     containers         >= 0.6    && < 0.9,
     ghc-prim           >= 0.8    && < 0.14,
     logict             >= 0.8.2  && < 0.9,
-    template-haskell   >= 2.18   && < 2.24,
+    template-haskell   >= 2.18   && < 2.25,
     ghc
 
 test-suite readme
@@ -137,9 +137,9 @@ test-suite readme
   default-language: GHC2021
   hs-source-dirs:  .
   build-depends:
-    base               >= 4.16 && < 4.22,
+    base               >= 4.16 && < 4.23,
     effective,
-    hedgehog           >= 1.5  && < 1.6,
+    hedgehog           >= 1.5  && < 1.8,
   build-tool-depends: markdown-unlit:markdown-unlit
 
 test-suite docs
@@ -150,9 +150,9 @@ test-suite docs
   default-language: GHC2021
   hs-source-dirs:  docs
   build-depends:
-    base               >= 4.16 && < 4.22,
+    base               >= 4.16 && < 4.23,
     effective,
-    hedgehog           >= 1.5  && < 1.6,
+    hedgehog           >= 1.5  && < 1.8,
   build-tool-depends: markdown-unlit:markdown-unlit
   other-modules:
     Error,
@@ -174,7 +174,7 @@ test-suite concur
   default-extensions: DataKinds
   hs-source-dirs:  test
   build-depends:
-    base               >= 4.16 && < 4.22,
+    base               >= 4.16 && < 4.23,
     effective,
 
 test-suite hostore
@@ -185,7 +185,7 @@ test-suite hostore
   default-extensions: DataKinds
   hs-source-dirs:  test
   build-depends:
-    base               >= 4.16 && < 4.22,
+    base               >= 4.16 && < 4.23,
     effective,
 
 test-suite staged
@@ -195,9 +195,9 @@ test-suite staged
   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
   hs-source-dirs:  test
   build-depends:
-    base               >= 4.16 && < 4.22,
+    base               >= 4.16 && < 4.23,
     effective,
-    template-haskell   >= 2.18 && < 2.24,
+    template-haskell   >= 2.18 && < 2.25,
     transformers       >= 0.4  && < 0.7,
 
   other-modules:
@@ -211,9 +211,9 @@ test-suite plugin
   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
   hs-source-dirs:  test
   build-depends:
-    base               >= 4.16 && < 4.22,
+    base               >= 4.16 && < 4.23,
     effective,
-    template-haskell   >= 2.18 && < 2.24,
+    template-haskell   >= 2.18 && < 2.25,
     transformers       >= 0.4  && < 0.7,
 
   other-modules:
@@ -228,10 +228,10 @@ test-suite misc
   hs-source-dirs:  test
   -- ghc-options: -ddump-splices
   build-depends:
-    base               >= 4.16 && < 4.22,
+    base               >= 4.16 && < 4.23,
     effective,
-    hedgehog           >= 1.5  && < 1.6,
-    template-haskell   >= 2.18 && < 2.24,
+    hedgehog           >= 1.5  && < 1.8,
+    template-haskell   >= 2.18 && < 2.25,
 
 test-suite eval
   import:        common
@@ -242,6 +242,6 @@ test-suite eval
   default-extensions: DataKinds
   hs-source-dirs:  test
   build-depends:
-    base               >= 4.16 && < 4.22,
+    base               >= 4.16 && < 4.23,
     effective,
     transformers       >= 0.4  && < 0.7,

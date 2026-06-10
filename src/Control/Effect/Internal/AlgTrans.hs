@@ -140,6 +140,19 @@ weakenC :: forall cs' cs sigs osigs ts.
        -> AlgTrans sigs osigs ts cs'
 weakenC at = AlgTrans \oalg x -> getAT at oalg x
 
+{-# INLINE weakenCMonad #-}
+-- | Drop a @'CompC' ts2 Monad Monad@ carrier constraint down to plain @Monad@.
+--
+-- The algebra-transformer counterpart of 'Control.Effect.Internal.Runner.weakenRCMonad':
+-- the @cs = 'CompC' ts2 Monad Monad@, @cs' = Monad@ specialisation of 'weakenC'.
+-- See that function for why this wrapper is needed on GHC 9.14.
+weakenCMonad
+  :: forall ts2 sigs osigs ts
+   . (forall m. Monad m => MonadApply ts2 m)
+  => AlgTrans sigs osigs ts (CompC ts2 Monad Monad)
+  -> AlgTrans sigs osigs ts Monad
+weakenCMonad = weakenC
+
 -- | Replace the carrier constraint @cs@ of an algebra transformer with the conjunction
 -- of @cs@ and another constraint @cs'@.
 {-# INLINE weakenCAnd #-}

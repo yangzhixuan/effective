@@ -132,7 +132,7 @@ comp :: ( forall m. Monad m => MonadApply ts1 m
      -> Handler sigs2 sigs3 ts2 a2 a3
      -> Handler sigs1 sigs3 (ts1 :++ ts2) a1 a3
 comp (Handler r1 a1) (Handler r2 a2) =
-  Handler (weakenRC (compRunner a2 r1 r2)) (weakenC (compAT a1 a2))
+  Handler (weakenRCMonad (compRunner a2 r1 r2)) (weakenCMonad (compAT a1 a2))
 
 -- | Weakens a handler from @Handler sigs osigs ts fs@ to @Handler sigs' osigs' ts fs@,
 -- when @sigs'@ injects into @sigs@ and @osigs@ injects into @osigs'@.
@@ -313,7 +313,7 @@ fuse, (|>)
 --
 -- Moreover, the effects @sigs2@ are handled by @h2@ so they must be forwardable by @ts1@.
 fuse (Handler run1 malg1) (Handler run2 malg2)
-  = Handler (weakenRC (LL.fuseR malg2 run1 run2)) (weakenC (LL.fuseAT malg1 malg2))
+  = Handler (weakenRCMonad (LL.fuseR malg2 run1 run2)) (weakenCMonad (LL.fuseAT malg1 malg2))
 
 -- | A synonym for `fuse`.
 (|>) = fuse
@@ -343,7 +343,7 @@ pipe, (||>)
 -- input effects of @h2@ (as required by `comp`). Instead, if an output effect
 -- produced by @h1@ is not handled by @h2@, it will be re-produced by @pipe h1 h2@.
 pipe (Handler run1 malg1)  (Handler run2 malg2)
-  = Handler (LL.weakenRC (LL.fuseR malg2 run1 run2)) (LL.weakenC (LL.pipeAT malg1 malg2))
+  = Handler (LL.weakenRCMonad (LL.fuseR malg2 run1 run2)) (LL.weakenCMonad (LL.pipeAT malg1 malg2))
 
 -- | A synonym for 'pipe'
 (||>) = pipe
@@ -404,8 +404,8 @@ generalFuse
              (ts1 :++ ts2)
              a1 a3
 generalFuse p1 p2 (Handler r1 a1) (Handler r2 a2)
-  = Handler (LL.weakenRC (LL.fuseR (weakenIEffs @isigs a2) r1 r2))
-            (LL.weakenC (LL.generalFuseAT p1 p2 a1 a2))
+  = Handler (LL.weakenRCMonad (LL.fuseR (weakenIEffs @isigs a2) r1 r2))
+            (LL.weakenCMonad (LL.generalFuseAT p1 p2 a1 a2))
 
 recall
   :: forall rsigs sigs osigs ts a b .

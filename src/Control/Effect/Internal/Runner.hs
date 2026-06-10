@@ -130,3 +130,21 @@ weakenRC :: forall cs' cs sigs ts a b.
         => Runner sigs ts a b cs
         -> Runner sigs ts a b cs'
 weakenRC r1 = Runner \oalg -> getR r1 oalg
+
+{-# INLINE weakenRCMonad #-}
+-- | Drop a @'CompC' ts2 Monad Monad@ carrier constraint down to plain @Monad@.
+--
+-- This is the @cs = 'CompC' ts2 Monad Monad@, @cs' = Monad@ specialisation of
+-- 'weakenRC'. As of GHC 9.14, callers such as 'Control.Effect.Internal.Handler.comp'
+-- cannot use 'weakenRC' directly: with /two/ quantified givens
+-- @forall m. Monad m => MonadApply ts1 m@ and @forall m. Monad m => MonadApply ts2 m@
+-- in scope, the solver refuses to choose between them when discharging
+-- @Monad ('Apply' ts2 m)@, because the superclass heads mention the
+-- non-injective family 'Apply'. This wrapper narrows the context to the
+-- single relevant quantified given, making the choice unambiguous.
+weakenRCMonad
+  :: forall ts2 sigs ts a b
+   . (forall m. Monad m => MonadApply ts2 m)
+  => Runner sigs ts a b (CompC ts2 Monad Monad)
+  -> Runner sigs ts a b Monad
+weakenRCMonad = weakenRC

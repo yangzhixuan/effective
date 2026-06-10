@@ -14,7 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ghc: ["9.2.8", "9.4.8","9.6.7", "9.8.2", "9.10.1", "9.12.1"]
+        # Partial versions resolve to the latest point release known to
+        # haskell-actions/setup, so each series tracks its newest patch level.
+        ghc: ["9.2", "9.4", "9.6", "9.8", "9.10", "9.12", "9.14"]
 
     steps:
     - uses: actions/checkout@v4
