@@ -36,7 +36,7 @@ module Control.Effect.Except (
   retryAT,
 
   -- ** Underlying monad transformers
-  ExceptT(..), runExceptT
+  ExceptT(ExceptT), runExceptT
 ) where
 
 import Control.Effect
