@@ -35,7 +35,7 @@ module Control.Effect.WithName (
 #endif
 ) where
 
-import Control.Effect.Internal.Effs
+import Control.Effect.Internal.Algebra
 import Control.Effect.Internal.Forward
 import Control.Effect.Internal.Handler
 import Control.Effect.Internal.AlgTrans.Type
@@ -51,6 +51,7 @@ import GHC.Base (Symbol)
 
 import Control.Effect.Internal.AlgTrans
 import Control.Effect.Internal.Runner
+
 
 -- | Make a copy of an effect signature and attach a name to it.
 -- This is useful when more than one instances of the same effect

@@ -27,11 +27,7 @@ common common
   if impl(ghc >=9.10.1)
     default-extensions: RequiredTypeArguments
 
-
   ghc-options:
-  --cpp-options: -DINDEXED
-  --cpp-options: -DPROGDIRECT
-
 
 library
   import: common
@@ -39,7 +35,11 @@ library
   exposed-modules:
     Control.Effect.Plugin
     Control.Effect
-
+    Control.Effect.WithName
+    Control.Effect.Family.Algebraic
+    Control.Effect.Family.Scoped
+    Control.Effect.Family.Distributive
+--
     Control.Effect.Alternative
     Control.Effect.Cut
     Control.Effect.Except
@@ -58,10 +58,6 @@ library
     Control.Effect.State.Lazy
     Control.Effect.State.Strict
     Control.Effect.Writer
-    Control.Effect.Family.Algebraic
-    Control.Effect.Family.Scoped
-    Control.Effect.Family.Distributive
-    Control.Effect.WithName
     Control.Effect.HStore.Unsafe
     Control.Effect.HStore.Safe
 
@@ -76,6 +72,7 @@ library
     Control.Effect.CodeGen.SoPU
     Control.Effect.CodeGen.Nondet
     Control.Effect.CodeGen.Concurrency
+    Control.Effect.CodeGen.ScopedC
 
     Control.Monad.Trans.CutList
     Control.Monad.Trans.List
@@ -91,16 +88,10 @@ library
     Data.HFunctor
     Data.List.Kind
     Data.Functor.Unary
+    Data.Sequence.Class
 
-    Control.Effect.Internal.Effs
-    Control.Effect.Internal.Effs.Indexed
-    Control.Effect.Internal.Effs.Indexed.Array
-    Control.Effect.Internal.Effs.Indexed.Class
-    Control.Effect.Internal.Effs.Indexed.Type
-    Control.Effect.Internal.Effs.Sum
-    Control.Effect.Internal.Effs.Sum.Type
+    Control.Effect.Internal.Algebra
     Control.Effect.Internal.Prog.ProgImp
-    Control.Effect.Internal.Prog.ProgDirect
     Control.Effect.Internal.Prog
     Control.Effect.Internal.Forward
     Control.Effect.Internal.Handler
@@ -108,8 +99,11 @@ library
     Control.Effect.Internal.AlgTrans
     Control.Effect.Internal.AlgTrans.Type
     Control.Effect.Internal.TH
+
   hs-source-dirs:
     src
+
+  ghc-options: -O2
 
   build-depends:
     base               >= 4.16   && < 4.22,
@@ -119,48 +113,57 @@ library
     ghc-prim           >= 0.8    && < 0.14,
     logict             >= 0.8.2  && < 0.9,
     template-haskell   >= 2.18   && < 2.24,
+    containers,
+--     for finger trees.
+    primitive,
+--     for SmallArray.
     ghc
 
-test-suite readme
-  type:          exitcode-stdio-1.0
-  ghc-options:   -threaded -pgmL markdown-unlit
-  main-is:       README.lhs
-  default-extensions: DataKinds
-  default-language: GHC2021
-  hs-source-dirs:  .
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-    hedgehog           >= 1.5  && < 1.6,
-  build-tool-depends: markdown-unlit:markdown-unlit
-
-test-suite docs
-  import:        common
-  type:          exitcode-stdio-1.0
-  ghc-options:   -threaded -pgmL markdown-unlit
-  main-is:       Main.hs
-  default-language: GHC2021
-  hs-source-dirs:  docs
-  build-depends:
-    base               >= 4.16 && < 4.22,
-    effective,
-    hedgehog           >= 1.5  && < 1.6,
-  build-tool-depends: markdown-unlit:markdown-unlit
-  other-modules:
-    Error,
-    Nondet,
-    Parser,
-    State,
+-- test-suite readme
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -threaded -pgmL markdown-unlit
+--   main-is:       README.lhs
+--   default-extensions: DataKinds
+--   default-language: GHC2021
+--   hs-source-dirs:  .
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+--     hedgehog           >= 1.5  && < 1.6,
+--   build-tool-depends: markdown-unlit:markdown-unlit
+-- 
+-- test-suite docs
+--   import:        common
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -threaded -pgmL markdown-unlit
+--   main-is:       Main.hs
+--   default-language: GHC2021
+--   hs-source-dirs:  docs
+--   build-depends:
+--     base               >= 4.16 && < 4.22,
+--     effective,
+--     hedgehog           >= 1.5  && < 1.6,
+--   build-tool-depends: markdown-unlit:markdown-unlit
+--   other-modules:
+--     Error,
+--     Nondet,
+--     Parser,
+--     State,
 
 test-suite concur
   type:          exitcode-stdio-1.0
-  ghc-options:   -threaded
+  ghc-options:   -threaded -ddump-splices -ddump-to-file
   main-is:       Concur.hs
   default-language: GHC2021
-  default-extensions: DataKinds
+  default-extensions: DataKinds, TemplateHaskell
   hs-source-dirs:  test
+  other-modules:
+    ConcurStaged
   build-depends:
     base               >= 4.16 && < 4.22,
+    process,
+    random,
+    containers,
     effective,
 
 test-suite hostore
@@ -179,6 +182,7 @@ test-suite staged
   main-is:       Staged.hs
   default-language: GHC2021
   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+  ghc-options: -ddump-to-file -ddump-splices
   hs-source-dirs:  test
   build-depends:
     base               >= 4.16 && < 4.22,
@@ -188,6 +192,7 @@ test-suite staged
 
   other-modules:
     StagedGen
+
 
 test-suite plugin
   type:          exitcode-stdio-1.0
@@ -212,7 +217,7 @@ test-suite misc
   default-language: GHC2021
   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
   hs-source-dirs:  test
-  -- ghc-options: -ddump-splices
+  ghc-options: -fspecialise-aggressively -ddump-to-file -ddump-splices -ddump-simpl -dsuppress-idinfo -dsuppress-uniques -dsuppress-coercions -dsuppress-module-prefixes
   build-depends:
     base               >= 4.16 && < 4.22,
     effective,

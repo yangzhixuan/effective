@@ -12,7 +12,9 @@ module Control.Effect.Except (
 
   -- | Throwing exceptions of type @e@. This operation is algebraic.
   throw,
+  throwM,
   throwP,
+
   -- | Catching exceptions of type @e@. This operation is scoped.
   catch,
   catchP,
@@ -30,6 +32,7 @@ module Control.Effect.Except (
   -- ** Handlers
   except,
   retry,
+  exceptC,
 
   -- ** Algebras
   exceptAT,
@@ -45,7 +48,7 @@ import Control.Effect.Family.Scoped
 
 import Control.Monad.Trans.Except (ExceptT(..), runExceptT)
 
-$(makeAlg [e| throw :: forall e. e -> 0 |])
+$(makeAlg [e| throw :: forall e. e ~> 0 |])
 
 -- | Internal signature for catching exceptions of type @e@.
 type Catch e = Scp (Catch_ e)
@@ -61,62 +64,45 @@ catch p q = call @(Catch e) (Scp (Catch_ p q))
 -- Unfortunately `makeScp` currently doesn't support operations like `catch` here, which
 -- binds a new variable @e -> @ in its second argument.
 
--- | A pattern synonym for a catch operation in an effect row.
-pattern Catch :: Member (Catch e) sigs => f a -> (e -> f a) -> Effs sigs f a
-pattern Catch p q <- (prj -> Just (Scp (Catch_ p q))) where
-  Catch p q = inj (Scp (Catch_ p q))
+pattern Catch :: f k -> (e -> f k) -> Catch e f k
+pattern Catch p q <- Scp (Catch_ p q) where
+  Catch p q = Scp (Catch_ p q)
+
+pattern Catch' :: f k -> (e -> f k) -> Scp (Catch_ e) f k
+pattern Catch' p q = Scp (Catch_ p q)
 
 {-# INLINE catchM #-}
 catchM :: forall e sig m a . Member (Catch e) sig => Algebra sig m -> m a -> (e -> m a) -> m a
-catchM alg p q = alg (inj (Scp (Catch_ p q)))
+catchM alg p q = dispatch alg (Scp (Catch_ p q))
 
+-- | A pattern synonym for a catch operation in an effect row.
 {-# INLINE catchP #-}
 catchP :: forall n e sig a . Member (n :@ Catch e) sig
        => Proxy n -> Prog sig a -> (e -> Prog sig a) -> Prog sig a
-catchP n p q = callP n (Scp (Catch_ p q))
+catchP n p q = callP n (Catch p q)
 
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
 {-# INLINE catchN #-}
 catchN :: forall n -> forall e sig a . Member (n :@ Catch e) sig
        => Prog sig a -> (e -> Prog sig a) -> Prog sig a
-catchN n p q = callN n (Scp (Catch_ p q))
+catchN n p q = callN n (Catch p q)
 #endif
 
--- | The 'except' handler will interpret @catch p q@ by first trying @p@.
--- If it fails, then @q@ is executed.
-except :: Handler '[Throw e, Catch e] '[] '[ExceptT e] a (Either e a)
-except = handler' runExceptT exceptAlg
+{-# INLINE throwAlg #-}
+throwAlg :: Monad m => Throw e f k -> ExceptT e m a
+throwAlg (Throw e) = ExceptT (return (Left e))
 
--- | The algebra transformer for the 'except' handler.
-exceptAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
-exceptAT = AlgTrans exceptAlg
-
-exceptAlg :: Monad m
-  => (forall x. oeff m x -> m x)
-  -> (forall x. Effs [Throw e, Catch e] (ExceptT e m) x -> ExceptT e m x)
-exceptAlg _ (Throw e) = ExceptT (return (Left e))
-exceptAlg _ (Catch p q) = ExceptT $ do
+{-# INLINE catchAlg #-}
+catchAlg :: Monad m => Catch e (ExceptT e m) a -> ExceptT e m a
+catchAlg (Catch p q) = ExceptT $ do
   mx <- runExceptT p
   case mx of
     Left e  -> runExceptT (q e)
     Right x -> return (Right x)
 
--- | The 'retry' handler will interpet @catch p q@  by first trying @p@.
--- If it fails, then @q@ is executed as a recovering clause.
--- If the recovery fails then the computation is failed overall.
--- If the recovery succeeds, then @catch p q@ is attempted again.
-retry :: Handler '[Throw e, Catch e] '[] '[ExceptT e] a (Either e a)
-retry = handler' runExceptT retryAlg
-
--- | The algebra transformer for the 'retry' handler.
-retryAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
-retryAT = AlgTrans retryAlg
-
-retryAlg :: Monad m
-  => (forall x. Effs oeff m x -> m x)
-  -> (forall x. Effs [Throw e, Catch e] (ExceptT e m) x -> ExceptT e m x)
-retryAlg _ (Throw e) = ExceptT (return (Left e))
-retryAlg _ (Catch p q) = ExceptT $ loop p q where
+{-# INLINE retryAlg #-}
+retryAlg :: Monad m => Catch e (ExceptT e m) a -> ExceptT e m a
+retryAlg (Catch p q) = ExceptT $ loop p q where
   loop p q =
     do mx <- runExceptT p
        case mx of
@@ -125,3 +111,30 @@ retryAlg _ (Catch p q) = ExceptT $ loop p q where
                         Left e' -> return (Left e')
                         Right y  -> loop p q
          Right x  -> return (Right x)
+
+-- | The 'except' handler will interpret @catch p q@ by first trying @p@.
+-- If it fails, then @q@ is executed.
+except :: Handler '[Throw e, Catch e] '[] '[ExceptT e] a (Either e a)
+except = Handler (runner' runExceptT) exceptAT
+
+-- | The algebra transformer for the 'except' handler.
+exceptAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
+exceptAT = algTrans' (throwAlg :# catchAlg :# endAlg)
+
+-- | The 'retry' handler will interpet @catch p q@  by first trying @p@.
+-- If it fails, then @q@ is executed as a recovering clause.
+-- If the recovery fails then the computation is failed overall.
+-- If the recovery succeeds, then @catch p q@ is attempted again.
+retry :: Handler '[Throw e, Catch e] '[] '[ExceptT e] a (Either e a)
+retry = handler' runExceptT (throwAlg :#. retryAlg)
+
+-- | The algebra transformer for the 'retry' handler.
+retryAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
+retryAT = algTrans' (throwAlg :#. retryAlg)
+
+-- Handlers for lightweight staging
+
+exceptC :: HandlerC '[Throw e, Catch e] '[] '[ExceptT e] a (Either e a)
+exceptC = HandlerC
+  (RunnerC $ \_ -> [|| runExceptT ||] )
+  (AlgTransC $ \_ -> [|| NT throwAlg ||] :#$ [|| NT catchAlg ||] :#$ EndAC)

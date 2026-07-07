@@ -6,7 +6,6 @@ Maintainer  : Nicolas Wu
 Stability   : experimental
 -}
 
-
 module Control.Effect.Writer (
   -- * Syntax
   -- ** Operations
@@ -14,6 +13,7 @@ module Control.Effect.Writer (
 -- | The @`tell` w@ operation outputs @w@.
   tell,
   tellP,
+  tellM,
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
   tellN,
 #endif
@@ -35,12 +35,11 @@ module Control.Effect.Writer (
   -- ** Handlers
   writer,
   writer_,
-  writerIO,
+  writerIO, writerIOC,
   censors,
   uncensors,
 
   -- ** Algebras
-  writerAlg,
   writerAT,
   censorAT,
 
@@ -61,66 +60,71 @@ import Control.Monad.Trans.Reader
 import qualified Control.Monad.Trans.Writer as W
 
 -- | The operation of writing an element of type @w@.
-$(makeGen [e| tell :: forall w. w -> () |])
+$(makeGen [e| tell :: forall w. w ~> () |])
+
+{-# INLINE tellAlg #-}
+tellAlg :: (Monad m, Monoid w) => Tell w (W.WriterT w m) x -> W.WriterT w m x
+tellAlg (Tell w x) = do W.tell w; return x
 
 -- | The algebra transformer for the `writer` handler.
 writerAT :: Monoid w => AlgTrans '[Tell w] '[] '[W.WriterT w] Monad
-writerAT = AlgTrans writerAlg
-
--- | The algebra for the `writer` handler.
-{-# INLINE writerAlg #-}
-writerAlg
-  :: (Monad m, Monoid w)
-  => (forall x. oeff m x -> m x)
-  -> (forall x.  Effs '[Tell w] (W.WriterT w m) x -> W.WriterT w m x)
-writerAlg _ eff
-  | Just (Alg (Tell_ w x)) <- prj eff =
-      do W.tell w
-         return x
+writerAT = algTrans1 (\_ -> tellAlg)
 
 -- | The `writer` handler consumes `tell` operations, and
 -- returns the final state @w@.
 writer :: Monoid w => Handler '[Tell w] '[] '[W.WriterT w] a (w, a)
-writer = handler' (fmap swap . W.runWriterT) writerAlg
+writer = handler' (fmap swap . W.runWriterT) (tellAlg :# endAlg)
+
+writerC :: Monoid w => HandlerC '[Tell w] '[] '[W.WriterT w] a (w, a)
+writerC = HandlerC
+  (RunnerC $ \_ -> [|| fmap swap . W.runWriterT ||])
+  (AlgTransC $ \_ -> [|| NT tellAlg ||] :#$ EndAC)
 
 -- | The `writer_` handler deals with `tell` operations, and
 -- silently discards the final state.
 writer_ :: Monoid w => Handler '[Tell w] '[] '[W.WriterT w] a a
-writer_ = handler' (fmap fst . W.runWriterT) writerAlg
+writer_ = handler' (fmap fst . W.runWriterT) (tellAlg :# endAlg)
+
+writerC_ :: Monoid w => HandlerC '[Tell w] '[] '[W.WriterT w] a a
+writerC_ = HandlerC
+  (RunnerC $ \_ -> [|| fmap fst . W.runWriterT ||])
+  (AlgTransC $ \_ -> [|| NT tellAlg ||] :#$ EndAC)
 
 -- | The `writerIO` handler translates `tell` operations to
 -- physical IO printing.
 writerIO :: Handler '[Tell String] '[Alg IO] '[] a a
-writerIO = interpret $
+writerIO = interpret1 $
   \(Tell w k) -> do io (putStr w)
                     return k
 
-$(makeScp [e| censor :: forall w. (w -> w) -> 1 |])
+writerIOC :: HandlerC '[Tell String] '[Alg IO] '[] a a
+writerIOC = interpretM1C $ \oalgc ->
+  [|| NT $ \(Tell w k) -> do $$(callMC oalgc) (Alg (putStr w)); return k ||]
+
+$(makeScp [e| censor :: forall w. (w -> w) ~> 1 |])
 
 instance U.Unary (Censor_ w) where
   get (Censor_ c x) = x
+
+-- | The `uncensors` handler removes any occurrences of `censor`.
+uncensors :: forall w a . Handler '[Censor w] '[] '[] a a
+uncensors = handler' id ((\(Censor (_ :: w -> w) k) -> k) :# endAlg)
+
+censorAT :: AlgTrans '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] Monad
+censorAT = AlgTrans alg where
+  alg :: Monad m
+      => (Algebra '[Tell w] m)
+      -> (Algebra '[Tell w, Censor w] (ReaderT (w -> w) m))
+  alg oalg =
+    (\(Tell w k) -> do cipher <- ask; lift (callM oalg (Tell (cipher w) k)))
+    :#.
+    (\(Censor (cipher' :: w -> w) k) -> do cipher <- ask; lift (runReaderT k (cipher . cipher')))
 
 -- | The @`censors` f@ handler applies an initial function @f@ to the
 -- any output produced by `tell`. If a @`censor` f' p@ operation is encountered,
 -- @p@ will be censored by the composition @f . f'@, and the `censor` operation
 -- will be consumed.
 censors :: forall w a . (w -> w) -> Handler '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] a a
-censors cipher = handler' run (getAT censorAT) where
+censors cipher = handler (\_ -> run) (getAT censorAT) where
   run :: Monad m => (forall x. ReaderT (w -> w) m x -> m x)
   run (ReaderT mx) = mx cipher
-
-censorAT :: AlgTrans '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] Monad
-censorAT = AlgTrans alg where
-  alg :: Monad m
-      => (forall x. Effs '[Tell w] m x -> m x)
-      -> (forall x. Effs '[Tell w, Censor w] (ReaderT (w -> w) m) x -> ReaderT (w -> w) m x)
-  alg oalg (Tell w k) = do
-    cipher <- ask
-    lift (oalg (Eff (Alg (Tell_ (cipher w) k))))
-  alg oalg (Censor (cipher' :: w -> w) k) = do
-    cipher <- ask
-    lift (runReaderT k (cipher . cipher'))
-
--- | The `uncensors` handler removes any occurrences of `censor`.
-uncensors :: forall w a . Handler '[Censor w] '[] '[] a a
-uncensors = handler' id (\_ (Censor (_ :: w -> w) k) -> k) where

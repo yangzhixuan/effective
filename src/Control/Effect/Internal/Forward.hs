@@ -28,14 +28,11 @@ module Control.Effect.Internal.Forward
   ) where
 
 import Control.Effect.Internal.AlgTrans.Type
-import Control.Effect.Internal.Effs
+import Control.Effect.Internal.Algebra
+import Language.Haskell.TH (CodeQ)
 
 import Data.Kind
 import Data.HFunctor
-#ifdef INDEXED
-import GHC.TypeNats
-import Data.List.Kind
-#endif
 
 -- | The class demonstrating that an effect @eff@ on every type constructor satisfying @cs@
 -- can be forwarded through a transformer @t@.
@@ -51,8 +48,16 @@ class Forward (eff :: Effect) (t :: (Type -> Type) -> (Type -> Type)) where
   -- | @fwd@ constructs an @eff@-algebra on @t m@ given an @eff@-algebra on @m@, for every
   -- @m :: Type -> Type@ satisfying the constraint @FwdConstraint eff t@.
   fwd :: forall m . FwdConstraint eff t m
-       => (forall x . eff m x     -> m x)
-       -> (forall x . eff (t m) x -> t m x)
+      => (forall x . eff m x     -> m x)
+      -> (forall x . eff (t m) x -> t m x)
+
+  -- | @fwdC@ is the static version of `fwd` that works on code of algebras. It has a default
+  -- implementation in terms of `fwd` but it is possible more efficient implementations exist
+  -- for some @t@.
+  fwdC :: forall m . FwdConstraint eff t m
+       => CodeQ (eff m -.> m)
+       -> CodeQ (eff (t m) -.> t m)
+  fwdC c = [|| NT $ fwd (at $$c) ||]
 
 {-
 -- In theory the following instance is very useful but it causes conflicting
@@ -72,19 +77,21 @@ class ForwardEffs effs (t :: (Type -> Type) -> (Type -> Type))  where
   type FwdEffsConstraint effs t :: (Type -> Type) -> Constraint
   fwdEffs :: AlgTrans effs effs '[t] (FwdEffsConstraint effs t)
 
+  fwdEffsC :: AlgTransC effs effs '[t] (FwdEffsConstraint effs t)
+
 instance ForwardEffs '[] t where
   type FwdEffsConstraint '[] t = TruthC
 
   {-# INLINE fwdEffs #-}
   fwdEffs :: AlgTrans '[] '[] '[t] TruthC
-  fwdEffs = AlgTrans $ \_ -> absurdEffs
+  fwdEffs = AlgTrans $ \_ -> endAlg
+
+  fwdEffsC :: AlgTransC '[] '[] '[t] TruthC
+  fwdEffsC = AlgTransC $ \EndAC -> EndAC
 
 instance ( HFunctor eff
          , Forward eff t
          , ForwardEffs effs t
-#ifdef INDEXED
-         , KnownNat (Length effs), KnownNat (1 + Length effs)
-#endif
          )
          => ForwardEffs (eff ': effs) t where
 
@@ -92,10 +99,10 @@ instance ( HFunctor eff
 
   {-# INLINE fwdEffs #-}
   fwdEffs :: AlgTrans (eff ': effs) (eff ': effs) '[t] (FwdEffsConstraint (eff ': effs) t)
-  fwdEffs = AlgTrans $ \alg -> \case
-    (Eff op)   -> fwd @_ @t (alg . Eff) op
-    (Effs ops) -> getAT (fwdEffs @_ @t)  (alg . Effs) ops
+  fwdEffs = AlgTrans $ \(alg :# algs) -> fwd alg :# getAT fwdEffs algs
 
+  fwdEffsC :: AlgTransC (eff : effs) (eff : effs) '[t] (FwdEffsConstraint (eff : effs) t)
+  fwdEffsC = AlgTransC $ \(ca :#$ cas) -> fwdC ca :#$ getATC fwdEffsC cas
 
 -- | This class builds a forwarder for an t`Effs` along a list @ts@ of transformers
 -- by ensuring that each transformer in @ts@ can forward @effs@.
@@ -108,12 +115,17 @@ class Forwards effs ts where
   type FwdsConstraint effs ts :: (Type -> Type) -> Constraint
   fwds :: AlgTrans effs effs ts (FwdsConstraint effs ts)
 
+  fwdsC :: AlgTransC effs effs ts (FwdsConstraint effs ts)
+
 instance Forwards effs '[] where
   type FwdsConstraint effs '[] = TruthC
 
   {-# INLINE fwds #-}
   fwds :: AlgTrans effs effs '[] (FwdsConstraint effs '[])
   fwds = AlgTrans $ \alg -> alg
+
+  fwdsC :: AlgTransC effs effs '[] (FwdsConstraint effs '[])
+  fwdsC = AlgTransC $ \alg -> alg
 
 instance (ForwardEffs effs t, Forwards effs ts) => Forwards effs (t ': ts) where
   type FwdsConstraint effs (t ': ts) =
@@ -123,6 +135,10 @@ instance (ForwardEffs effs t, Forwards effs ts) => Forwards effs (t ': ts) where
   fwds :: AlgTrans effs effs (t ': ts) (FwdsConstraint effs (t ': ts))
   fwds = AlgTrans $ \(alg :: Algebra effs m) ->
     getAT (fwdEffs @_ @t) (getAT (fwds @_ @ts) alg)
+
+  fwdsC :: AlgTransC effs effs (t ': ts) (FwdsConstraint effs (t ': ts))
+  fwdsC = AlgTransC $ \(calg :: AlgebraC effs m) ->
+    getATC (fwdEffsC @_ @t) (getATC (fwdsC @_ @ts) calg)
 
 -- | @ForwardsC cs effs ts@ if and only if effects @effs@ on @m@ can be transformed along
 -- the transformer stack @ts@ on input satisfying the constraint @cs@.

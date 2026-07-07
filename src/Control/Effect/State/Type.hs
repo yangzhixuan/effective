@@ -15,7 +15,7 @@ module Control.Effect.State.Type where
 
 import Control.Effect
 
-$(makeGen [e| put :: forall s. s -> () |])
+$(makeGen [e| put :: forall s. s ~> () |])
 
 -- The Template-Haskell splicing above generates the following code.
 {-
@@ -27,9 +27,7 @@ data Put_ s k where
 -- | Signature for putting a value into the state.
 type Put s = Alg (Put_ s)
 
-pattern Put :: Member (Put s) effs => s -> k -> Effs effs m k
-pattern Put s k <- (prj -> Just (Alg (Put_ s k)))
-  where Put s k = inj (Alg (Put_ s k))
+pattern Put s k = (Alg (Put_ s k))
 
 -- | Syntax for putting a value into the state.
 {-# INLINE put #-}
@@ -56,9 +54,7 @@ newtype Get_ s k where
 -- | Signature for getting a value from the state.
 type Get s = Alg (Get_ s)
 
-pattern Get :: Member (Get s) effs => (s -> k) -> Effs effs m k
-pattern Get k <- (prj -> Just (Alg (Get_ k)))
-  where Get k = inj (Alg (Get_ k))
+pattern Get k = Alg (Get_ k)
 
 -- | Syntax for getting a value from the state.
 {-# INLINE get #-}

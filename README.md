@@ -584,19 +584,19 @@ tickState = interpret rephrase where
                          return x
 ```
 The `ticker` is produced by combining `tickState` with the `state` handler using
-the _pipe_ combinator, written `h1 ||> h2` to pipe the handler `h1` into the
+the _pipe_ combinator, written `h1 \\ h2` to pipe the handler `h1` into the
 handler `h2`.
 
 ```haskell
 ticker :: Handler '[Tick] '[] '[StateT Int] a (Int, a)
-ticker = tickState ||> state (0 :: Int)
+ticker = tickState \\ state (0 :: Int)
 ```
 Given `h1 :: Handler eff1 oeff1 t1 f1` and `h2 :: Handler eff2 oeff2 t2 f2`, the
-result of `h1 ||> h2` is a handler that recognises all of `eff1`, the input
+result of `h1 \\ h2` is a handler that recognises all of `eff1`, the input
 effects of `h1`, and passes any effects `oeff1` produced by `h1` to be processed
 by `h2`. Here are the types involved:
 ```haskell ignore
-(||>) :: ...
+(\\) :: ...
   => Handler effs1 oeffs1 ts1 fs1    -- h1
   -> Handler effs2 oeffs2 ts2 fs2    -- h2
   -> Handler effs1
@@ -649,14 +649,14 @@ The handler says that it will deal with `[GetLine]` as an input effect,
 and will output the effects `[GetLine, Get Int, Put Int]`.
 
 Now the task is to connect this handler with `state`. This can
-be achieved with a `pipe`, which we write as `||>`:
+be achieved with a `pipe`, which we write as `\\`:
 ```haskell
 getLineIncrState :: Handler '[GetLine]   -- input effects
                             '[GetLine]   -- output effects
                             '[StateT Int]
                             a
                             (Int, a)
-getLineIncrState = getLineIncr ||> (state (0 :: Int))
+getLineIncrState = getLineIncr \\ (state (0 :: Int))
 ```
 This can then be executed using `handleIO`, which will deal with
 the residual `GetLine` effect:
@@ -717,10 +717,10 @@ effects. These can be handled by a state handler. The output of the
 a new handler. Here are two variations:
 ```haskell
 getLinePure :: [String] -> Handler '[GetLine] '[] '[StateT [String]] a ([String], a)
-getLinePure str = getLineState ||> (state str)
+getLinePure str = getLineState \\ (state str)
 
 getLinePure_ :: [String] -> Handler '[GetLine] '[] '[StateT [String]] a a
-getLinePure_ str = getLineState ||> (state_ str)
+getLinePure_ str = getLineState \\ (state_ str)
 ```
 Now we have a means of executing a program that contains only a `GetLine` effect,
 and extracting the resulting string:
@@ -797,7 +797,7 @@ This can in turn be piped into the `writer` handler to make
 a pure version of `putStrLn`:
 ```haskell
 putStrLnPure :: Handler '[PutStrLn] '[] '[WriterT [String]] a ([String], a)
-putStrLnPure = putStrLnTell ||> writer
+putStrLnPure = putStrLnTell \\ writer
 ```
 Now, a pure handler for both `putStrLn` and `getLine` can
 be defined as the /fusion/ of `putStrLnPure` and `getLinePure`.

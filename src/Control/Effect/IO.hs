@@ -28,7 +28,7 @@ module Control.Effect.IO (
   handleIO',
 
   -- * Algebras
-  ioAlg,
+  ioAlg, ioAlgC
 )
   where
 
@@ -42,8 +42,11 @@ import Data.HFunctor
 ioAlg :: Algebra '[Alg IO] IO
 ioAlg = nativeAlg
 
+ioAlgC :: AlgebraC '[Alg IO] IO
+ioAlgC = nativeAlgC
+
 -- | Treating an IO computation as an operation of signature `Alg IO`.
-io :: Members '[Alg IO] sig => IO a -> Prog sig a
+io :: IO a -> a ! '[Alg IO]
 io op = call (Alg op)
 
 -- | @`evalIO` p@ evaluates all IO operations in @p@ in the `IO` monad
@@ -64,9 +67,7 @@ handleIO
 handleIO = handleM @effs ioAlg
 
 type HandleIO# effs oeffs xeffs =
-  ( Injects (xeffs :\\ effs) xeffs
-  , Append effs (xeffs :\\ effs)
-  , HFunctor (Effs (effs `Union` xeffs)))
+  ( Injects (xeffs :\\ effs) xeffs )
 
 -- | @`handleIO'` h p@ evaluates @p@ using the handler @h@. The handler may
 -- output some effects that are a subset of the IO effects and additionally

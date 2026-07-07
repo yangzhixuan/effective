@@ -1,12 +1,13 @@
 {-# LANGUAGE TemplateHaskell, CPP, ViewPatterns #-}
 module Main where
 
+
 import Hedgehog
 import Hedgehog.Main
 
 import Control.Effect
 import Control.Effect.State
-import Control.Effect.Nondet
+-- import Control.Effect.Nondet
 import Control.Effect.WithName
 import Control.Effect.Internal.TH
 
@@ -48,6 +49,7 @@ fib' n = do sA <- getN "a"
 fib' = fib
 #endif
 
+
 prop_fib' :: Property
 prop_fib' = property $ p === 21 where
   p :: Int
@@ -56,15 +58,17 @@ prop_fib' = property $ p === 21 where
           |> renameEffs b (state_ (1 :: Int)))
         (fib' 7)
 
+{-
 onceProg :: Members '[Choose, Empty, WithName "a" Once] sig => Prog sig Int
 onceProg = do x <- onceP a ((return 0) <|> (return 5))
               (return (x + 1)) <|> (return (x + 2))
 
 prop_once :: Property
 prop_once = property $ handle (renameEff (Proxy @"a") (Proxy @Once) backtrack) onceProg === [1, 2]
+-}
 
 -- data Flip_ k = Flip_ k Float k deriving Functor
-$(makeAlg [e| flip :: Float -> 2 |])
+$(makeAlg [e| flip :: Float ~> 2 |])
 
 -- >>> :t Main.flip
 -- Main.flip :: Member Flip sig => Float -> Prog sig x -> Prog sig x -> Prog sig x
@@ -104,3 +108,17 @@ $(makeScp [e| tryCatch :: 2 |])
 
 main :: IO ()
 main = defaultMain [checkParallel $$(discover)]
+
+
+
+programEffective :: (Members '[Get Int, Put Int] sig) => Prog sig Int
+programEffective = do
+    x <- get @Int
+    if x == 0
+        then pure x
+        else do
+            put (x - 1)
+            return 0
+
+countdownEffective :: Int -> (Int, Int)
+countdownEffective s = handle (state s) programEffective

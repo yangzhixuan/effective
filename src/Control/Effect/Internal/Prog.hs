@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE MagicHash #-}
 {-|
 Module      : Control.Effect.Internal.Prog
 Description : The datatype for effectful programs
@@ -24,22 +25,17 @@ module Control.Effect.Internal.Prog
     call,
     callJ,
     callK,
-    progAlg,
+    progAlg, ProgAlg#,
     weakenProg,
 
     -- * Program eliminator
-    eval,
+    eval, eval'
   )
   where
 
 
-#ifdef PROGDIRECT
-import Control.Effect.Internal.Prog.ProgDirect
-#else
 import Control.Effect.Internal.Prog.ProgImp
-#endif
-
-import Control.Effect.Internal.Effs
+import Control.Effect.Internal.Algebra
 
 -- | A family of programs that may contain at least the effects in @effs@ in any
 -- order, and that returns an @a@

@@ -48,7 +48,6 @@ import Control.Monad.Trans.Identity
 import Control.Effect.Internal.AlgTrans
 import Control.Effect.Internal.Handler
 import Control.Effect.Internal.Forward
-import Control.Effect.Internal.Effs
 import Control.Monad.Trans.CutList
 import Control.Monad.Logic
 import Data.List.Kind
@@ -150,18 +149,3 @@ instance (Functor s, U.Unary sig) => Forward (Scp sig) (ResT s) where
   fwd alg (Scp op) = hmap ualg (U.get op) where
     ualg :: forall y. m y -> m y
     ualg op' = alg (Scp (U.upd op op'))
-
-unscope :: Proxy sig -> Handler '[Scp sig] '[Alg sig] '[] a a
-unscope _ = interpretM1 (\oalg (Scp op) -> oalg (Eff (Alg op)) >>= id)
-
-class Unscopes sigs where
-  unscopes :: Proxy sigs -> Handler (Map Scp sigs) (Map Alg sigs) '[] a a
-
-instance Unscopes '[] where
-  unscopes :: Proxy '[] -> Handler (Map Scp '[]) (Map Alg '[]) '[] a a
-  unscopes _ = identity
-
-instance (AppendAT# '[Scp sig] (Map Scp sigs) '[Alg sig] (Map Alg sigs),
-   Unscopes sigs) => Unscopes (sig ': sigs) where
-  unscopes :: Proxy (sig ': sigs) -> Handler (Map Scp (sig ': sigs)) (Map Alg (sig ': sigs)) '[] a a
-  unscopes _ = unscope (Proxy @sig) `appendHdl` unscopes (Proxy @sigs)

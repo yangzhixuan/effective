@@ -147,22 +147,15 @@ type Mem = M.Map Loc Any
 hstore :: Handler [Put, Get, New] '[] '[St.StateT Mem] a a
 hstore = handler' (flip St.evalStateT M.empty) hstoreAlg
 
-hstoreAlg
-  :: Monad m
-  => (forall x. oeff m x -> m x)
-  -> (forall x.  Effs [Put, Get, New] (St.StateT Mem m) x -> St.StateT Mem m x)
-hstoreAlg _ op
-  | Just (Put r a p) <- prj op =
-      do St.modify (\mem -> M.insert (unRef r) (unsafeCoerce a) mem)
-         return p
-
-  | Just (Get r p) <- prj @Get op =
-      do mem <- St.get
-         return (p (unsafeCoerce (mem M.! (unRef r))))
-
-  | Just (New a p) <- prj op =
+hstoreAlg :: Monad m => Algebra '[Put, Get, New] (St.StateT Mem m)
+hstoreAlg =
+  (\(Put r a p) -> do St.modify (\mem -> M.insert (unRef r) (unsafeCoerce a) mem); return p)
+  :#
+  (\(Get r p) -> do mem <- St.get; return (p (unsafeCoerce (mem M.! (unRef r)))))
+  :#.
+  (\(New a p) ->
       do mem <- St.get
          let n = M.size mem
          let mem' = M.insert n (unsafeCoerce a) mem
          St.put mem'
-         return (p (Ref n))
+         return (p (Ref n)))
