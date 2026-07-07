@@ -53,7 +53,7 @@ getActionName (CoAction a) = a
 
 -- * Effect signatures
 
-$(makeGen [e| act :: forall a. a -> () |])
+$(makeGen [e| act :: forall a. a ~> () |])
 -- Generated smart constructor has type:
 -- @
 -- act :: Member (Act a) sig => a -> Prog sig ()
@@ -80,7 +80,7 @@ pattern JPar x y k = Distr (JPar_ x y) k
 -- | The process @res a p@ acts like @p@ except that @p@ cannot communicate with the
 -- external environment via action @a@ (@p@ can still use @a@ internally), so @res a@ is like
 -- a firewall blocking action @a@.
-$(makeScp [e| res :: forall a. a -> 1 |])
+$(makeScp [e| res :: forall a. a ~> 1 |])
 
 instance Unary (Res_ a) where
   get (Res_ a x) = x

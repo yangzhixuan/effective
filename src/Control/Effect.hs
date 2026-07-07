@@ -122,6 +122,7 @@ module Control.Effect
   , genAlgebra
 
   -- * Template Haskell
+  , type (~>)
   , makeGen
   , makeAlg
   , makeScp

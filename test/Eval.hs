@@ -8,7 +8,7 @@ import Control.Effect.State
 import Control.Monad.Trans.Cont
 import Data.Functor.Identity
 
-$(makeGen [e| var :: String -> Int |])
+$(makeGen [e| var :: String ~> Int |])
 $(makeAlg [e| add :: 2 |])
 
 exprAT :: [(String, Int)] -> AlgTrans '[Var, Add] '[Throw] '[ContT Int] Monad

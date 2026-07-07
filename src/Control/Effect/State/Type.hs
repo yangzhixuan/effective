@@ -15,7 +15,7 @@ module Control.Effect.State.Type where
 
 import Control.Effect
 
-$(makeGen [e| put :: forall s. s -> () |])
+$(makeGen [e| put :: forall s. s ~> () |])
 
 -- The Template-Haskell splicing above generates the following code.
 {-

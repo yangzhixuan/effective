@@ -48,7 +48,7 @@ import Control.Effect.Family.Scoped
 
 import Control.Monad.Trans.Except (ExceptT(..), runExceptT)
 
-$(makeAlg [e| throw :: forall e. e -> 0 |])
+$(makeAlg [e| throw :: forall e. e ~> 0 |])
 
 -- | Internal signature for catching exceptions of type @e@.
 type Catch e = Scp (Catch_ e)

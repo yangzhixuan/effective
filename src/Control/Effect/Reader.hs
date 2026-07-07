@@ -66,7 +66,7 @@ asks :: Member (Ask r) sig
   -> Prog sig a
 asks f = fmap f ask
 
-$(makeScp [e| local :: forall r. (r -> r) -> 1 |])
+$(makeScp [e| local :: forall r. (r -> r) ~> 1 |])
 
 instance Unary (Local_ r) where
   get (Local_ _ x) = x

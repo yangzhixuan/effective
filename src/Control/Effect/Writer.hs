@@ -60,7 +60,7 @@ import Control.Monad.Trans.Reader
 import qualified Control.Monad.Trans.Writer as W
 
 -- | The operation of writing an element of type @w@.
-$(makeGen [e| tell :: forall w. w -> () |])
+$(makeGen [e| tell :: forall w. w ~> () |])
 
 {-# INLINE tellAlg #-}
 tellAlg :: (Monad m, Monoid w) => Tell w (W.WriterT w m) x -> W.WriterT w m x
@@ -101,7 +101,7 @@ writerIOC :: HandlerC '[Tell String] '[Alg IO] '[] a a
 writerIOC = interpretM1C $ \oalgc ->
   [|| NT $ \(Tell w k) -> do $$(callMC oalgc) (Alg (putStr w)); return k ||]
 
-$(makeScp [e| censor :: forall w. (w -> w) -> 1 |])
+$(makeScp [e| censor :: forall w. (w -> w) ~> 1 |])
 
 instance U.Unary (Censor_ w) where
   get (Censor_ c x) = x

@@ -11,9 +11,9 @@ import Data.Functor.Unary
 import Data.List.Kind
 import qualified Control.Monad.Trans.YRes as Y
 
-$(makeGen [e| yield :: forall a b. a -> b |])
+$(makeGen [e| yield :: forall a b. a ~> b |])
 
-$(makeScp [e| mapYield :: forall a b. (a -> a) -> (b -> b) -> 1 |])
+$(makeScp [e| mapYield :: forall a b. (a -> a) -> (b -> b) ~> 1 |])
 
 instance Unary (MapYield_ a b) where
   get (MapYield_ a b x) = x

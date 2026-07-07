@@ -68,7 +68,7 @@ prop_once = property $ handle (renameEff (Proxy @"a") (Proxy @Once) backtrack) o
 -}
 
 -- data Flip_ k = Flip_ k Float k deriving Functor
-$(makeAlg [e| flip :: Float -> 2 |])
+$(makeAlg [e| flip :: Float ~> 2 |])
 
 -- >>> :t Main.flip
 -- Main.flip :: Member Flip sig => Float -> Prog sig x -> Prog sig x -> Prog sig x
