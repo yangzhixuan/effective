@@ -9,7 +9,6 @@ import qualified Control.Effect.State as St
 import Control.Effect.Nondet
 import Data.List.Kind
 import Data.Functor.Identity
-import Data.HFunctor
 
 prog1 :: Progs '[New, Get, Put] Int
 prog1 = do iRef <- new @Int 1
@@ -66,7 +65,7 @@ progS = do iRef <- Safe.new @Int @w 1
            return (f i)
 
 test4 :: Int
-test4 = runIdentity (Safe.handleHSM @'[] absurdEffs progS') where
+test4 = runIdentity (Safe.handleHSM @'[] nilAlg progS') where
   progS' :: forall w. Prog (Safe.HSEffs w) Int
   progS' = progS @w
 
@@ -78,9 +77,9 @@ prog2 = do iRef <- Safe.new @Int @w 1
 -- test5 == [0, 1]
 test5 :: [Int]
 test5 = handle nondet' (Safe.handleHSP prog2') where
-  prog2' :: forall w sigs.
-         ( Members '[Empty, Choose] sigs, Append (Safe.HSEffs ()) sigs )
-         => Prog (Safe.HSEffs w :++ sigs) Int
+  prog2' :: forall w sig.
+         ( Members '[Empty, Choose] sig )
+         => Prog (Safe.HSEffs w :++ sig) Int
   prog2' = prog2 @w
 
 -- State is global if state gets handled later

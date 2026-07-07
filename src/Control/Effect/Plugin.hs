@@ -83,7 +83,7 @@ import Data.Bifunctor
 import Data.Coerce
 import Data.Either
 import Data.Foldable
-import Control.Monad 
+import Control.Monad
 import Data.IORef
 import Data.Maybe
 import Data.Set qualified as S
@@ -190,7 +190,7 @@ plugin = defaultPlugin
 
 initPlugin :: TcPluginM PluginData
 initPlugin = do
-  clsMod <- lookupModule $ mkModuleName "Control.Effect.Internal.Effs.Sum"
+  clsMod <- lookupModule $ mkModuleName "Control.Effect.Internal.Algebra"
   elemClass <- tcLookupClass =<< lookupOrig clsMod (mkTcOcc "Member")
   downMod <- lookupModule $ mkModuleName "Control.Effect.CodeGen.Down"
   downClass <- tcLookupClass =<< lookupOrig downMod (mkTcOcc "$~>")

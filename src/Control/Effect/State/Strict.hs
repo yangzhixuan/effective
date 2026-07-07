@@ -10,17 +10,12 @@ Stability   : experimental
 
 module Control.Effect.State.Strict
   ( -- * Syntax
-    -- ** Operations
-    put
-  , get
-
-    -- ** Signatures
-  , Put, Put_ (..), pattern Put
-  , Get, Get_ (..), pattern Get
+    module Control.Effect.State.Type
 
     -- * Semantics
     -- ** Handlers
   , state, state_
+  , stateC, stateC_
 
     -- ** Algebras
   , stateAT
@@ -30,10 +25,25 @@ module Control.Effect.State.Strict
   ) where
 
 import Control.Effect
-import Control.Effect.Family.Algebraic
 import Control.Effect.State.Type
 
 import qualified Control.Monad.Trans.State.Strict as Strict
+
+{-# INLINE putAlg #-}
+putAlg :: Monad m => Put s f b -> Strict.StateT s m b
+putAlg (Put s p) = do Strict.put s; return p
+
+{-# INLINE getAlg #-}
+getAlg :: Monad m => Get s f b -> Strict.StateT s m b
+getAlg (Get p) = do s <- Strict.get; return (p s)
+
+-- | An algebra transformer that interprets t'Get' and t'Put' using the strict t'Strict.StateT'.
+{-# INLINE stateAT #-}
+stateAT :: AlgTrans [Put s, Get s] '[] '[Strict.StateT s] Monad
+stateAT = algTrans' $ putAlg :#. getAlg
+
+stateATC :: AlgTransC [Put s, Get s] '[] '[Strict.StateT s] Monad
+stateATC = AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC
 
 -- | The `state` handler deals with stateful operations and
 -- returns the result and final state @s@.
@@ -47,9 +57,14 @@ state s = Handler (runner' $ flip Strict.runStateT s) stateAT
 state_ :: s -> Handler [Put s, Get s] '[] '[Strict.StateT s] a a
 state_ s = Handler (runner' $ flip Strict.evalStateT s) stateAT
 
--- | An algebra transformer that interprets t'Get' and t'Put' using the strict t'Strict.StateT'.
-{-# INLINE stateAT #-}
-stateAT :: AlgTrans [Put s, Get s] '[] '[Strict.StateT s] Monad
-stateAT = algTrans' $ \case
-  Put s p -> do Strict.put s; return p
-  Get   p -> do s <- Strict.get; return (p s)
+-- Handlers for lightweight staging
+
+stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a (s, a)
+stateC cs = HandlerC
+  (RunnerC $ \_ -> [|| fmap swap . flip Strict.runStateT $$cs ||])
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)
+
+stateC_ :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a a
+stateC_ cs = HandlerC
+  (RunnerC $ \_ -> [|| flip Strict.evalStateT $$cs ||])
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)

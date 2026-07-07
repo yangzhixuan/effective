@@ -61,8 +61,8 @@ parse cs p = handle (state cs `fuse` list) p
 
 parseBacktrack
   :: text -> a ! [Put text, Get text, Empty, Choose, Once]
-  -> [(a, text)]
-parseBacktrack cs p = handle (unscope (Proxy @(Choose_)) |> state cs |> backtrack) p
+  -> [(text, a)]
+parseBacktrack cs p = handle (chooseByNondet |> state cs |> backtrack) p
 
 example_Parse1 :: Property
 example_Parse1 = property $

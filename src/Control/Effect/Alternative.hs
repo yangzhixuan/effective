@@ -23,11 +23,12 @@ module Control.Effect.Alternative (
   -- > empty >>= k = empty
   --
   -- '<|>' is a scoped operation.
-  Ap.empty, emptyP,
+  Ap.empty, emptyP, emptyM,
   (<|>), chooseP, chooseM,
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
   emptyN, chooseN,
 #endif
+  select, selects,
 
   -- ** Signatures
   Empty, Empty_(..), pattern Empty,
@@ -39,20 +40,31 @@ module Control.Effect.Alternative (
 
   -- ** Algebras
   alternativeAT,
-  alternativeAlg,
 ) where
 
 import Control.Effect
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 
-import Control.Applicative
+import Control.Applicative ((<|>), Alternative)
 import Control.Applicative qualified as Ap
-
 
 $(makeAlg [e| empty :: 0 |])
 
 $(makeScp [e| choose :: 2 |])
+
+-- | `select` nondeterministically selects an element from a list.
+-- If the list is empty, the computation fails.
+select :: [a] -> a ! [Choose, Empty]
+select xs = foldr ((<|>) . return) empty xs
+
+-- | `selects` generates all permutations of a list, returning each element
+-- along with the remaining elements of the list.
+selects :: [a] -> (a, [a]) ! [Choose, Empty]
+selects []      =  empty
+selects (x:xs)  =  return (x, xs)  <|> do  (y, ys) <- selects xs
+                                           return (y, x:ys)
+
 
 -- | Instance for 'Alternative' that uses 'Empty' and 'Choose'.
 instance (Member Empty sigs, Member Choose sigs)
@@ -76,42 +88,19 @@ alternative
   .  (forall m . Monad m => Alternative (t m))
   => (forall m . Monad m => (forall a . t m a -> m (f a)))
   -> Handler '[Empty, Choose] '[] '[t] a (f a)
-alternative run = handler' run alternativeAlg
-
--- | An alternative definition of `alternative`.
-alternative'
-  :: forall t f a
-  .  (forall m . Monad m => Alternative (t m))
-  => (forall m . Monad m => (forall a . t m a -> m (f a)))
-  -> Handler '[Empty, Choose] '[] '[t] a (f a)
-alternative' run =  emptyAlgT #: chooseAlgT #: runner run
+alternative run = Handler (runner' run) alternativeAT
 
 -- | The algebra transformer underlying the 'alternative' handler. This uses an
 -- underlying 'Alternative' instance for @t m@ given by a transformer @t@.
 alternativeAT
   :: forall t. (forall m . Monad m => Alternative (t m))
   => AlgTrans '[Empty, Choose] '[] '[t] Monad
-alternativeAT = AlgTrans alternativeAlg
+alternativeAT = algTrans' (emptyAlg :#. chooseAlg)
 
-{-# INLINE alternativeAlg #-}
-alternativeAlg
-  :: forall osigs t . (forall m . Monad m => Alternative (t m))
-  => forall m. Monad m
-  => Algebra osigs m -> Algebra [Empty, Choose] (t m)
-alternativeAlg oalg Empty          = Ap.empty
-alternativeAlg oalg (Choose xs ys) = xs <|> ys
+{-# INLINE emptyAlg #-}
+emptyAlg :: Alternative (t m) => Empty (t m) x -> t m x
+emptyAlg Empty = Ap.empty
 
-emptyAlgT :: forall t. (forall m . Monad m => Alternative (t m))
-  => AlgTrans '[Empty] '[] '[t] Monad
--- emptyAlgT = AlgTrans (const emptyAlg)
-emptyAlgT = algTrans1 (\oalg ((Alg Empty_)) -> Ap.empty)
-
-emptyAlg :: Alternative (t m) => Algebra '[Empty] (t m)
-emptyAlg (Eff (Alg (Empty_))) = Ap.empty
-
-chooseAlgT :: forall t. (forall m . Monad m => Alternative (t m))
-  => AlgTrans '[Choose] '[] '[t] Monad
-chooseAlgT = algTrans1 (\oalg ((Scp (Choose_ xs ys))) -> xs <|> ys)
-
-chooseAlg :: Alternative (t m) => Algebra '[Choose] (t m)
-chooseAlg (Eff (Scp (Choose_ xs ys))) = xs <|> ys
+{-# INLINE chooseAlg #-}
+chooseAlg :: Alternative (t m) => Choose (t m) x -> t m x
+chooseAlg (Choose xs ys) = xs <|> ys

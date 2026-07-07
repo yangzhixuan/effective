@@ -16,24 +16,34 @@ import Data.List.Kind
 import Data.Kind
 
 
-import Control.Effect.Internal.Effs
+import Control.Effect.Internal.Algebra
 import Control.Effect.Internal.AlgTrans.Type
 import Control.Effect.Internal.Forward
-
+import Language.Haskell.TH hiding (Type)
+import Language.Haskell.TH.Syntax (TExp (..))
 
 -- * The primitive types for modular effect handlers
 
 -- | Running a computation @ts m a@, resulting in a value @m b@
 type Runner
-  :: [Effect]                             -- ^ osigs : output effects
+  :: [Effect]                             -- ^ oeffss : output effects
   -> [(Type -> Type) -> (Type -> Type)]   -- ^ ts    : carrier transformer
   -> Type                                 -- ^ a     : input type
   -> Type                                 -- ^ b     : output type
   -> ((Type -> Type) -> Constraint)       -- ^ cs    : carrier constraint
   -> Type
-newtype Runner osigs ts a b cs = Runner {
-  getR :: forall m . cs m => Algebra osigs m -> Apply ts m a -> m b }
+newtype Runner oeffs ts a b cs = Runner {
+  getR :: forall m . cs m => Algebra oeffs m -> Apply ts m a -> m b }
 
+type RunnerC
+  :: [Effect]                             -- ^ oeffs : output effects
+  -> [(Type -> Type) -> (Type -> Type)]   -- ^ ts    : carrier transformer
+  -> Type                                 -- ^ a     : input type
+  -> Type                                 -- ^ b     : output type
+  -> ((Type -> Type) -> Constraint)       -- ^ cs    : carrier constraint
+  -> Type
+newtype RunnerC oeffs ts a b cs = RunnerC {
+  getRC :: forall m . cs m => AlgebraC oeffs m -> CodeQ (Apply ts m a -> m b) }
 
 -- * Building runners
 
@@ -53,46 +63,121 @@ type CompRunner# ts1 ts2 =
    ( forall m. Assoc ts1 ts2 m :: Constraint )
 
 {-# INLINE compRunner #-}
-compRunner :: forall sigs1 sigs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+compRunner :: forall oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
               CompRunner# ts1 ts2
-           => AlgTrans sigs1 sigs2 ts2 cs2
-           -> Runner sigs1 ts1 a1 a2 cs1
-           -> Runner sigs2 ts2 a2 a3 cs2
-           -> Runner sigs2 (ts1 :++ ts2)
+           => AlgTrans oeffs1 oeffs2 ts2 cs2
+           -> Runner oeffs1 ts1 a1 a2 cs1
+           -> Runner oeffs2 ts2 a2 a3 cs2
+           -> Runner oeffs2 (ts1 :++ ts2)
                            a1 a3
                            (CompC ts2 cs1 cs2)
 compRunner at r1 r2 = Runner \(oalg :: Algebra _ m) ->
     getR r2 oalg .  getR r1 (getAT at @m oalg)
 
-type FuseR# sigs2 osigs1 osigs2 ts1 ts2 =
-  ( Injects (osigs1 :\\ sigs2) ((osigs1 :\\ sigs2) `Union` osigs2)
-  , Injects osigs2 ((osigs1 :\\ sigs2) `Union` osigs2)
-  , Injects osigs1 ((osigs1 :\\ sigs2) :++ sigs2)
-  , Append (osigs1 :\\ sigs2) sigs2
+type FuseR# effs2 oeffs1 oeffs2 ts1 ts2 =
+  ( Injects (oeffs1 :\\ effs2) ((oeffs1 :\\ effs2) `Union` oeffs2)
+  , Injects oeffs2 ((oeffs1 :\\ effs2) `Union` oeffs2)
   , CompRunner# ts1 ts2 )
 
 {-# INLINE fuseR #-}
-fuseR :: forall sigs2 osigs1 osigs2 ts1 ts2 a1 a2 a3 cs1 cs2.
-          ( ForwardsC cs2 (osigs1 :\\ sigs2) ts2
-          , FuseR# sigs2 osigs1 osigs2 ts1 ts2 )
-       => AlgTrans sigs2 osigs2 ts2 cs2
-       -> Runner osigs1 ts1 a1 a2 cs1
-       -> Runner osigs2 ts2 a2 a3 cs2
-       -> Runner ((osigs1 :\\ sigs2) `Union` osigs2)
+fuseR :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+          ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
+          , Injects oeffs1 ((oeffs1 :\\ effs2) :++ effs2)
+          , FuseR# effs2 oeffs1 oeffs2 ts1 ts2 )
+       => AlgTrans effs2 oeffs2 ts2 cs2
+       -> Runner oeffs1 ts1 a1 a2 cs1
+       -> Runner oeffs2 ts2 a2 a3 cs2
+       -> Runner ((oeffs1 :\\ effs2) `Union` oeffs2)
                  (ts1 :++ ts2)
                  a1 a3
                  (CompC ts2 cs1 cs2)
 fuseR at2 r1 r2 = Runner \(oalg :: Algebra _ m)  ->
-      getR r2 (oalg . injs)
-    . getR r1 (weakenAlg @osigs1 @((osigs1 :\\ sigs2) :++ sigs2) $
-        heither @(osigs1 :\\ sigs2) @sigs2
-          (getAT (fwds @(osigs1 :\\ sigs2) @(ts2))
-            (weakenAlg @(osigs1 :\\ sigs2) @_ oalg))
-          (getAT at2 (weakenAlg @osigs2 @_ oalg)))
+      getR r2 (weakenAlg oalg)
+    . getR r1 (weakenAlg @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
+        appendAlg @(oeffs1 :\\ effs2) @effs2
+          (getAT (fwds @(oeffs1 :\\ effs2) @(ts2))
+            (weakenAlg @(oeffs1 :\\ effs2) @_ oalg))
+          (getAT at2 (weakenAlg @oeffs2 @_ oalg)))
 
-type PassR# sigs2 osigs1 osigs2 ts1 ts2 a1 a2 a3 =
-   ( Injects osigs1 (osigs1 `Union` osigs2)
-   , Injects osigs2 (osigs1 `Union` osigs2)
+{-# INLINE fuseAppR #-}
+fuseAppR :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+          ( ForwardsC cs2 oeffs1 ts2
+          , KnownEffs oeffs1
+          , forall m. Assoc ts1 ts2 m)
+       => AlgTrans effs2 oeffs2 ts2 cs2
+       -> Runner oeffs1 ts1 a1 a2 cs1
+       -> Runner oeffs2 ts2 a2 a3 cs2
+       -> Runner (oeffs1  :++ oeffs2)
+                 (ts1 :++ ts2)
+                 a1 a3
+                 (CompC ts2 cs1 cs2)
+fuseAppR at2 r1 r2 = Runner \(oalg :: Algebra (oeffs1 :++ oeffs2) m)  ->
+  let (oalg1, oalg2) = splitAlg @oeffs1 @oeffs2 oalg
+  in getR r2 oalg2 . getR r1 (getAT (fwds @(oeffs1) @ts2) oalg1)
+
+fuseRC, fuseRC'
+       :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+          ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
+          , Injects oeffs1 ((oeffs1 :\\ effs2) :++ effs2)
+          , FuseR# effs2 oeffs1 oeffs2 ts1 ts2 )
+       => AlgTransC effs2 oeffs2 ts2 cs2
+       -> RunnerC oeffs1 ts1 a1 a2 cs1
+       -> RunnerC oeffs2 ts2 a2 a3 cs2
+       -> RunnerC ((oeffs1 :\\ effs2) `Union` oeffs2)
+                  (ts1 :++ ts2)
+                  a1 a3
+                  (CompC ts2 cs1 cs2)
+fuseRC' at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
+    [||
+      $$(getRC r2 (weakenAlgC oalg))
+    . $$(getRC r1 (weakenAlgC @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
+        appendAlgC @(oeffs1 :\\ effs2) @effs2
+          (getATC (fwdsC @(oeffs1 :\\ effs2) @(ts2))
+            (weakenAlgC @(oeffs1 :\\ effs2) @_ oalg))
+          (getATC at2 (weakenAlgC @oeffs2 @_ oalg))))
+    ||]
+
+-- In template Haskell we can cheat a bit by examining the runners and
+-- if one of them is the identity function then we do nothing.
+fuseRC at2 r1 r2 = RunnerC \(oalg :: AlgebraC _ m)  ->
+    [|| $$(getRC r2 (weakenAlgC oalg)) ||]
+    `circCode`
+    [|| $$(getRC r1 (weakenAlgC @oeffs1 @((oeffs1 :\\ effs2) :++ effs2) $
+        appendAlgC @(oeffs1 :\\ effs2) @effs2
+          (getATC (fwdsC @(oeffs1 :\\ effs2) @(ts2))
+            (weakenAlgC @(oeffs1 :\\ effs2) @_ oalg))
+          (getATC at2 (weakenAlgC @oeffs2 @_ oalg))))
+    ||]
+
+circCode :: CodeQ (b -> c) -> CodeQ (a -> b) -> CodeQ (a -> c)
+circCode (Code qG) (Code qF) = Code $
+  do (TExp f) <- qF
+     (TExp g) <- qG
+     idCode <- [| Prelude.id |]
+     if f == idCode
+       then return (TExp g)
+       else if g == idCode
+             then return (TExp f)
+             else fmap TExp [| $(pure g) . $(pure f)|]
+
+fuseAppRC :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+          ( ForwardsC cs2 oeffs1 ts2, forall m. Assoc ts1 ts2 m, HasSplitAlgC oeffs1 oeffs2)
+       => RunnerC oeffs1 ts1 a1 a2 cs1
+       -> RunnerC oeffs2 ts2 a2 a3 cs2
+       -> RunnerC (oeffs1  :++ oeffs2)
+                  (ts1 :++ ts2)
+                  a1 a3
+                  (CompC ts2 cs1 cs2)
+fuseAppRC r1 r2 = RunnerC \(oalg :: AlgebraC (oeffs1 :++ oeffs2) m)  ->
+  let (oalg1, oalg2) = splitAlgC @oeffs1 @oeffs2 oalg
+  in [|| $$(getRC r2 oalg2) ||]
+     `circCode`
+     [|| $$(getRC r1 (getATC (fwdsC @(oeffs1) @ts2) oalg1)) ||]
+
+
+type PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 =
+   ( Injects oeffs1 (oeffs1 `Union` oeffs2)
+   , Injects oeffs2 (oeffs1 `Union` oeffs2)
    , CompRunner# ts1 ts2)
 
 {-# INLINE passR #-}
@@ -107,22 +192,22 @@ passR :: forall sigs2 osigs1 osigs2 ts1 ts2 a1 a2 a3 cs1 cs2.
                 a1 a3
                 (CompC ts2 cs1 cs2)
 passR at2 r1 r2 = Runner \(oalg :: Algebra _ m)  ->
-      getR r2 (oalg . injs)
-    . getR r1 (getAT (fwds @osigs1 @ts2) (oalg . injs))
+      getR r2 (weakenAlg oalg)
+    . getR r1 (getAT (fwds @oeffs1 @ts2) (weakenAlg oalg))
 
 {-# INLINE weakenR #-}
-weakenR :: forall cs' sigs' cs sigs ts a b.
-           (forall m. cs' m => cs m, Injects sigs sigs')
-        => Runner sigs ts a b cs
-        -> Runner sigs' ts  a b cs'
-weakenR r1 = Runner \oalg -> getR r1 (oalg . injs)
+weakenR :: forall cs' effs' cs effs ts a b.
+           (forall m. cs' m => cs m, Injects effs effs')
+        => Runner effs ts a b cs
+        -> Runner effs' ts  a b cs'
+weakenR r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 
 {-# INLINE weakenREffs #-}
-weakenREffs :: forall sigs' cs sigs ts a b.
-           (Injects sigs sigs')
-        => Runner sigs ts a b cs
-        -> Runner sigs' ts a b cs
-weakenREffs r1 = Runner \oalg -> getR r1 (oalg . injs)
+weakenREffs :: forall effs' cs effs ts a b.
+           (Injects effs effs')
+        => Runner effs ts a b cs
+        -> Runner effs' ts a b cs
+weakenREffs r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 
 {-# INLINE weakenRC #-}
 weakenRC :: forall cs' cs sigs ts a b.
@@ -148,3 +233,9 @@ weakenRCMonad
   => Runner sigs ts a b (CompC ts2 Monad Monad)
   -> Runner sigs ts a b Monad
 weakenRCMonad = weakenRC
+
+weakenRCC :: forall cs' cs effs ts a b.
+           (forall m. cs' m => cs m)
+        => RunnerC effs ts a b cs
+        -> RunnerC effs ts a b cs'
+weakenRCC r1 = RunnerC \oalg -> getRC r1 oalg

@@ -12,19 +12,19 @@ the resumption monad transformers.
 {-# LANGUAGE TemplateHaskell #-}
 module Control.Monad.Trans.ResumpUp where
 
-import Control.Effect.CodeGen.Type ( Up )
 import Control.Monad ( ap, liftM, MonadPlus (..) )
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.YRes
 import Control.Monad.Trans.CRes
 import Control.Applicative
+import Language.Haskell.TH ( CodeQ )
 
 -- | @ResUpT@ is a Church-encoded version of the resumption monad transformer `ResT`
 -- from "Control.Monad.Trans.Resump" with the restriction that the final answer
 -- type must be code. This monad transformer is used for staging resumption
 -- monads with the code-generation effect in "Control.Effect.CodeGen".
 newtype ResUpT l n a = ResUpT
-  { runResUpT :: forall t. (a -> n (Up t)) -> (l (n (Up t)) -> n (Up t)) -> n (Up t) }
+  { runResUpT :: forall t. (a -> n (CodeQ t)) -> (l (n (CodeQ t)) -> n (CodeQ t)) -> n (CodeQ t) }
 
 instance Functor (ResUpT l n) where
   fmap = liftM

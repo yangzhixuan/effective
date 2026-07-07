@@ -16,6 +16,7 @@ of handlers:
      process efficiently (using the native concurrency API from
      "Control.Concurrent" of GHC).
 -}
+{-# LANGUAGE LambdaCase #-}
 module Control.Effect.Concurrency (
   -- * Syntax
   -- | Signatures and operations are in this module.
@@ -34,14 +35,15 @@ module Control.Effect.Concurrency (
 
 
   -- ** IO-based handlers
-  ccsByQSem,
-  parIOAlg,
-  jparIOAlg,
+  ccsByQSem, ccsByQSemC,
+  parIOAlg, parIOAlgC,
+  jparIOAlg, jparIOAlgC,
 
   -- ** Re-exported types used by handlers
   Control.Monad.Trans.CRes.ListActs (..),
   Control.Monad.Trans.CRes.ActsMb (..),
   Control.Monad.Trans.CRes.CResT (..),
+  QSemMap,
   ) where
 
 import Control.Effect
@@ -59,19 +61,20 @@ import qualified Control.Concurrent.MVar as MVar
 import qualified Control.Concurrent.QSem as QSem
 import Control.Monad.Trans.CRes
 import qualified Data.Map as M
-import Data.HFunctor
 
 -- | Algebra for the resumption-based handler of t`Par`, t`Act`, and t`Res`.
 resumpAlg :: (Action a, Monad m) => Algebra '[Act a, Par, Res a] (C.CResT a m)
-resumpAlg (Act a p) = prefix a (return p)
-resumpAlg (Par l r) = C.par l r
-resumpAlg (Res a p) = C.res a p
+resumpAlg =
+  (\(Act a p) -> prefix a (return p)) :#
+  (\(Par l r) -> C.par l r) :#.
+  (\(Res a p) -> C.res a p)
 
 -- | Algebra for the resumption-based handler of t`JPar`, t`Act`, and t`Res`.
 jresumpAlg :: (Action a, Monad m) => Algebra '[Act a, JPar, Res a] (C.CResT a m)
-jresumpAlg (Act a p)    = prefix a (return p)
-jresumpAlg (JPar l r c) = fmap (\(x, y) -> c (JPar_ x y)) (C.jpar l r)
-jresumpAlg (Res a p)    = C.res a p
+jresumpAlg =
+  (\(Act a p) -> prefix a (return p)) :#
+  (\(JPar l r c) -> fmap (\(x, y) -> c (JPar_ x y)) (C.jpar l r)) :#.
+  (\(Res a p) -> C.res a p)
 
 -- | Algebra transformer for the resumption-based handler of t`Par`, t`Act`, and t`Res`.
 resumpAT :: forall a. Action a => AlgTrans '[Act a, Par, Res a] '[] '[C.CResT a] Monad
@@ -84,36 +87,36 @@ jresumpAT = AlgTrans (\_ -> jresumpAlg)
 -- | Resumption-based handler of concurrency. Non-deterministic branches are explored
 -- by backtracking, resulting in a list of all (successful) traces.
 resump :: forall a b . Action a => Handler '[Act a, Par, Res a] '[] '[C.CResT a] b (C.ListActs a b)
-resump = handler' runAll (\_ -> resumpAlg)
+resump = handler' runAll resumpAlg
 
 -- | Resumption-based handler of concurrency. Non-deterministic choices are resolved
 -- with the given list Booleans.
 resumpWith :: forall a b . Action a => [Bool] -> Handler '[Act a, Par, Res a] '[] '[C.CResT a] b (ActsMb a b)
-resumpWith choices = handler' (runWith choices) (\_ -> resumpAlg)
+resumpWith choices = handler' (runWith choices) resumpAlg
 
 -- | Resumption-based handler of concurrency. Non-deterministic choices are resolved
--- with the given program (of effect @sigs@).
-resumpWithM :: forall sigs a b .
-               ( HFunctor (Effs sigs) , Action a )
-            => Prog sigs Bool -> Handler '[Act a, Par, Res a] sigs '[C.CResT a] b (ActsMb a b)
+-- with the given program (of effect @sig@).
+resumpWithM :: forall sig a b .
+               ( Action a )
+            => Prog sig Bool -> Handler '[Act a, Par, Res a] sig '[C.CResT a] b (ActsMb a b)
 resumpWithM pb = handler (\oalg -> runWithM (eval oalg pb))  (\_ -> resumpAlg)
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
 -- Non-deterministic branches are explored by backtracking, resulting in a list
 -- of all (successful) traces.
 jresump :: forall a b . Action a => Handler '[Act a, JPar, Res a] '[] '[C.CResT a] b (C.ListActs a b)
-jresump = handler' runAll (\_ -> jresumpAlg)
+jresump = handler' runAll jresumpAlg
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
 -- Non-deterministic choices are resolved with the given list Booleans.
 jresumpWith :: forall a b. Action a => [Bool] -> Handler '[Act a, JPar, Res a] '[] '[C.CResT a] b (ActsMb a b)
-jresumpWith choices = handler' (runWith choices) (\_ -> jresumpAlg)
+jresumpWith choices = handler' (runWith choices) jresumpAlg
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
--- Non-deterministic choices are resolved with the given program (of effect @sigs@).
-jresumpWithM :: forall sigs a b.
-                ( HFunctor (Effs sigs) , Action a )
-             => Prog sigs Bool -> Handler '[Act a, JPar, Res a] sigs '[C.CResT a] b (ActsMb a b)
+-- Non-deterministic choices are resolved with the given program (of effect @sig@).
+jresumpWithM :: forall sig a b.
+                ( Action a )
+             => Prog sig Bool -> Handler '[Act a, JPar, Res a] sig '[C.CResT a] b (ActsMb a b)
 jresumpWithM pb = handler (\oalg -> runWithM (eval oalg pb)) (\_ -> jresumpAlg)
 
 type QSemMap a = M.Map a (QSem, QSem)
@@ -129,24 +132,25 @@ ccsByQSem :: forall n a . Ord n
                      '[R.ReaderT (QSemMap n), E.ExceptT String]
                      a
                      (Either String a)
-ccsByQSem = (interpretM alg ||> R.reader M.empty) ||> E.except where
-  alg :: Monad m => Algebra '[ R.Ask (QSemMap n), R.Local (QSemMap n)
-                             , E.Throw String, Alg IO
-                             ] m
-                 -> Algebra '[Act (CCSAction n), Res (CCSAction n)] m
-  alg oalg (Act (Action n) p) = eval oalg $ do
+ccsByQSem = (interpretM (\o -> actionAlg o :#. resAlg o) \\ R.reader M.empty) \\ E.except where
+  actionAlg :: Monad m => Algebra '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO ] m
+            -> forall x. Act (CCSAction n) m x -> m x
+  actionAlg oalg (Act (Action n) p) = eval oalg $ do
     m <- R.ask @(QSemMap n)
     case M.lookup n m of
       Just (s1, s2) -> do io (QSem.waitQSem s1); io (QSem.signalQSem s2)
       Nothing  -> E.throw "Channel used before creation!"
     return p
-  alg oalg (Act (CoAction n) p) = eval oalg $ do
+  actionAlg oalg (Act (CoAction n) p) = eval oalg $ do
     m <- R.ask @(QSemMap n)
     case M.lookup n m of
       Just (s1, s2) -> do io (QSem.signalQSem s1); io (QSem.waitQSem s2)
       Nothing  -> E.throw "Channel used before creation!"
     return p
-  alg oalg (Res a p) = do
+
+  resAlg :: Monad m => Algebra '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO] m
+         -> forall x. Res (CCSAction n) m x -> m x
+  resAlg oalg (Res a p) = do
     (m, s1, s2) <- eval oalg $ do
        m <- R.ask @(QSemMap n)
        s1 <- io (QSem.newQSem 0)
@@ -155,19 +159,66 @@ ccsByQSem = (interpretM alg ||> R.reader M.empty) ||> E.except where
     let m' = M.insert (getActionName a) (s1, s2) m
     R.localM oalg (const m') p
 
+
+ccsByQSemC :: forall n a . Ord n
+          => HandlerC '[Act (CCSAction n), Res (CCSAction n)]
+                     '[Alg IO]
+                     '[R.ReaderT (QSemMap n), E.ExceptT String]
+                     a
+                     (Either String a)
+ccsByQSemC = (interpretMC (\o -> actionAlg o :#.$ resAlg o) \\$ R.readerC [||M.empty||]) \\$ E.exceptC where
+  actionAlg :: Monad m => AlgebraC '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO ] m
+            -> CodeQ (Act (CCSAction n) m -.> m)
+  actionAlg oalg = [|| NT $ \(Act a p) ->
+    case a of
+      (Action n) ->
+        do m <- $$(callMC @(R.Ask (QSemMap n)) oalg) (R.Ask id)
+           case M.lookup n m of
+             Just (s1, s2) -> do $$(callMC oalg) (Alg (QSem.waitQSem s1)); $$(callMC oalg) (Alg (QSem.signalQSem s2))
+             Nothing  -> $$(callMC oalg) (E.Throw "Channel used before creation!")
+           return p
+      (CoAction n) ->
+        do m <- $$(callMC @(R.Ask (QSemMap n)) oalg) (R.Ask id)
+           case M.lookup n m of
+             Just (s1, s2) -> do $$(callMC oalg) (Alg (QSem.signalQSem s1)); $$(callMC oalg) (Alg (QSem.waitQSem s2))
+             Nothing  -> $$(callMC oalg) (E.Throw "Channel used before creation!")
+           return p
+     ||]
+
+  resAlg :: Monad m => AlgebraC '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO] m
+         -> CodeQ (Res (CCSAction n) m -.> m)
+  resAlg oalg = [|| NT $ \(Res a p) -> do
+      m <- $$(callMC @(R.Ask (QSemMap n)) oalg) (R.Ask id)
+      s1 <- $$(callMC oalg) (Alg (QSem.newQSem 0))
+      s2 <- $$(callMC oalg) (Alg (QSem.newQSem 0))
+      let m' = M.insert (getActionName a) (s1, s2) m
+      $$(callMC oalg) (R.Local (const m') p)
+    ||]
+
+
 -- | Interprets t`Control.Effect.Concurrency.Par` using the native concurrency API.
 -- from `Control.Concurrent`.
 parIOAlg :: Algebra '[Par] IO
-parIOAlg (Par l r) = Control.Concurrent.forkIO (fmap (const ()) r) >> l
+parIOAlg = singAlg $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l
+
+parIOAlgC :: AlgebraC '[Par] IO
+parIOAlgC = [|| NT $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l ||] :#$ EndAC
 
 -- | Interprets t`Control.Effect.Concurrency.JPar` using the native concurrency API.
 -- from "Control.Concurrent". The result from the child thread is passed back to the
 -- main thread using @MVar@.
 jparIOAlg :: Algebra '[JPar] IO
-jparIOAlg (JPar l r c) = do
-  m <- MVar.newEmptyMVar
-  Control.Concurrent.forkIO $
-    do y <- r; MVar.putMVar m y
-  x <- l
-  y' <- MVar.takeMVar m
-  return (c (JPar_ x y'))
+jparIOAlg = singAlg $ \(JPar l r c) -> jparIOImp l r c
+
+jparIOAlgC :: AlgebraC '[JPar] IO
+jparIOAlgC = [|| NT $ \(JPar l r c) -> jparIOImp l r c ||] :#$ EndAC
+
+jparIOImp :: IO x -> IO x -> (JPar_ x -> b) -> IO b
+jparIOImp l r c =
+  do
+    m <- MVar.newEmptyMVar
+    Control.Concurrent.forkIO $
+      do y <- r; MVar.putMVar m y
+    x <- l
+    y' <- MVar.takeMVar m
+    return (c (JPar_ x y'))
