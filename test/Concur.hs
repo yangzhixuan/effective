@@ -15,8 +15,6 @@ import Control.Effect.WithName
 import Control.Effect.Yield
 import Control.Effect.Reader
 import Control.Effect.CodeGen
-import System.Process
-import System.Random
 import qualified Data.Map as M
 
 import Data.Proxy
@@ -176,29 +174,10 @@ intro3 = handleIO' (Proxy @'[Par]) ioPar
     |> writerIO)
   bohem
 
-intro4 :: IO (Either String ())
-intro4 = handleIO' (Proxy @'[Par]) ioPar
-  (ccsByQSem @ActNames |> say)
-  bohem
 
-say :: Handler '[Tell String] '[Alg IO] '[] a a
-say = interpret1 $
-  \(Tell w k) -> do io (sayStr w)
-                    return k
-  where
-    voices = ["Daniel", "Eddy", "Karen", "Samantha"]
-    len = length voices
-
-    sayStr :: String -> IO ()
-    sayStr s =
-      do v <- (randomIO :: IO Int)
-         let cmd = "say -v " ++ (voices !! (v `mod` len)) ++ " '" ++ s ++ "'"
-         callCommand cmd
-
-
--- Zhixuan: if we look at the handler code generated in the following example. We can
+-- If we look at the handler code generated in the following example. We can
 -- see that there are a lot unnecessary beta-reducible expressions. They are symptoms
--- caused by our choice of using `CodeQ (eff m -.> m)` to represent handler 
+-- caused by our choice of using `CodeQ (eff m -.> m)` to represent handler
 
 stagedIntro :: IO (Either String ())
 stagedIntro =

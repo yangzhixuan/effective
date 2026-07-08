@@ -35,6 +35,11 @@ common common
 
   ghc-options: -Wno-partial-type-signatures
 
+flag dump
+  description: Make some test cases dump splices and/or ghc-core
+  default: False
+  manual: True
+
 library
   import: common
 
@@ -119,11 +124,8 @@ library
     ghc-prim           >= 0.8    && < 0.14,
     logict             >= 0.8.2  && < 0.9,
     template-haskell   >= 2.18   && < 2.25,
-    containers,
---     for finger trees.
-    primitive,
---     for SmallArray.
-    ghc
+    primitive          >= 0.7.1  && < 0.10,
+    ghc                >= 9.2.1  && < 9.15
 
 test-suite readme
   type:          exitcode-stdio-1.0
@@ -167,7 +169,9 @@ test-suite docs
 test-suite concur
   import:        common
   type:          exitcode-stdio-1.0
-  ghc-options:   -threaded -ddump-splices -ddump-to-file
+  ghc-options:   -threaded
+  if flag(dump)
+    ghc-options: -ddump-splices -ddump-to-file
   main-is:       Concur.hs
   default-language: GHC2021
   default-extensions: DataKinds, TemplateHaskell
@@ -176,10 +180,8 @@ test-suite concur
     ConcurStaged
   build-depends:
     base               >= 4.16 && < 4.23,
-    process,
-    random,
-    containers,
     effective,
+    containers         >= 0.6    && < 0.9,
 
 test-suite hostore
   type:          exitcode-stdio-1.0
@@ -197,7 +199,8 @@ test-suite staged
   main-is:       Staged.hs
   default-language: GHC2021
   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
-  ghc-options: -ddump-to-file -ddump-splices
+  if flag(dump)
+    ghc-options: -ddump-to-file -ddump-splices
   hs-source-dirs:  test
   build-depends:
     base               >= 4.16 && < 4.23,
@@ -232,7 +235,9 @@ test-suite misc
   default-language: GHC2021
   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
   hs-source-dirs:  test
-  ghc-options: -fspecialise-aggressively -ddump-to-file -ddump-splices -ddump-simpl -dsuppress-idinfo -dsuppress-uniques -dsuppress-coercions -dsuppress-module-prefixes
+  if flag(dump)
+    ghc-options: -ddump-to-file -ddump-splices -ddump-simpl -dsuppress-idinfo
+                 -dsuppress-uniques -dsuppress-coercions -dsuppress-module-prefixes
   build-depends:
     base               >= 4.16 && < 4.23,
     effective,

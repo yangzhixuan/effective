@@ -8,7 +8,7 @@ designed to allow users to define and interpret their own languages and
 effects. This library incorporates support for:
 
 * Algebraic, scoped, and other higher-order effects.
-* Modular effect handlers.
+* Combinators for composing effect handlers.
 * Staged effectful programming using Typed Template Haskell.
 
 Getting Started
@@ -175,6 +175,7 @@ Documentation
 -------------
 
 A tutorial for how to use this library can be found in [docs/README.md](docs/README.md).
+Another resource is the paper [Composing and Staging Effect Handlers](https://yangzhixuan.github.io/pdf/effective-paper.pdf), which is a self-contained explanation of the design of this library.
 
 
 <!--
@@ -239,5 +240,7 @@ References
 * [Freer Monads, More Extensible Effects. O. Kiselyov, H. Ishii. Haskell 2015](https://doi.org/10.1145/2804302.2804319)
 
 * [Handling Higher-Order Effectful Operations with Judgemental Monadic Laws. Z. Yang, N. Wu. POPL. 2026](https://dl.acm.org/doi/10.1145/3776678)
+
+* [Composing and Staging Effect Handlers. Z. Yang, N. Wu](https://yangzhixuan.github.io/pdf/effective-paper.pdf)
 
 [^Gordon1992]: [Functional Programming and Input/Output. A. Gordon. PhD Thesis, King's College London. 1992](https://www.microsoft.com/en-us/research/uploads/prod/2016/11/fpio.pdf)
