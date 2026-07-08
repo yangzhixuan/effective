@@ -239,3 +239,10 @@ weakenRCC :: forall cs' cs effs ts a b.
         => RunnerC effs ts a b cs
         -> RunnerC effs ts a b cs'
 weakenRCC r1 = RunnerC \oalg -> getRC r1 oalg
+
+weakenRCCMonad
+  :: forall ts2 effs ts a b.
+     (forall m. Monad m => MonadApply ts2 m)
+  => RunnerC effs ts a b (CompC ts2 Monad Monad)
+  -> RunnerC effs ts a b Monad
+weakenRCCMonad = weakenRCC

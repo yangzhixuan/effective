@@ -158,6 +158,13 @@ weakenCMonad
   -> AlgTrans effs oeffs ts Monad
 weakenCMonad = weakenC
 
+weakenCCMonad
+  :: forall ts2 effs oeffs ts
+   . (forall m. Monad m => MonadApply ts2 m)
+  => AlgTransC effs oeffs ts (CompC ts2 Monad Monad)
+  -> AlgTransC effs oeffs ts Monad
+weakenCCMonad = weakenCC
+
 -- | Replace the carrier constraint @cs@ of an algebra transformer with the conjunction
 -- of @cs@ and another constraint @cs'@.
 {-# INLINE weakenCAnd #-}
