@@ -23,9 +23,9 @@ import Data.List (nub)
 -- | Step functor for choice and action
 data CStep a x = FailS | ChoiceS x x | ActS a x deriving Functor
 
--- | The monad `CResT m` is the coproduct of the monad `m` and the
+-- | The monad @CResT m@ is the coproduct of the monad @m@ and the
 -- free monad over CStep. In other words, the algebraic theory
--- corresponding to `CResT m` is the sum of the theory of `m`
+-- corresponding to @CResT m@ is the sum of the theory of @m@
 -- plus a nullary operation, a binary operation, and a unary operation
 -- for each action.
 type CResT a = ResT (CStep a)
@@ -33,7 +33,7 @@ type CResT a = ResT (CStep a)
 -- | The functor type for the results of running a nondeterministic process by backtracking.
 newtype ListActs a x = ListActs { unListActs :: [([a], x)] } deriving (Show, Functor)
 
--- | Traverse all nondeterministic branches and accumulate the `m`-effects
+-- | Traverse all nondeterministic branches and accumulate the @m@-effects
 -- and actions.
 -- TODO: the manipulation of the lists can be more efficient.
 runAll :: Monad m => CResT a m x -> m (ListActs a x)

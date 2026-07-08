@@ -38,7 +38,7 @@ type family Insert (x :: k) (ys :: [k]) :: [k] where
   Insert x (x ': ys) = x ': ys
   Insert x (y ': ys) = y ': Insert x ys
 
--- | @`Delete` x ys@ deletes a type @x@ from a type list @ys@.
+-- | @Delete x ys@ deletes a type @x@ from a type list @ys@.
 type family Delete (x :: k) (ys :: [k]) :: [k] where
   Delete x '[]       = '[]
   Delete x (x ': ys) = ys

@@ -83,7 +83,7 @@ joinFlowM :: forall x sigs m. Member JoinFlow sigs
           => IsSOP x => Algebra sigs m -> m x -> m x
 joinFlowM alg p = callM alg (JoinFlow p id)
 
--- | Join operation on the monad `Gen`.
+-- | Join operation on the monad t`Gen`.
 joinGenAlg :: Algebra '[JoinFlow] Gen
 joinGenAlg = Iso.bwd singAlgIso (\(JoinFlow p k) -> fmap k (joinGen p)) where
   joinGen :: forall a. IsSOP a => Gen a -> Gen a
@@ -93,7 +93,7 @@ joinGenAlg = Iso.bwd singAlgIso (\(JoinFlow p k) -> fmap k (joinGen p)) where
           a <- p
           return (index f (encode a)))
 
--- | Join operation on the monad `GenM m`.
+-- | Join operation on the monad @t'GenM' m@.
 joinGenMAlg :: forall m. Monad m => Algebra '[JoinFlow] (GenM m)
 joinGenMAlg = Iso.bwd singAlgIso (\(JoinFlow p k) -> fmap k (joinGenM p)) where
   joinGenM :: forall m a. Monad m => IsSOP a => GenM m a -> GenM m a
@@ -103,7 +103,7 @@ joinGenMAlg = Iso.bwd singAlgIso (\(JoinFlow p k) -> fmap k (joinGenM p)) where
           a <- p
           return (index f (encode a)))
 
--- | Algebra transformer for the join operation on `PushT`.
+-- | Algebra transformer for the join operation on t`PushT`.
 joinPush :: forall m . AlgTrans '[JoinFlow] '[UpOp m, CodeGen] '[PushT] (MonadDown m)
 joinPush = algTrans1 $ \oalg (JoinFlow (p :: PushT n y) kV) -> PushT $ \kC (kN :: n (CodeQ t)) ->
  do kn <- genLetM oalg [|| $$(down @n @m kN) ||]
@@ -113,7 +113,7 @@ joinPush = algTrans1 $ \oalg (JoinFlow (p :: PushT n y) kV) -> PushT $ \kC (kN :
       (\y mas -> genLetM oalg [|| $$(index kc (encode y)) $$(down @n @m mas) ||] >>= upM @m oalg)
       (upM oalg kn)
 
--- | Algebra transformer for the join operation on `ResT`.
+-- | Algebra transformer for the join operation on t'ResUpT'.
 joinRes :: forall m s l. (Functor l, forall x. Split (s x) (l (CodeQ x)), l $~> s)
         => AlgTrans '[JoinFlow] '[UpOp m, CodeGen] '[ResUpT l] (MonadDown m)
 joinRes = algTrans1 $ \oalg (JoinFlow (p :: ResUpT l n y) kV) ->

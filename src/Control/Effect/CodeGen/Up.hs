@@ -66,23 +66,23 @@ data UpOp_ (m :: Type -> Type) (x :: Type) where
   -- are in bijection with @forall x. exists a. (CodeQ (m a), CodeQ a -> x) -> n x@.
   UpOp_   :: CodeQ (m a) -> (CodeQ a -> x) -> UpOp_ m x
 
-  -- | The constructor @UpOpId c@ means the same thing as @UpOp_ c id@ and
-  -- @UpOpId@ exists so that `CacheT` can remember up-operations that don't have an
+  -- | The constructor @`UpOpId` c@ means the same thing as @`UpOp_` c id@ and
+  -- `UpOpId` exists so that t`CacheT` can remember up-operations that don't have an
   -- (pure) continuation CodeQ a -> k@ at tail positions of monads, which can then
   -- be downed trivially. In particular, this allows us to generate tail recursive
   -- code without doing special things in the meta effectful program (tail-recursive
   -- calls can just be @up [|| self ||]@ like other recursive calls).
   --
-  -- Except for `CacheT`, other monad transformers don't need to care about @UpOpId@,
-  -- and the pattern synonym `UpOp` below can be used to deal with @UpOpId@ transparently.
+  -- Except for t`CacheT`, other monad transformers don't need to care about @UpOpId@,
+  -- and the pattern synonym @UpOp@ below can be used to deal with @UpOpId@ transparently.
   UpOpId  :: CodeQ (m a) -> UpOp_ m (CodeQ a)
 
--- | Turn `UpOpId` into an ordinary `UpOp_`.
+-- | Turn @UpOpId@ into an ordinary @UpOp_@.
 upView :: UpOp_ m x -> UpOp_ m x
 upView (UpOpId o) = (UpOp_ o id)
 upView x = x
 
--- | Using the pattern @UpOp@ we can treat the datatype t`UpOp_` as having
+-- | Using the pattern @UpOp@ we can treat the datatype @UpOp_@ as having
 -- one constructor @UpOp :: CodeQ (m a) -> (CodeQ a -> x) -> UpOp_ m x@.
 pattern UpOp :: CodeQ (m a) -> (CodeQ a -> x) -> UpOp_ m x
 pattern UpOp c k <- (upView -> UpOp_ c k) where
@@ -125,10 +125,10 @@ upM' alg u k = callM alg (Alg (UpOp u k))
 -- * Algebra transformers for the up-operation
 --
 -- The following are algebra transformers for the up-operation on various monad transformers.
--- The transformers for `MaybeT`, `EitherT`, `ReaderT`, `WriterT`, `StateT` are quite
+-- The transformers for t`MaybeT`, @EitherT@, t`ReaderT`, @WriterT@, @StateT@ are quite
 -- simple: object-level monadic programs are turned into meta-level by generating case
 -- splits (aka \'the trick\'  in meta-programming).
--- The up-operations for `ListT` and `ResT` are much trickier, because we can't generate
+-- The up-operations for t`ListT` and t`ResT` are much trickier, because we can't generate
 -- infinitely many case splits.
 
 -- | To up @MaybeT l@, we need to be able to up @l@, throwing exceptions, and generate case splits.
@@ -197,19 +197,19 @@ upReader = interpretAT1 $ \(Alg (UpOp la k)) ->
 -- However, we can solve this problem by observing that we don't actually need to know at
 -- the meta level how many nondeterministic choices there are. All we care about is that
 -- we can eventually generate some @ListT@ code. Therefore we replace @ListT@ with the following
--- t`PushT` () at the meta-level:
+-- @t`PushT` ()@ at the meta-level:
 --
 -- > newtype PushT n a = PushT
 -- >   { runPushT :: forall t. (a -> n (CodeQ t) -> n (CodeQ t)) -> n (CodeQ t) -> n (CodeQ t) }
 -- >
 --
--- which is the Church-encoding of `ListT` with the final answer type restricted to be code.
--- This `PushT` supports non-deterministic operations just like regular Church-encoded `ListT`
+-- which is the Church-encoding of t`ListT` with the final answer type restricted to be code.
+-- This t`PushT` supports non-deterministic operations just like regular Church-encoded t`ListT`
 -- but it also supports @up@ and @down@ with @ListT@.
 
 -- | Given a piece of code of type @ListT m a@, we reflect it back to a meta-level @PushT@
 -- by generating a fold of the given @ListT@ and using the two continuation arguments of
--- the @PushT@ in the corresponding two arguments for the fold.
+-- the t`PushT` in the corresponding two arguments for the fold.
 
 upPushAlg :: forall m n a. (Monad m, Functor n, n $~> m)
           => Algebra '[UpOp m] n
@@ -233,17 +233,17 @@ upListPushAlg oalg cl = PushT $ \c n -> upMN
     upMN :: forall x. CodeQ (m x) -> n (CodeQ x)
     upMN = Iso.fwd upAlgIso oalg
 
--- | A further special case of `upListPushAlg` for `PushT` applied to `Gen`. The
+-- | A further special case of `upListPushAlg` for t`PushT` applied to t`Gen`. The
 -- version here doesn't generate `Identity` wrappers.
 upListPushGenAlg :: forall a. CodeQ [a] -> PushT Gen (CodeQ a)
 upListPushGenAlg cl = PushT $ \c n -> return
   [|| foldr (\a ms -> $$(runGen (c [||a||] (return [|| ms ||]) ))) $$(runGen n) $$cl ||]
 
 -- | Algebra transformer for upping @ListT m a@ and @[a]@. Note that this algebra transformer
--- has `PushT` in its transformer stack, which is different from other algebra transformers
+-- has t`PushT` in its transformer stack, which is different from other algebra transformers
 -- of up such as `upState` and `upMaybe`, whose transformer arguments are empty.
--- Therefore the way to use `upPush` is slightly different from the way to use `upStateT`:
--- we write @upState `fuseAT` stateT@ but @upPush `appendAT` pushAT@
+-- Therefore the way to use `upPush` is slightly different from the way to use @upStateT@:
+-- we write @upState fuseAT stateT@ but @upPush appendAT pushAT@
 -- (or directly `Control.Effect.CodeGen.Nondet.pushWithUpAT`).
 upPush :: forall m. Monad m => AlgTrans '[UpOp (ListT m), UpOp []] '[UpOp m] '[PushT] (MonadDown m)
 upPush = AlgTrans $ \oalg ->
@@ -251,8 +251,8 @@ upPush = AlgTrans $ \oalg ->
   (\(Alg (UpOp o k)) -> bwd upIso (upListPushAlg oalg) (Alg (UpOp o k)))
 
 -- | The up-operation for the resumption monad transformer. The situation is similar to
--- that of `ListT` and `PushT`. The meta-level correspondent of the resumption monad `ResT`
--- has to be `ResUpT` a restricted Church-encoded version of the resumption monad.
+-- that of t`ListT` and t`PushT`. The meta-level correspondent of the resumption monad t`ResT`
+-- has to be t`ResUpT` a restricted Church-encoded version of the resumption monad.
 -- Moreover, we also need a meta-level version @l@ of the object-level step functor @s@.
 upResAlg :: forall m n s l a.
             ( Monad n, Monad m, n $~> m,
@@ -313,11 +313,11 @@ resetAT' = algTrans1 $ \(oalg :: Algebra '[UpOp m, CodeGen] n) (Reset p k) ->
 
 -- * FreeUp monad transformer
 --
--- We have seen above that upping `ListT` and `ResT` is quite non-trivial and there is
+-- We have seen above that upping t`ListT` and t`ResT` is quite non-trivial and there is
 -- in fact a simpler solution. Note that t`UpOp` is an /algebraic/ operation, so we
 -- freely adjoin it with any monads using the resumption monad transformer.
 -- This gives us the `FreeUpT m` monad transformer below. For every monad @n@, the
--- monad @FreeUpT m n@ supports the operation @UpOp m@, and as usual every algebra
+-- monad @FreeUpT m n@ supports the operation @t`UpOp` m@, and as usual every algebra
 -- operation on @n@ can be forwarded to @FreeUpT m n@.
 --
 -- However, the downside of this approach is that the scoped operations on @n@
@@ -409,8 +409,8 @@ upCache = algTrans1 $ \oalg -> \case
   Alg (UpOpId p)  -> CacheT (return (Hit p (upM oalg p)))
   Alg (UpOp_ p k) -> CacheT (upM oalg p >>= return . Mis . k)
 
--- | We can convert between `CacheT m n a` and `n a` by forgetting the cached up-operations.
--- This is of course not really an isomorphism but here we borrow `Iso` to organise the code
+-- | We can convert between @CacheT m n a@ and @n a@ by forgetting the cached up-operations.
+-- This is of course not really an isomorphism but here we borrow t`Iso` to organise the code
 -- more cleanly.
 cacheConversion :: forall m n a. Monad n => Iso (CacheT m n a) (n a)
 cacheConversion = Iso forget embed where

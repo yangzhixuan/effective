@@ -66,7 +66,7 @@ backtrack' = handler' observeAllT (emptyAlg :# nondetOrAlg :#. onceAlg)
 
 {-# INLINE nondetAT #-}
 -- | The algebra transformer underlying the 'alternative' handler. This uses an
--- underlying 'Alternative' instance for @t m@ given by a transformer @t@.
+-- underlying @Alternative@ instance for @t m@ given by a transformer @t@.
 nondetAT :: AlgTrans '[Empty, NondetOr] '[] '[LogicT] Monad
 nondetAT = algTrans' (emptyAlg :#. nondetOrAlg)
 

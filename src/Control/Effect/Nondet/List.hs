@@ -50,7 +50,7 @@ onceAlg (Once xs) = ListT $ do
 list :: Handler [Empty, Choose] '[] '[ListT] a [a]
 list = alternative runListT'
 
--- | The `nondet` handler transforms nondeterministic effects t`Empty` and t`Choose`
+-- | The `nondet` handler transforms nondeterminism effects t`Empty` and t`Choose`
 -- into the t`ListT` monad transformer, which collects all possible results.
 nondet :: Handler [Empty, NondetOr] '[] '[ListT] a [a]
 nondet = handler' runListT' (emptyAlg :#. nondetOrAlg)
@@ -69,7 +69,7 @@ backtrack' = handler' runListT' (emptyAlg :# nondetOrAlg :#. onceAlg)
 
 {-# INLINE nondetAT #-}
 -- | The algebra transformer underlying the 'alternative' handler. This uses an
--- underlying 'Alternative' instance for @t m@ given by a transformer @t@.
+-- underlying `Alternative` instance for @t m@ given by a transformer @t@.
 nondetAT :: AlgTrans '[Empty, NondetOr] '[] '[ListT] Monad
 nondetAT = algTrans' (emptyAlg :#. nondetOrAlg)
 

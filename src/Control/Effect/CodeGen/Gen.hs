@@ -5,7 +5,7 @@ License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
 
-This module contains the code-generation monads `Gen`/`GenM` and some basic operations
+This module contains the code-generation monads t'Gen'/t'GenM' and some basic operations
 for code generation, such as generating let-bindings.
 -}
 
@@ -27,8 +27,8 @@ newtype Gen a = Gen { unGen :: forall r. (a -> CodeQ r) -> CodeQ r }
 -- | The code-generation monad restricted to generate @m@-values.
 newtype GenM m a = GenM { unGenM :: forall r. (a -> CodeQ (m r)) -> CodeQ (m r) }
 
--- | The final answer type of @t`GenM` m a@ must be some @m r@ while @t`Gen` a@ doesn't
--- have this restriction, so @Gen a@ can be specialised to @GenM m a@.
+-- | The final answer type of @t'GenM' m a@ must be some @m r@ while @t'Gen' a@ doesn't
+-- have this restriction, so @t'Gen' a@ can be specialised to @t'GenM' m a@.
 specialise :: Gen a -> GenM m a
 specialise g = GenM (unGen g)
 
@@ -89,15 +89,15 @@ resetGen = return . runGen
 shiftGen :: (forall r. (a -> CodeQ r) -> Gen (CodeQ r)) -> Gen a
 shiftGen f = Gen $ runGen . f
 
--- | `runGen` for `GenM`.
+-- | `runGen` for t'GenM'.
 runGenM :: Monad m => GenM m (CodeQ a) -> CodeQ (m a)
 runGenM g = unGenM g (\x -> [|| return $$x ||])
 
--- | `resetGen` for `GenM`.
+-- | `resetGen` for t'GenM'.
 resetGenM :: Monad m => GenM m (CodeQ a) -> GenM m (CodeQ a)
 resetGenM = genDo_ . runGenM
 
--- | `shiftGen` for `GenM`.
+-- | `shiftGen` for t'GenM'.
 shiftGenM :: Monad m => (forall r. (a -> CodeQ (m r)) -> GenM m (CodeQ (m r))) -> GenM m a
 shiftGenM f = GenM $ (\g -> unGenM g id) . f
 
@@ -123,7 +123,7 @@ genLetRec = liftGen . genLetRec_
 
 -- | Perform code generation on a monad @m@. By our usual naming convention this
 -- function should be called @liftGenM@ because it is a version of @liftGen@ on
--- a monad @m@, but here we already have `GenM` and `liftGenM`, so this function
+-- a monad @m@, but here we already have t'GenM' and `liftGenM`, so this function
 -- has to be called something else.
 liftGenA :: Member CodeGen sig => Algebra sig m -> Gen a -> m a
 liftGenA alg o = callM alg (Alg o)

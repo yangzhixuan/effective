@@ -29,19 +29,19 @@ import Data.Iso
 import Data.List.Kind
 import Language.Haskell.TH.Syntax (Lift (..))
 
--- | The effects supported by the monad `Gen`.
+-- | The effects supported by the monad t`Gen`.
 type GenEffects = [CodeGen, UpOp Identity]
 
--- | The algebra of `Gen`.
+-- | The algebra of t`Gen`.
 genAlg :: Algebra GenEffects Gen
 genAlg =
   (\(Alg o :: CodeGen Gen x) -> o) :#.
   (\(up :: UpOp Identity Gen x) -> bwd upIso (\cm -> return [||runIdentity $$cm||]) up)
 
--- | The effects supported by the monad `GenM m`.
+-- | The effects supported by the monad @`GenM` m@.
 type GenMEffects m = [CodeGenM m, CodeGen, UpOp m]
 
--- | The algebra on `GenM`.
+-- | The algebra on t`GenM`.
 genMAlg :: forall m. Monad m => Algebra (GenMEffects m) (GenM m)
 genMAlg =
   (\(Alg o :: CodeGenM m (GenM m) x) -> o) :#
@@ -51,7 +51,7 @@ genMAlg =
 type EvalGen# effs oeffs =
   ( WithFwds# effs oeffs GenEffects )
 
--- | Evaluate a program with an algebra transformer, with `Gen` at the bottom
+-- | Evaluate a program with an algebra transformer, with t`Gen` at the bottom
 -- of monad transformer stack.
 evalGen :: forall effs oeffs ts cs a.
            ( cs Gen
@@ -63,7 +63,7 @@ evalGen :: forall effs oeffs ts cs a.
         -> Prog (effs `Union` GenEffects) a -> Apply ts Gen a
 evalGen at = evalAT genAlg (withFwds (Proxy @GenEffects) (weakenC @((~) Gen) at))
 
--- | Stage a meta-level program into an object-level monadic computation via `Gen`.
+-- | Stage a meta-level program into an object-level monadic computation via t`Gen`.
 stage :: forall m effs oeffs ts cs a.
          ( cs Gen
          , Monad (Apply ts Gen)
@@ -79,7 +79,7 @@ stage alg = down . evalGen alg
 type EvalGenM# effs oeffs m =
   ( WithFwds# effs oeffs (GenMEffects m) )
 
--- | Evaluate a program with an algebra transformer, with `GenM m` at the bottom
+-- | Evaluate a program with an algebra transformer, with @GenM m@ at the bottom
 -- of monad transformer stack.
 evalGenM :: forall m effs oeffs ts cs a.
             ( cs (GenM m), Monad m
@@ -91,7 +91,7 @@ evalGenM :: forall m effs oeffs ts cs a.
          -> Prog (effs `Union` GenMEffects m) a -> Apply ts (GenM m) a
 evalGenM at = evalAT genMAlg (withFwds (Proxy @(GenMEffects m)) (weakenC @((~) (GenM m)) at))
 
--- | Stage a meta-level program into an object-level monadic computation via `GenM`.
+-- | Stage a meta-level program into an object-level monadic computation via t`GenM`.
 stageM :: forall m m' effs oeffs ts cs a.
             ( cs (GenM m), Monad m
             , Monad (Apply ts (GenM m))
@@ -135,8 +135,8 @@ stageHM h p =
   in down @(GenM m) @m cb
 
 
--- | This is an ad-hoc generalisation of `stageHM'` which allows an additional wrapper `f`
--- in the result type, but multiple layers of wrappers `f1 (f2 (... CodeQ b))` is not supported.
+-- | This is an ad-hoc generalisation of `stageHM'` which allows an additional wrapper @f@
+-- in the result type, but multiple layers of wrappers @f1 (f2 (... CodeQ b))@ is not supported.
 -- There should be a better way to do this.
 stageHM' :: forall m f g xeffs yeffs effs oeffs ts a b.
          ( Monad (Apply ts (GenM m))

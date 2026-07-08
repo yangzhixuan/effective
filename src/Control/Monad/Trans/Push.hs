@@ -14,7 +14,7 @@ import Control.Monad ( ap, liftM )
 import Control.Monad.Trans.Class ( MonadTrans(..) )
 import Language.Haskell.TH ( CodeQ )
 
--- | @PushT@ is a Church-encoded version of `ListT` with the restriction that the final
+-- | @PushT@ is a Church-encoded version of @ListT@ with the restriction that the final
 -- answer type must be code. This monad transformer is used for staging nondeterminism
 -- with the code-generation effect in "Control.Effect.CodeGen".
 -- The monad @PushT n a@ supports the operations of nondeterminism just like @ListT@,

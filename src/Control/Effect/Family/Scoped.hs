@@ -114,8 +114,8 @@ instance Functor sig => Forward (Scp sig) (ReaderT w) where
   {-# INLINE fwd #-}
   fwd alg (Scp op) = ReaderT (\r -> alg (Scp (fmap (flip runReaderT r) op)))
 
--- | Unary scoped operations can be forwarded by `ListT` by applying the
--- operation recursively to all @m@-actions inside the `ListT` value.
+-- | Unary scoped operations can be forwarded by t`ListT` by applying the
+-- operation recursively to all @m@-actions inside the t`ListT` value.
 instance U.Unary sig => Forward (Scp sig) ListT where
   type FwdConstraint (Scp sig) ListT = Functor
   fwd :: forall m. Functor m => (forall x. Scp sig m x -> m x)
@@ -123,15 +123,16 @@ instance U.Unary sig => Forward (Scp sig) ListT where
   fwd alg (Scp op) = hmap ualg (U.get op) where
     ualg :: forall y. m y -> m y
     ualg op' = alg (Scp (U.upd op op'))
+
 {-
 The following instance compiles but has the unintended effect of
-applying the forwarder only to the first "element" in the `ListT`:
+applying the forwarder only to the first "element" in the @ListT@:
 
 > instance Functor sig => Forward (Scp sig) ListT where
 >   {-# INLINE fwd #-}
 >   fwd alg (Scp op) = ListT (alg (Scp (fmap runListT op)))
 
-A similar problem occurs for these instances of `CutListT` and `LogicT`:
+A similar problem occurs for these instances of @CutListT@ and @LogicT@:
 
 > instance Functor sig => Forward (Scp sig) CutListT where
 >   {-# INLINE fwd #-}

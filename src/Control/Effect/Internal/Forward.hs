@@ -69,7 +69,7 @@ instance HFunctor eff => Forward eff IdentityT where
   fwd alg = IdentityT . alg . hmap runIdentityT
 -}
 
--- | This class builds a forwarder for an t`Effs` by recursion over @effs@,
+-- | This class builds a forwarder for @effs@ by recursion over @effs@,
 -- by ensuring that each effect can be forwarded through a given @t@.
 -- This is an internal typeclass that the user of @effective@ don't need
 -- to use explicitly.
@@ -104,7 +104,7 @@ instance ( HFunctor eff
   fwdEffsC :: AlgTransC (eff : effs) (eff : effs) '[t] (FwdEffsConstraint (eff : effs) t)
   fwdEffsC = AlgTransC $ \(ca :#$ cas) -> fwdC ca :#$ getATC fwdEffsC cas
 
--- | This class builds a forwarder for an t`Effs` along a list @ts@ of transformers
+-- | This class builds a forwarder for @effs@ along a list @ts@ of transformers
 -- by ensuring that each transformer in @ts@ can forward @effs@.
 -- This class is expected to be used by the user of @effective@ whenever they need
 -- to assert that some transformers can forward some effects, but this class is not

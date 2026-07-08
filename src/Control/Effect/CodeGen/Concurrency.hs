@@ -5,10 +5,10 @@ License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
 
-This module contains algebra transformers for `ResUpT`, the monad transformer to be
-used at the meta level for resumption. The monad transformer `ResUpT` can be downed
+This module contains algebra transformers for t`ResUpT`, the monad transformer to be
+used at the meta level for resumption. The monad transformer t`ResUpT` can be downed
 to and upped from the (object-level) resumption monad transformer @ResT@.
-Moreover, for every functor @s@, the monad `ResUpT s n` supports algebraic
+Moreover, for every functor @s@, the monad @ResUpT s n@ supports algebraic
 operations of signature @s@ the same way as @ResT s@.
 
 However, we also have operations on @ResT s m@ that are defined by pattern matching
@@ -16,8 +16,8 @@ and recursion, such as @parL@ in "Control.Monad.Trans.CResT". These operations c
 be implemented on @ResUpT@ because @ResUpT@ doesn't support pattern matching.
 
 An imperfect workaround is to have /restricted version/ of these operations at the meta
-level, such as @`parUp` :: m (CodeQ x) -> m (CodeQ x) -> m (CodeQ x)@ where the return value
-must be code, and `ResUpT` supports operations like this by downing
+level, such as @parUp :: m (CodeQ x) -> m (CodeQ x) -> m (CodeQ x)@ where the return value
+must be code, and t`ResUpT` supports operations like this by downing
 the arguments to the object level and invoke the object-level algebra, and then up
 the result back to the meta level. This is of course very unsatisfactory but currently
 I don't know how to do better.

@@ -36,8 +36,8 @@ import Language.Haskell.TH hiding (Type)
 -- $namingConvention
 --
 -- Type-variable names for effect signatures follow a consistent convention.
--- A /signature/ (@eff@) is one effect type (e.g. @State Int@); @effs@ is a
--- list of signatures (e.g. @\'[State Int, Reader String]@).
+-- An /effect/ (@eff@) is identified with its signature functor (e.g. @State Int@); 
+-- @effs@ is a list of effects (e.g. @\'[State Int, Reader String]@).
 --
 -- Singular and plural forms:
 --
@@ -57,8 +57,7 @@ import Language.Haskell.TH hiding (Type)
 -- * @heffs@ — signatures to /h/ide       ('hide').
 -- * @beffs@ — signatures to /b/ypass     ('bypass').
 -- * @feffs@ — signatures to /f/use       ('generalFuse').
--- * @ieffs@ — signatures to /i/nsert     ('generalFuse', paired with @feffs@).
--- * @reffs@ — signatures to /r/aise      ('raise').
+-- * @ieffs@ — signatures to /i/ntercept  ('generalFuse', paired with @feffs@).
 
 -- | A t'Handler' will process input effects @effs@ and produce output effects
 -- @oeffs@, while working with a list of monad transformers @ts@. The final value
@@ -74,11 +73,12 @@ type Handler
 
 data Handler effs oeffs ts a b =
   Handler
-  { -- | Given @oeffs@-effects on any monad @m@, running the monad transformer stack
-    -- @ts m x@ into @m (fs x)@.
+  { -- | Given @oeffs@-effects on any monad @m@, run @Apply ts m a@ to obtain @m b@.
+    -- This is the place for doing initialisation/finalisation work for a handler.
     hrun :: Runner oeffs ts a b Monad
 
-    -- | Transforming @oeffs@-effects on any monad @m@ to @effs@-effects on @ts m@.
+    -- | Handling @effs@-effects using @oeffs@-effects by transforming
+    -- @effs@-effects on any monad @m@ to @effs@-effects on @Apply ts m@.
   , halg :: AlgTrans effs oeffs ts Monad
   }
 
@@ -328,12 +328,12 @@ fuse, (|>)
              ((oeffs1 :\\ effs2) `Union` oeffs2)
              (ts1 :++ ts2)
              a1 a3
--- | Fusing handlers `h1 :: Handler effs1 oeffs1 ts1 fs1` and `h2 :: Handler effs2
--- oeffs2 ts2 fs2` results in a handler with the composed transformer stack @ts1 :++ ts2@
--- that can deal with the effects of `effs1` and those of `effs2`, as well as deal
+-- | Fusing handlers @h1 :: Handler effs1 oeffs1 ts1 fs1@ and @h2 :: Handler effs2
+-- oeffs2 ts2 fs2@ results in a handler with the composed transformer stack @ts1 :++ ts2@
+-- that can deal with the effects of @effs1@ and those of @effs2@, as well as deal
 -- with the effects @oeffs1@ produced by @h1@ using @h2@ appropriately. More
--- precisely, if a member of @oeffs1@ is in `effs2`, then it is consumed by `h2`;
--- if it is not in `effs2`, it can only be re-produced by the fused handler and in
+-- precisely, if a member of @oeffs1@ is in @effs2@, then it is consumed by @h2@;
+-- if it is not in @effs2@, it can only be re-produced by the fused handler and in
 -- this case they have to be forwardable by @ts2@.
 --
 -- Moreover, the effects @effs2@ are handled by @h2@ so they must be forwardable by @ts1@.
@@ -459,7 +459,7 @@ type Pass# effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
   , Injects (oeffs1 `Union` oeffs2) (oeffs1 `Union` oeffs2))
 
 -- | @pass h1 h2@ results in a handler that recognises all the effects recognised by
--- @h1@ and @h2@, but unlike @fuse h1 h2@, @pass@ doesn't use @h2@ to intercept the
+-- @h1@ and @h2@, but unlike @fuse@, @pass@ doesn't use @h2@ to intercept the
 -- effects produced by @h1@.
 pass :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
         ( forall m. Monad m => MonadApply ts2 m
@@ -628,7 +628,6 @@ handleMFwdsC _ yalg (HandlerC (RunnerC r) (AlgTransC a)) p =
       in ($$(r (weakenAlgC yalg)) (eval' alg $$p))
   ||]
 
-
 type HandleP# effs xeffs =
   ( HandleM# effs xeffs
   , Monad (Prog xeffs)
@@ -660,8 +659,6 @@ handleP' :: forall effs oeffs xeffs ts a b .
   -> Prog xeffs b
 
 handleP' = handleM' progAlg
-
-
 
 -- | @handleMApp xalg h p@ is a variant of `handleM` where @effs `Union` xeffs@ is replaced
 -- by '(:++)'.

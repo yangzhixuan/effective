@@ -206,7 +206,7 @@ singAlgIso = Iso dispatch singAlg
 singAlg :: Sequence s => (forall x. eff m x -> m x) -> Algebra_ s '[eff] m
 singAlg alg = alg :# endAlg
 
--- | A variant of `call'` for which the effect is on a given monad rather than the `Prog` monad.
+-- | A variant of `call` for which the effect is on a given monad rather than the @Prog@ monad.
 {-# INLINE callM #-}
 callM :: forall eff effs a m s . (Member eff effs, Sequence s)
       => Algebra_ s effs m -> eff m a -> m a
@@ -221,13 +221,13 @@ unsafeCallM :: forall eff effs a m s . Sequence s
             => Int -> Algebra_ s effs m -> eff m a -> m a
 unsafeCallM n (Algebra (Case cs)) = unsafeCoerce @Any @(forall x. eff m x -> m x) (index cs n)
 
--- | A variant of `callJ` for which the effect is on a given monad rather than the `Prog` monad.
+-- | A variant of @callJ@ for which the effect is on a given monad rather than the @Prog@ monad.
 {-# INLINE callJM #-}
 callJM :: forall eff effs a m s . (Monad m, Member eff effs, Sequence s)
       => Algebra_ s effs m -> eff m (m a) -> m a
 callJM oalg x = callM oalg x >>= id
 
--- | A variant of `callK'` for which the effect is on a given monad rather than the `Prog` monad.
+-- | A variant of @callK@ for which the effect is on a given monad rather than the @Prog@ monad.
 {-# INLINE callKM #-}
 callKM :: forall eff effs a b m s . (Monad m, Member eff effs, Sequence s)
       => Algebra_ s effs m -> eff m a -> (a -> m b) -> m b

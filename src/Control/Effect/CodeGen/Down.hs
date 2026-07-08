@@ -153,7 +153,7 @@ instance (Monad n, Functor l, Functor s, n $~> m, l $~> s) => ResUpT l n $~> Res
 --            if b then put [|| $$s - 1||] >> up [|| ioExample ||]
 --                 else return [||()||]))
 -- @
--- The final `up`-operation for the tail-recursive call @up [|| ioExample ||]@ generates
+-- The final @up@-operation for the tail-recursive call @up [|| ioExample ||]@ generates
 -- an unneeded case split of the result of the recursive call, making the generated
 -- code no longer tail-recursive. We can solve this problem by replacing @up [|| ioExample ||]@
 -- with @return [|| ioExample ||]@ in the meta-program and using instead the function
@@ -250,7 +250,7 @@ instance PushT Gen $~>> [] where
     f (Right cl) gxs = do xs <- gxs; return (codeApp cl xs)
 
 -- | Here we are being suboptimal by defining `downJoin` instead of
--- `downTail`. This is because the monad transformer `PushT` is defined to be
+-- `downTail`. This is because the monad transformer t`PushT` is defined to be
 --
 -- > forall t. (a -> n (CodeQ t) -> n (CodeQ t)) -> n (CodeQ t) -> n (CodeQ t)
 --
@@ -259,7 +259,7 @@ instance PushT Gen $~>> [] where
 -- > p' :: n (Either (CodeQ (Maybe (x, ListT m x)))
 -- >                 (CodeQ (m (Maybe (x, ListT m x)))))
 --
--- We can fix this problem if we generalise `PushT` to be
+-- We can fix this problem if we generalise t`PushT` to be
 --
 -- > forall t. isSOP t => (a -> n t -> n t) -> n t -> n t
 --

@@ -19,7 +19,7 @@ import Control.Monad.Trans.CRes
 import Control.Applicative
 import Language.Haskell.TH ( CodeQ )
 
--- | @ResUpT@ is a Church-encoded version of the resumption monad transformer `ResT`
+-- | @ResUpT@ is a Church-encoded version of the resumption monad transformer t`ResT`
 -- from "Control.Monad.Trans.Resump" with the restriction that the final answer
 -- type must be code. This monad transformer is used for staging resumption
 -- monads with the code-generation effect in "Control.Effect.CodeGen".

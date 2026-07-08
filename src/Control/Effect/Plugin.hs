@@ -318,7 +318,7 @@ resolveEagerly pd cls allGivens allWanteds = timed pd $ do
 -- results are committed to /before/ 'tcPluginSolve' runs, so equalities
 -- emitted by 'disambiguateAll' come too late for constraints such as
 -- @forall m. Monad m => FwdsConstraint (sigs :\\ hsigs) ts m@ that contain a
--- stuck 'Delete'. The rewriter, by contrast, is consulted during the eager
+-- stuck @Delete@. The rewriter, by contrast, is consulted during the eager
 -- implication solve, early enough to help.
 rewriteDelete :: PluginData -> RewriteEnv -> [Ct] -> [TcType] -> TcPluginM TcPluginRewriteResult
 rewriteDelete pd env _givens args@[_kind, x, ys]

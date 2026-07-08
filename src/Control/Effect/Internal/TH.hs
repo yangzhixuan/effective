@@ -848,8 +848,8 @@ makeScpPiecesFromDec baseName dec = do
 --       - @t  :: Member (T s) sig => s -> Prog sig a -> Prog sig a -> Prog sig a@
 --       - @tM :: (Monad m, Member T sig)
 --             => Algebra sig m -> s -> m a -> m a -> m a@
---       - @tP  :: Member (WithName n (T s)) sig => Proxy n -> s -> Prog sig a -> Prog sig a -> Prog sig a@
---       - @tN  :: forall n -> Member (WithName n (T s)) sig => s -> Prog sig a -> Prog sig a -> Prog sig a@
+--       - @tP :: Member (WithName n (T s)) sig => Proxy n -> s -> Prog sig a -> Prog sig a -> Prog sig a@
+--       - @tN :: forall n -> Member (WithName n (T s)) sig => s -> Prog sig a -> Prog sig a -> Prog sig a@
 
 makeScpFrom :: Name -> Q [Dec]
 makeScpFrom baseName = fmap toDecs $ makeScpPieces baseName
@@ -1019,9 +1019,9 @@ conPCompat :: Name -> [Pat] -> Pat
 conPCompat n ps = ConP n ps
 #endif
 
--- | Given a type @t@, if `t` is in the form of @t1 -> t2 -> ... -> tn ~> t'@,
--- @splitArrs t@ computes `([t1, t2, ..., tn], r)`. If `t` is not in this form,
--- `t` itself is returned.
+-- | Given a type @t@, if @t@ is in the form of @t1 -> t2 -> ... -> tn ~> t'@,
+-- @splitArrs t@ computes @([t1, t2, ..., tn], r)@. If @t@ is not in this form,
+-- @t@ itself is returned.
 splitArrs :: Type -> ([Type], Type)
 splitArrs t = go t [] where
   go ((ArrowT `AppT` a) `AppT` b) as = go b (a:as)

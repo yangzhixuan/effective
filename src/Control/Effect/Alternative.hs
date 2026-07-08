@@ -66,7 +66,7 @@ selects (x:xs)  =  return (x, xs)  <|> do  (y, ys) <- selects xs
                                            return (y, x:ys)
 
 
--- | Instance for 'Alternative' that uses 'Empty' and 'Choose'.
+-- | Instance for 'Alternative' that uses @Empty@ and @Choose@.
 instance (Member Empty sigs, Member Choose sigs)
   => Alternative (Prog sigs) where
   {-# INLINE empty #-}

@@ -35,11 +35,11 @@ An alternative is to interpet `once` into `cutFail` and `cutCall`,
 which can then be interpreted using a `CutList`.
 -}
 
--- | Signature for t`CutFail`, which fails and cuts all following nondeterministic
+-- | Signature for @CutFail@, which fails and cuts all following nondeterministic
 -- siblings.
 $(makeAlg [e| cutFail :: 0 |])
 
--- | The t`CutCall` effect represents a scoped computation with a cut boundary.
+-- | The @CutCall@ effect represents a scoped computation with a cut boundary.
 $(makeScp [e| cutCall :: 1 |])
 
 -- | Perform a cut operation, pruning the search space.
@@ -67,15 +67,15 @@ cutListAT = algTrans' cutListAlg
 cutList :: Handler [Empty, Choose, CutFail, CutCall] '[] '[CutListT] a [a]
 cutList = handler' fromCutListT cutListAlg
 
--- | A handler for the t`Once` effect using t`CutCall` and t`CutFail`.
+-- | A handler for the @Once@ effect using @CutCall@ and @CutFail@.
 onceCut :: Handler '[Once] '[CutCall, CutFail, Empty, Choose] '[] a a
 onceCut = interpretM onceCutAlg
 
--- | Transforming the operation t`Once` to t`CutCall`, t`CutFail`, and `Choose`.
+-- | Transforming the operation @Once@ to @CutCall@, @CutFail@, and @Choose@.
 onceCutAT :: AlgTrans '[Once] '[CutCall, CutFail, Empty, Choose] '[] Monad
 onceCutAT = AlgTrans onceCutAlg
 
--- | The algebra for handling the t`Once` effect with t`CutCall` and t`CutFail`.
+-- | The algebra for handling the @Once@ effect with @CutCall@ and @CutFail@.
 onceCutAlg :: forall m .
      Monad m
   => Algebra [CutCall, CutFail, Empty, Choose] m
@@ -85,6 +85,6 @@ onceCutAlg oalg = singAlg $ \(Once p) -> cutCallM oalg $
      eval oalg cut
      return x
 
--- | A combined handler for t`Once`, t`Empty`, t`Choose`, t`CutFail`, and t`CutCall` effects.
+-- | A combined handler for @Once@, @Empty@, @Choose@, @CutFail@, and @CutCall@ effects.
 onceNondet :: Handler '[Once, Empty, Choose, CutFail, CutCall] '[] '[CutListT] a [a]
 onceNondet = onceCut |> cutList

@@ -28,7 +28,7 @@ instance Functor (ScpC sig m) where
 instance Functor sig => HFunctor (ScpC sig) where
   hmap tau (ScpC op k) = ScpC (fmap tau op) k
 
--- | The isomorphism characterising `ScpC`.
+-- | The isomorphism characterising t`ScpC`.
 scpCIso :: Functor m => Iso (forall x. ScpC sig m x -> m x)
                             (forall x. Scp sig m (CodeQ x) -> m (CodeQ x))
 scpCIso = Iso fwd bwd where
@@ -58,7 +58,7 @@ instance Functor sig => Forward (ScpC sig) (ReaderT s) where
     let x = fmap (flip runReaderT r) op
     in Iso.fwd scpCIso alg (Scp x))
 
--- | We can only forward staged scoped operations along `MaybeT` when we have also
+-- | We can only forward staged scoped operations along t`MaybeT` when we have also
 -- the code-generation effects to generate a case splitting. Consequently, this
 -- forwarder doesn't fit into the `Forward` class, but we can use it manually
 -- when needed.
@@ -74,7 +74,7 @@ scpCExceptFwd = algTrans1 $ \oalg -> Iso.bwd scpCIso (\(Scp op) -> ExceptT $
       y = Iso.fwd scpCIso (callM oalg) (Scp x)
   in do cMb <- y; splitM oalg cMb)
 
--- | We can only forward staged scoped operations along `MaybeT` when we have also
+-- | We can only forward staged scoped operations along t`MaybeT` when we have also
 -- the code-generation effects to generate a case splitting. Consequently, this
 -- forwarder doesn't fit into the `Forward` class, but we can use it manually
 -- when needed.
