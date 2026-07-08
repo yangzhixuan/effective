@@ -29,11 +29,11 @@ source-repository head
 common common
   default-language: GHC2021
   default-extensions:
-    DataKinds, CPP, ViewPatterns, PatternSynonyms, TemplateHaskell
+    DataKinds, CPP, ViewPatterns, PatternSynonyms, TemplateHaskell, PartialTypeSignatures
   if impl(ghc >=9.10.1)
     default-extensions: RequiredTypeArguments
 
-  ghc-options:
+  ghc-options: -Wno-partial-type-signatures
 
 library
   import: common
@@ -165,6 +165,7 @@ test-suite docs
     Operations
 
 test-suite concur
+  import:        common
   type:          exitcode-stdio-1.0
   ghc-options:   -threaded -ddump-splices -ddump-to-file
   main-is:       Concur.hs
