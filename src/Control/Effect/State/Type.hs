@@ -27,7 +27,7 @@ data Put_ s k where
 -- | Signature for putting a value into the state.
 type Put s = Alg (Put_ s)
 
-pattern Put s k = (Alg (Put_ s k))
+pattern Put s k = Alg (Put_ s k)
 
 -- | Syntax for putting a value into the state.
 {-# INLINE put #-}

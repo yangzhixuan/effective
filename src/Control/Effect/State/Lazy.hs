@@ -33,7 +33,7 @@ import qualified Control.Monad.Trans.State.Lazy as Lazy
 -- | The `state` handler deals with stateful operations and
 -- returns the result and final state @s@.
 state :: s -> Handler [Put s, Get s] '[] '[Lazy.StateT s] a (a, s)
-state s = Handler (stateRun s) stateAT
+state s = Handler (runner' $ flip Lazy.runStateT s) stateAT
 
 -- | The `state_` handler deals with stateful operations and silenty
 -- discards the final state.
@@ -54,12 +54,9 @@ getAlg (Get p) = do s <- Lazy.get; return (p s)
 
 -- Handlers for lightweight staging
 
-stateRun :: s -> Runner '[] '[Lazy.StateT s] a (s, a) Monad
-stateRun s = runner' $ fmap (\ ~(x, y) -> (y, x)) . flip Lazy.runStateT s
-
-stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Lazy.StateT s] a (s, a)
+stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Lazy.StateT s] a (a, s)
 stateC cs = HandlerC
-  (RunnerC $ \_ -> [|| fmap (\ ~(x, y) -> (y, x)) . flip Lazy.runStateT $$cs ||])
+  (RunnerC $ \_ -> [|| flip Lazy.runStateT $$cs ||])
   (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)
 
 stateC_ :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Lazy.StateT s] a a

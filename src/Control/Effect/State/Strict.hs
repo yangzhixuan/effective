@@ -26,6 +26,7 @@ module Control.Effect.State.Strict
 
 import Control.Effect
 import Control.Effect.State.Type
+import Data.Tuple (swap)
 
 import qualified Control.Monad.Trans.State.Strict as Strict
 
@@ -59,9 +60,9 @@ state_ s = Handler (runner' $ flip Strict.evalStateT s) stateAT
 
 -- Handlers for lightweight staging
 
-stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a (s, a)
+stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a (a, s)
 stateC cs = HandlerC
-  (RunnerC $ \_ -> [|| fmap swap . flip Strict.runStateT $$cs ||])
+  (RunnerC $ \_ -> [|| flip Strict.runStateT $$cs ||])
   (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)
 
 stateC_ :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a a

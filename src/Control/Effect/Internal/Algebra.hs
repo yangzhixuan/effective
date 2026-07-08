@@ -143,13 +143,13 @@ pattern a :% as <- (viewCase -> (a,as)) where
   a :% as = consCase a as
 
 infixr 5 :%.
-{-% INLINE (:%.) %-}
+{-# INLINE (:%.) #-}
 pattern (:%.) :: Sequence s => (eff m x -> y) -> (eff' m x -> y)
               -> Case_ s [eff, eff'] m x y
 pattern a :%. b <- (viewCase -> (a,viewCase -> (b, _))) where
   a :%. b = a :% (b :% endCase)
 
--- There is type-safe way to implement the following (by doing induction on @effs@) but the
+-- There is a type-safe way to implement the following (by doing induction on @effs@) but the
 -- following gives the correct time complexity.
 instance Sequence s => Functor (Case_ s effs f x) where
   {-# INLINE fmap #-}

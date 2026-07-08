@@ -50,12 +50,12 @@ newtype RunnerC oeffs ts a b cs = RunnerC {
 -- | Runners that don't need any output effects.
 {-# INLINE runner' #-}
 runner' :: (forall m x . cs m => Apply ts m a -> m b)
-        -> Runner osigs ts a b cs
+        -> Runner oeffs ts a b cs
 runner' run = Runner (\(_ :: Algebra _ m) -> run @m)
 
 {-# INLINE idRunner #-}
-idRunner :: forall sigs cs a.
-            Runner sigs '[] a a cs
+idRunner :: forall effs cs a.
+            Runner effs '[] a a cs
 idRunner = Runner \_ x -> x
 
 
@@ -181,13 +181,13 @@ type PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 =
    , CompRunner# ts1 ts2)
 
 {-# INLINE passR #-}
-passR :: forall sigs2 osigs1 osigs2 ts1 ts2 a1 a2 a3 cs1 cs2.
-      ( ForwardsC cs2 osigs1 ts2
-      , PassR# sigs2 osigs1 osigs2 ts1 ts2 a1 a2 a3)
-      => AlgTrans sigs2 osigs2 ts2 cs2
-      -> Runner osigs1 ts1 a1 a2 cs1
-      -> Runner osigs2 ts2 a2 a3 cs2
-      -> Runner (osigs1 `Union` osigs2)
+passR :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+      ( ForwardsC cs2 oeffs1 ts2
+      , PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3)
+      => AlgTrans effs2 oeffs2 ts2 cs2
+      -> Runner oeffs1 ts1 a1 a2 cs1
+      -> Runner oeffs2 ts2 a2 a3 cs2
+      -> Runner (oeffs1 `Union` oeffs2)
                 (ts1 :++ ts2)
                 a1 a3
                 (CompC ts2 cs1 cs2)
@@ -210,10 +210,10 @@ weakenREffs :: forall effs' cs effs ts a b.
 weakenREffs r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 
 {-# INLINE weakenRC #-}
-weakenRC :: forall cs' cs sigs ts a b.
+weakenRC :: forall cs' cs effs ts a b.
            (forall m. cs' m => cs m)
-        => Runner sigs ts a b cs
-        -> Runner sigs ts a b cs'
+        => Runner effs ts a b cs
+        -> Runner effs ts a b cs'
 weakenRC r1 = Runner \oalg -> getR r1 oalg
 
 {-# INLINE weakenRCMonad #-}
@@ -228,10 +228,10 @@ weakenRC r1 = Runner \oalg -> getR r1 oalg
 -- non-injective family 'Apply'. This wrapper narrows the context to the
 -- single relevant quantified given, making the choice unambiguous.
 weakenRCMonad
-  :: forall ts2 sigs ts a b
+  :: forall ts2 effs ts a b
    . (forall m. Monad m => MonadApply ts2 m)
-  => Runner sigs ts a b (CompC ts2 Monad Monad)
-  -> Runner sigs ts a b Monad
+  => Runner effs ts a b (CompC ts2 Monad Monad)
+  -> Runner effs ts a b Monad
 weakenRCMonad = weakenRC
 
 weakenRCC :: forall cs' cs effs ts a b.

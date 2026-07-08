@@ -23,7 +23,7 @@ a smart constructor for programs.
 For example, the operations for [teletype](../README.md) are generated like this:
 ```haskell
 $(makeGen [e| getLine  :: String |])
-$(makeGen [e| putStrLn :: String -> () |])
+$(makeGen [e| putStrLn :: String ~> () |])
 ```
 The quoted type is not the full type of the generated smart constructor. It is
 an algebraic signature of the operation, which is broken down into a
@@ -47,10 +47,9 @@ The quoted types also generate pattern synonyms that can be used when writing
 handlers:
 ```haskell
 teletypePure :: String -> Handler '[GetLine, PutStrLn] '[] '[] a a
-teletypePure input =
-  interpret
-    (\case GetLine k     -> return (k input)
-           PutStrLn _ k  -> return k)
+teletypePure input = interpret $
+  (\(GetLine k) -> return (k input)) :%
+  (\(PutStrLn _ k) -> return k) :% endCase
 ```
 
 

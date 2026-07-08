@@ -36,13 +36,10 @@ example_Nondet1 = property $ (handle list $ knapsack 3 [3, 2, 1] :: [[Int]])
 -- into a list. It handles the t`Empty`, t`Choose`, and t`Once` effects.
 list' :: Prog [Empty, Choose, Once] a -> [a]
 list' = eval halg where
-  halg :: Effs [Empty, Choose, Once] [] a -> [a]
-  halg op
-    | Just (Alg Empty_)          <- prj op = []
-    | Just (Scp (Choose_ xs ys)) <- prj op = xs ++ ys
-    | Just (Scp (Once_ xs))       <- prj op = case xs of
-                                               []     -> []
-                                               (x:xs) -> [x]
+  halg :: Algebra [Empty, Choose, Once] []
+  halg = (\Empty -> []) :#
+         (\(Choose xs ys) -> xs ++ ys) :#
+         (\(Once xs) -> case xs of [] -> []; (x:xs) -> [x]) :# endAlg
 
 -- `list'` is not a modular handler and uses `eval` directly
 example_Nondet1' :: Property

@@ -363,7 +363,7 @@ freeUpOpAlg :: forall m n meff oeff.
             => (forall x. CodeQ (oeff m x -> m x))
             -> (forall x. meff (FreeUpT m n) (CodeQ x) -> FreeUpT m n (CodeQ x))
 freeUpOpAlg objalg op =
-  let objop = down @(msig (FreeUpT m n)) @(osig m) op
+  let objop = down @(meff (FreeUpT m n)) @(oeff m) op
   in upFreeAlg [|| $$objalg $$objop ||]
 
 -- | `freeUpOpAlg` specialised for scoped operations.

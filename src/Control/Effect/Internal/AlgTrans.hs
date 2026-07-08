@@ -31,9 +31,9 @@ evalAT :: forall effs oeffs xeffs ts cs m a.
        ( cs m
        , Injects oeffs xeffs
        , Monad (Apply ts m) )
-       => Algebra xsigs m
-       -> AlgTrans sigs osigs ts cs
-       -> Prog sigs a
+       => Algebra xeffs m
+       -> AlgTrans effs oeffs ts cs
+       -> Prog effs a
        -> Apply ts m a
 evalAT oalg alg = eval (getAT alg (weakenAlg oalg))
 
@@ -42,8 +42,8 @@ evalAT oalg alg = eval (getAT alg (weakenAlg oalg))
 evalAT' :: forall m effs ts cs a.
         ( cs m
         , Monad (Apply ts m) )
-        => AlgTrans sigs '[] ts cs
-        -> Prog sigs a
+        => AlgTrans effs '[] ts cs
+        -> Prog effs a
         -> Apply ts m a
 evalAT' alg = eval (getAT alg (endAlg @m))
 
@@ -54,12 +54,12 @@ evalAT' alg = eval (getAT alg (endAlg @m))
 -- | Treating an algebra on @m@ as a trivial algebra transformer that only works
 -- when the carrier is exactly @m@.
 {-# INLINE asAT #-}
-asAT :: forall sigs m. Algebra sigs m -> AlgTrans sigs '[] '[] ((~) m)
+asAT :: forall effs m. Algebra effs m -> AlgTrans effs '[] '[] ((~) m)
 asAT alg = AlgTrans \_ -> alg
 
 -- | The identity algebra transformer.
 {-# INLINE idAT #-}
-idAT :: forall sigs cs. AlgTrans sigs sigs '[] cs
+idAT :: forall effs cs. AlgTrans effs effs '[] cs
 idAT = AlgTrans \alg -> alg
 
 -- In this library, constraints with names ending with a hash will always be
@@ -90,8 +90,8 @@ type CaseTrans# effs1 effs2 =
   ( Injects (effs2 :\\ effs1) effs2 )
 
 -- | Case splitting on the union of two effect rows. Note that `Union` is defined
--- two be @sigs1 ++ (sigs2 :\\ sigs1)@, so if an effect @e@ is both a member of @sigs1@
--- and @sigs2@, it is consumed by the first algebra transformer.
+-- two be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
+-- and @effs2@, it is consumed by the first algebra transformer.
 {-# INLINE caseAT #-}
 caseAT :: forall effs1 effs2 cs1 cs2 oeffs ts.
           CaseTrans# effs1 effs2
@@ -126,14 +126,14 @@ algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg :#$ EndAC
 
 -- | Algebra transformer that doesn't need an output effect.
 {-# INLINE algTrans' #-}
-algTrans' :: forall sigs osigs ts cs
-          . (forall m . cs m => Algebra sigs (Apply ts m))
-          -> AlgTrans sigs osigs ts cs
-algTrans' alg = AlgTrans (\(_ :: Algebra osigs m) -> alg @m)
+algTrans' :: forall effs oeffs ts cs
+          . (forall m . cs m => Algebra effs (Apply ts m))
+          -> AlgTrans effs oeffs ts cs
+algTrans' alg = AlgTrans (\(_ :: Algebra oeffs m) -> alg @m)
 
 -- | Replace the carrier constraint of an algebra transformer with a strong one.
 {-# INLINE weakenC #-}
-weakenC :: forall cs' cs sigs osigs ts.
+weakenC :: forall cs' cs effs oeffs ts.
           (forall m. cs' m => cs m)
        => AlgTrans effs oeffs ts cs
        -> AlgTrans effs oeffs ts cs'
@@ -144,6 +144,19 @@ weakenCC :: forall cs' cs effs oeffs ts.
        => AlgTransC effs oeffs ts cs
        -> AlgTransC effs oeffs ts cs'
 weakenCC at = AlgTransC $ getATC at
+
+{-# INLINE weakenCMonad #-}
+-- | Drop a @'CompC' ts2 Monad Monad@ carrier constraint down to plain @Monad@.
+--
+-- The algebra-transformer counterpart of 'Control.Effect.Internal.Runner.weakenRCMonad':
+-- the @cs = 'CompC' ts2 Monad Monad@, @cs' = Monad@ specialisation of 'weakenC'.
+-- See that function for why this wrapper is needed on GHC 9.14.
+weakenCMonad
+  :: forall ts2 effs oeffs ts
+   . (forall m. Monad m => MonadApply ts2 m)
+  => AlgTrans effs oeffs ts (CompC ts2 Monad Monad)
+  -> AlgTrans effs oeffs ts Monad
+weakenCMonad = weakenC
 
 -- | Replace the carrier constraint @cs@ of an algebra transformer with the conjunction
 -- of @cs@ and another constraint @cs'@.
@@ -156,9 +169,9 @@ weakenCAnd at = AlgTrans $ getAT at
 -- | Forget some input effects and add some unused output effects.
 {-# INLINE weakenEffs #-}
 weakenEffs
-       :: (Injects sigs' sigs, Injects osigs osigs')
-       => AlgTrans sigs  osigs  ts cs
-       -> AlgTrans sigs' osigs' ts cs
+       :: (Injects effs' effs, Injects oeffs oeffs')
+       => AlgTrans effs  oeffs  ts cs
+       -> AlgTrans effs' oeffs' ts cs
 weakenEffs = weakenAT
 
 -- | Add some unused output effects.
@@ -197,9 +210,9 @@ interpretAT1
   -> AlgTrans '[eff] oeffs '[] Monad
 interpretAT1 rephrase = AlgTrans (\oalg -> singAlg (eval oalg . rephrase))
 
-type HideAT# sigs sigs' = (Injects (sigs :\\ sigs') sigs)
+type HideAT# effs effs' = (Injects (effs :\\ effs') effs)
 
--- | Forget some input effects @sigs'@.
+-- | Forget some input effects @effs'@.
 {-# INLINE hideAT #-}
 hideAT :: forall effs' effs oeffs ts cs.
           HideAT# effs effs'
@@ -210,11 +223,11 @@ hideAT at = AlgTrans \ oalg -> weakenAlg (getAT at oalg)
 -- | Case splitting with the same carrier constraint.
 {-# INLINE caseATSameC #-}
 caseATSameC
-       :: forall sigs1 sigs2 cs osigs ts.
-          CaseTrans# sigs1 sigs2
-       => AlgTrans sigs1 osigs ts cs
-       -> AlgTrans sigs2 osigs ts cs
-       -> AlgTrans (sigs1 `Union` sigs2) osigs ts cs
+       :: forall effs1 effs2 cs oeffs ts.
+          CaseTrans# effs1 effs2
+       => AlgTrans effs1 oeffs ts cs
+       -> AlgTrans effs2 oeffs ts cs
+       -> AlgTrans (effs1 `Union` effs2) oeffs ts cs
 caseATSameC at1 at2 = weakenC (caseAT at1 at2)
 
 -- | Case splitting with the same carrier constraint.
@@ -226,19 +239,19 @@ caseATSameC'
         -> AlgTrans (effs1 :++ effs2) oeffs ts cs
 caseATSameC' at1 at2 = weakenC (caseAT' at1 at2)
 
-type UnionAT# sigs1 sigs2 osigs1 osigs2 =
-  ( Injects sigs1 sigs1, Injects sigs2 sigs2
-  , Injects osigs1 (osigs1 `Union` osigs2)
-  , Injects osigs2 (osigs1 `Union` osigs2)
-  , CaseTrans# sigs1 sigs2)
+type UnionAT# effs1 effs2 oeffs1 oeffs2 =
+  ( Injects effs1 effs1, Injects effs2 effs2
+  , Injects oeffs1 (oeffs1 `Union` oeffs2)
+  , Injects oeffs2 (oeffs1 `Union` oeffs2)
+  , CaseTrans# effs1 effs2)
 
 -- | The most general form of case splitting on the union of input effects.
-unionAT :: forall sigs1 sigs2 osigs1 osigs2 cs1 cs2 ts.
-           UnionAT# sigs1 sigs2 osigs1 osigs2
-        => AlgTrans sigs1 osigs1 ts cs1
-        -> AlgTrans sigs2 osigs2 ts cs2
-        -> AlgTrans (sigs1 `Union` sigs2) (osigs1 `Union` osigs2) ts (AndC cs1 cs2)
-unionAT at1 at2 = caseAT (weakenAT @sigs1 at1) (weakenAT @sigs2 at2)
+unionAT :: forall effs1 effs2 oeffs1 oeffs2 cs1 cs2 ts.
+           UnionAT# effs1 effs2 oeffs1 oeffs2
+        => AlgTrans effs1 oeffs1 ts cs1
+        -> AlgTrans effs2 oeffs2 ts cs2
+        -> AlgTrans (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts (AndC cs1 cs2)
+unionAT at1 at2 = caseAT (weakenAT @effs1 at1) (weakenAT @effs2 at2)
 
 type AppendAT# effs1 effs2 oeffs1 oeffs2 =
   ( Injects effs1 effs1, Injects effs2 effs2
@@ -247,30 +260,30 @@ type AppendAT# effs1 effs2 oeffs1 oeffs2 =
   )
 
 -- | The most general form of case splitting on the concatenation of input effects.
-appendAT :: forall sigs1 sigs2 osigs1 osigs2 cs1 cs2 ts.
-            AppendAT# sigs1 sigs2 osigs1 osigs2
-         => AlgTrans sigs1 osigs1 ts cs1
-         -> AlgTrans sigs2 osigs2 ts cs2
-         -> AlgTrans (sigs1 :++ sigs2) (osigs1 :++ osigs2) ts (AndC cs1 cs2)
-appendAT at1 at2 = caseAT' (weakenAT @sigs1 at1) (weakenAT @sigs2 at2)
+appendAT :: forall effs1 effs2 oeffs1 oeffs2 cs1 cs2 ts.
+            AppendAT# effs1 effs2 oeffs1 oeffs2
+         => AlgTrans effs1 oeffs1 ts cs1
+         -> AlgTrans effs2 oeffs2 ts cs2
+         -> AlgTrans (effs1 :++ effs2) (oeffs1 :++ oeffs2) ts (AndC cs1 cs2)
+appendAT at1 at2 = caseAT' (weakenAT @effs1 at1) (weakenAT @effs2 at2)
 
-type WithFwds# sigs osigs xsigs =
-  ( CaseTrans# sigs xsigs
-  , Injects xsigs xsigs
-  , Injects sigs sigs
-  , Injects osigs (osigs `Union` xsigs)
-  , Injects xsigs (osigs `Union` xsigs) )
+type WithFwds# effs oeffs xeffs =
+  ( CaseTrans# effs xeffs
+  , Injects xeffs xeffs
+  , Injects effs effs
+  , Injects oeffs (oeffs `Union` xeffs)
+  , Injects xeffs (oeffs `Union` xeffs) )
 
--- | Bypassing some forwardable effects @xsigs@ along an algebra transformer.
--- Members of @xsigs@ that are already in @sigs@ or @xsigs@ are ignored.
+-- | Bypassing some forwardable effects @xeffs@ along an algebra transformer.
+-- Members of @xeffs@ that are already in @effs@ or @xeffs@ are ignored.
 {-# INLINE withFwds #-}
-withFwds :: forall xsigs sigs osigs ts cs.
-            ( ForwardsC cs xsigs ts
-            , WithFwds# sigs osigs xsigs )
-         => Proxy xsigs
-         -> AlgTrans sigs osigs ts cs
-         -> AlgTrans (sigs `Union` xsigs) (osigs `Union` xsigs) ts cs
-withFwds _ at = weakenC (unionAT at (fwds @xsigs))
+withFwds :: forall xeffs effs oeffs ts cs.
+            ( ForwardsC cs xeffs ts
+            , WithFwds# effs oeffs xeffs )
+         => Proxy xeffs
+         -> AlgTrans effs oeffs ts cs
+         -> AlgTrans (effs `Union` xeffs) (oeffs `Union` xeffs) ts cs
+withFwds _ at = weakenC (unionAT at (fwds @xeffs))
 
 type WithFwds'# effs oeffs xeffs =
   ( Injects xeffs xeffs
@@ -280,35 +293,35 @@ type WithFwds'# effs oeffs xeffs =
 
 -- | Bypassing a forwardable effect along an algebra transformer.
 {-# INLINE withFwds' #-}
-withFwds' :: forall xsigs sigs osigs ts cs.
-            ( ForwardsC cs xsigs ts
-            , WithFwds'# sigs osigs xsigs )
-         => Proxy xsigs
-         -> AlgTrans sigs osigs ts cs
-         -> AlgTrans (sigs :++ xsigs) (osigs :++ xsigs)ts cs
-withFwds' _ at = weakenC (appendAT at (fwds @xsigs))
+withFwds' :: forall xeffs effs oeffs ts cs.
+            ( ForwardsC cs xeffs ts
+            , WithFwds'# effs oeffs xeffs )
+         => Proxy xeffs
+         -> AlgTrans effs oeffs ts cs
+         -> AlgTrans (effs :++ xeffs) (oeffs :++ xeffs)ts cs
+withFwds' _ at = weakenC (appendAT at (fwds @xeffs))
 
 -- ** Fusion-based combinators
-type FuseAT# sigs1 sigs2 osigs1 osigs2 ts1 ts2 =
-   ( GeneralFuseAT# sigs2 sigs2 sigs1 sigs2 osigs1 osigs2 ts1 ts2
-   , Injects sigs2 sigs2 )
+type FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
+   ( GeneralFuseAT# effs2 effs2 effs1 effs2 oeffs1 oeffs2 ts1 ts2
+   , Injects effs2 effs2 )
 
 infixr 9 `fuseAT`, `fuseAT'`
 
 -- | @fuseAT at1 at2@ composes @at1@ and @at2@ in a way that uses @at2@ maximally:
---    1. all the input effects @sigs2@ of @at2@ are visible in the input effects of the final result, and
---    2. the output effects @osigs1@ of @at1@ are intercepted by @sigs2@ as much as possible.
+--    1. all the input effects @effs2@ of @at2@ are visible in the input effects of the final result, and
+--    2. the output effects @oeffs1@ of @at1@ are intercepted by @effs2@ as much as possible.
 {-# INLINE fuseAT #-}
-fuseAT :: forall sigs1 sigs2 osigs1 osigs2 ts1 ts2 cs1 cs2.
-          FuseAT# sigs1 sigs2 osigs1 osigs2 ts1 ts2
-       => (ForwardsC cs1 sigs2 ts1, ForwardsC cs2 (osigs1 :\\ sigs2) ts2)
-       => AlgTrans sigs1 osigs1 ts1 cs1
-       -> AlgTrans sigs2 osigs2 ts2 cs2
-       -> AlgTrans (sigs1 `Union` sigs2)
-                   ((osigs1 :\\ sigs2) `Union` osigs2)
+fuseAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+          FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
+       => (ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2)
+       => AlgTrans effs1 oeffs1 ts1 cs1
+       -> AlgTrans effs2 oeffs2 ts2 cs2
+       -> AlgTrans (effs1 `Union` effs2)
+                   ((oeffs1 :\\ effs2) `Union` oeffs2)
                    (ts1 :++ ts2)
                    (CompC ts2 cs1 cs2)
-fuseAT at1 at2 = generalFuseAT (Proxy @sigs2) (Proxy @sigs2) at1 at2
+fuseAT at1 at2 = generalFuseAT (Proxy @effs2) (Proxy @effs2) at1 at2
 
 -- | A variant of `fuseAT` that demands the carrier constraint @cs1@ of the
 -- first algebra transformer is always satisfied by @Apply ts2 m@ whenever @cs2 m@
@@ -383,22 +396,22 @@ type PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 =
    , forall m . Assoc ts1 ts2 m )
 
 -- | @pipeAT at1 at2@ composes @at1@ and @at2@ in a way that
---    1. the input effects @sigs2@ of @at2@ are /not/ visible in the input effects of the final result, and
---    2. the output effects @osigs1@ of @at1@ are intercepted by @sigs2@ as much as possible.
+--    1. the input effects @effs2@ of @at2@ are /not/ visible in the input effects of the final result, and
+--    2. the output effects @oeffs1@ of @at1@ are intercepted by @effs2@ as much as possible.
 {-# INLINE pipeAT #-}
-pipeAT :: forall sigs1 sigs2 osigs1 osigs2 ts1 ts2 cs1 cs2.
-          ( ForwardsC cs2 (osigs1 :\\ sigs2) ts2
-          , PipeAT# sigs2 osigs1 osigs2 ts1 ts2 )
-       => AlgTrans sigs1 osigs1 ts1 cs1
-       -> AlgTrans sigs2 osigs2 ts2 cs2
-       -> AlgTrans sigs1
-                   ((osigs1 :\\ sigs2) `Union` osigs2)
+pipeAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+          ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
+          , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 )
+       => AlgTrans effs1 oeffs1 ts1 cs1
+       -> AlgTrans effs2 oeffs2 ts2 cs2
+       -> AlgTrans effs1
+                   ((oeffs1 :\\ effs2) `Union` oeffs2)
                    (ts1 :++ ts2)
                    (CompC ts2 cs1 cs2)
 
 -- We can define pipeAT as:
 --
--- > pipeAT at1 at2 = generalFuse (Proxy @'[]) (Proxy @sigs2) at1 at2
+-- > pipeAT at1 at2 = generalFuse (Proxy @'[]) (Proxy @effs2) at1 at2
 --
 -- But this would result in some always true but complex constraints, so let's
 -- give a direct definition:
@@ -434,18 +447,18 @@ type PassAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 =
    , forall m. Assoc ts1 ts2 m )
 
 -- | @passAT at1 at2@ composes @at1@ and @at2@ in a way that
---    1. all the input effects @sigs2@ of @at2@ are visible in the input effects of the final result, and
---    2. the output effects @osigs1@ of @at1@ are /not/ intercepted by @sigs2@ at all.
--- If an effect is in the intersection of @sigs1@ and @sigs2@, it is handled by @at1@.
+--    1. all the input effects @effs2@ of @at2@ are visible in the input effects of the final result, and
+--    2. the output effects @oeffs1@ of @at1@ are /not/ intercepted by @effs2@ at all.
+-- If an effect is in the intersection of @effs1@ and @effs2@, it is handled by @at1@.
 {-# INLINE passAT #-}
-passAT :: forall sigs1 sigs2 osigs1 osigs2 ts1 ts2 cs1 cs2.
-          ( ForwardsC cs1 sigs2 ts1
-          , ForwardsC cs2 osigs1 ts2
-          , PassAT# sigs1 sigs2 osigs1 osigs2 ts1 ts2 cs2 )
-       => AlgTrans sigs1 osigs1 ts1 cs1
-       -> AlgTrans sigs2 osigs2 ts2 cs2
-       -> AlgTrans (sigs1 `Union` sigs2)
-                   (osigs1 `Union` osigs2)
+passAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+          ( ForwardsC cs1 effs2 ts1
+          , ForwardsC cs2 oeffs1 ts2
+          , PassAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 )
+       => AlgTrans effs1 oeffs1 ts1 cs1
+       -> AlgTrans effs2 oeffs2 ts2 cs2
+       -> AlgTrans (effs1 `Union` effs2)
+                   (oeffs1 `Union` oeffs2)
                    (ts1 :++ ts2)
                    (CompC ts2 cs1 cs2)
 passAT at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 `Union` oeffs2) m) ->
@@ -464,16 +477,16 @@ type PassAT'# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 =
 infixr 9 `passAT'`
 
 -- | @passAT' at1 at2@ is the same as `passAT` except that if an effect is in the
--- intersection of @sigs1@ and @sigs2@, it is handled by @at2@.
+-- intersection of @effs1@ and @effs2@, it is handled by @at2@.
 {-# INLINE passAT' #-}
-passAT' :: forall sigs1 sigs2 osigs1 osigs2 ts1 ts2 cs1 cs2.
-        ( ForwardsC cs1 sigs2 ts1
-        , ForwardsC cs2 osigs1 ts2
-        , PassAT'# sigs1 sigs2 osigs1 osigs2 ts1 ts2 cs2 )
-        => AlgTrans sigs1 osigs1 ts1 cs1
-        -> AlgTrans sigs2 osigs2 ts2 cs2
-        -> AlgTrans (sigs1 `Union` sigs2)
-                    (osigs1 `Union` osigs2)
+passAT' :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+        ( ForwardsC cs1 effs2 ts1
+        , ForwardsC cs2 oeffs1 ts2
+        , PassAT'# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 )
+        => AlgTrans effs1 oeffs1 ts1 cs1
+        -> AlgTrans effs2 oeffs2 ts2 cs2
+        -> AlgTrans (effs1 `Union` effs2)
+                    (oeffs1 `Union` oeffs2)
                     (ts1 :++ ts2)
                     (CompC ts2 cs1 cs2)
 passAT' at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 `Union` oeffs2) m) ->
@@ -491,30 +504,30 @@ type GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
 
 {-# INLINE generalFuseAT #-}
 -- | `generalFuseAT` subsumes @fuseAT@, @passAT@, and @pipeAT@ by having two type arguments
--- @fsigs@ and @isigs@ such that
---   1. @fsigs@ is a subset of @sigs2@ and it specifies the effects that we want to be
+-- @feffs@ and @ieffs@ such that
+--   1. @feffs@ is a subset of @effs2@ and it specifies the effects that we want to be
 --      forwarded along @ts1@ and exposed by the resulting handler;
---   2. @isigs@ is a subset of @sigs2@ and it specifies the effects that we want to
+--   2. @ieffs@ is a subset of @effs2@ and it specifies the effects that we want to
 --      use to intercept the effects produced by @h1@.
 -- Therefore @generalFuseAT@ instantiates to
---   1. `fuseAT` with @fsigs ~ sigs2@ and @isigs ~ sigs2@,
---   2. `pipeAT` with @fsigs ~ []@    and @isigs ~ sigs2@,
---   3. `passAT` with @fsigs ~ sigs2@ and @isigs ~ []@.
--- (When both @fsigs@ and @isigs@ are empty, @generalFuse@ becomes useless so there
+--   1. `fuseAT` with @feffs ~ effs2@ and @ieffs ~ effs2@,
+--   2. `pipeAT` with @feffs ~ []@    and @ieffs ~ effs2@,
+--   3. `passAT` with @feffs ~ effs2@ and @ieffs ~ []@.
+-- (When both @feffs@ and @ieffs@ are empty, @generalFuse@ becomes useless so there
 -- isn't this case defined specially.)
 generalFuseAT
-  :: forall fsigs isigs sigs1 sigs2 osigs1 osigs2 ts1 ts2 cs1 cs2.
-     ( Injects fsigs sigs2
-     , Injects isigs sigs2
-     , ForwardsC cs1 fsigs ts1
-     , ForwardsC cs2 (osigs1 :\\ isigs) ts2
-     , GeneralFuseAT# fsigs isigs sigs1 sigs2 osigs1 osigs2 ts1 ts2 )
-  => Proxy fsigs
-  -> Proxy isigs
-  -> AlgTrans sigs1 osigs1 ts1 cs1
-  -> AlgTrans sigs2 osigs2 ts2 cs2
-  -> AlgTrans (sigs1 `Union` fsigs)
-              ((osigs1 :\\ isigs) `Union` osigs2)
+  :: forall feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+     ( Injects feffs effs2
+     , Injects ieffs effs2
+     , ForwardsC cs1 feffs ts1
+     , ForwardsC cs2 (oeffs1 :\\ ieffs) ts2
+     , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 )
+  => Proxy feffs
+  -> Proxy ieffs
+  -> AlgTrans effs1 oeffs1 ts1 cs1
+  -> AlgTrans effs2 oeffs2 ts2 cs2
+  -> AlgTrans (effs1 `Union` feffs)
+              ((oeffs1 :\\ ieffs) `Union` oeffs2)
               (ts1 :++ ts2)
               (CompC ts2 cs1 cs2)
 generalFuseAT _ _ at1 at2 = AlgTrans $ \oalg ->

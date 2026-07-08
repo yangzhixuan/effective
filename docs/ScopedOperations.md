@@ -38,7 +38,7 @@ to modify output:
 retell :: forall w w' a . (Monoid w, Monoid w')
        => (w -> w')
        -> Handler '[Tell w] '[Tell w'] '[] a a
-retell f = interpret $ \(Tell w k) ->
+retell f = interpret1 $ \(Tell w k) ->
   do tell (f w)
      return k
 ```
@@ -153,7 +153,7 @@ It is easy enough to see how a variation of `retell` could be written,
 by interpreting `PutStrLn` operations:
 ```haskell
 rePutStrLn :: (String -> String) -> Handler '[PutStrLn] '[PutStrLn] '[] a a
-rePutStrLn f = interpret $ \(PutStrLn str k) ->
+rePutStrLn f = interpret1 $ \(PutStrLn str k) ->
   do putStrLn (f str)
      return k
 ```
@@ -189,7 +189,7 @@ first transform any `putStrLn` operation into a `tell` using
 turn any `tell` back into `putStrLn` with using `tellPutStrLn`:
 ```haskell
 tellPutStrLn :: Handler '[Tell [String]] '[PutStrLn] '[] a a
-tellPutStrLn = interpret $ \(Tell strs k) ->
+tellPutStrLn = interpret1 $ \(Tell strs k) ->
   do putStrLn (unwords strs)
      return k
 ```

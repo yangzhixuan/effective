@@ -23,7 +23,7 @@ import Control.Effect.State
 import Hedgehog
 
 $(makeGen [e| getLine  :: String |])
-$(makeGen [e| putStrLn :: String -> () |])
+$(makeGen [e| putStrLn :: String ~> () |])
 
 echo :: (Members '[GetLine, PutStrLn] sigs) => Prog sigs ()
 echo = do str <- getLine
@@ -33,9 +33,9 @@ echo = do str <- getLine
                      echo
 
 teletypeIO :: Handler '[GetLine, PutStrLn] '[Alg IO] '[] a a
-teletypeIO = interpret
-  (\case GetLine k     -> do x <- io Prelude.getLine; return (k x)
-         PutStrLn xs k -> do io (Prelude.putStrLn xs); return k)
+teletypeIO = interpret $
+  (\(GetLine k)     -> do x <- io Prelude.getLine; return (k x)) :%
+  (\(PutStrLn xs k) -> do io (Prelude.putStrLn xs); return k)    :% endCase
 ```
 -->
 
@@ -266,12 +266,9 @@ underlying signature `Tick_`. The convention is to add an *underscore* for the *
 
 ### Pattern Synonym
 
-A pattern synonym `Tick` is defined that projects `Alg Tick_` into
-an `Effs` type, which is the type used to assemble multiple effects into one:
+A pattern synonym `Tick` is defined:
 ```haskell
-pattern Tick :: Member Tick sigs => k -> Effs sigs m k
-pattern Tick p <- (prj -> Just (Alg (Tick_ p)))
-  where Tick p = inj (Alg (Tick_ p))
+pattern Tick p = Alg (Tick_ p)
 ```
 
 ### Smart Constructor
@@ -280,7 +277,7 @@ A smart constructor `tick` is defined that allows programs to be written
 that uses this operation:
 ```haskell
 tick :: () ! '[Tick]
-tick = call (Alg (Tick_ ()))
+tick = call (Tick ())
 ```
 The signature of `tick` uses a `Member` constraint to describe how `tick` can be
 used in any program where `Tick` is in its signature, and this is the same as
@@ -295,9 +292,9 @@ will interpret `Tick` in different ways. The simplest one is `unticker`,
 which removes all instances of `Tick`:
 ```haskell
 unticker :: Handler '[Tick] '[] '[] a a
-unticker = interpret (\(Tick x) -> return x)
+unticker = interpret1 (\(Tick x) -> return x)
 ```
-The `interpret` function builds a handler from a function
+The `interpret1` function builds a handler from a function
 that describes how to rephrase an operation. Here, `Tick x`
 is translated into `return x`.
 
@@ -307,30 +304,30 @@ with an `Int` to keep track of how many ticks have been produced.
 Notice that the `gen` function generates these operations from the given `tick`:
 ```haskell
 tickState :: Handler '[Tick] '[Put Int, Get Int] '[] a a
-tickState = interpret rephrase where
-  rephrase :: Effs '[Tick] m x -> Prog [Put Int, Get Int] x
+tickState = interpret1 rephrase where
+  rephrase :: Tick m x -> Prog [Put Int, Get Int] x
   rephrase (Tick x) = do n <- get
                          put @Int (n + 1)
                          return x
 ```
 The `ticker` is produced by combining `tickState` with the `state` handler using
-the _pipe_ combinator, written `h1 ||> h2` to pipe the handler `h1` into the
+the _pipe_ combinator, written `h1 \\ h2` to pipe the handler `h1` into the
 handler `h2`.
 
 ```haskell
 ticker :: Handler '[Tick] '[] '[StateT Int] a (a, Int)
-ticker = tickState ||> state (0 :: Int)
+ticker = tickState \\ state (0 :: Int)
 ```
 Given `h1 :: Handler sigs1 osigs1 t1 f1` and `h2 :: Handler sigs2 osigs2 t2 f2`, the
-result of `h1 ||> h2` is a handler that recognises all of `sigs1`, the input
+result of `h1 \\ h2` is a handler that recognises all of `sigs1`, the input
 effects of `h1`, and passes any effects `osigs1` produced by `h1` to be processed
 by `h2`. Here are the types involved:
 ```haskell ignore
-(||>) :: ...
-  => Handler sigs1 osigs1 ts1 fs1    -- h1
-  -> Handler sigs2 osigs2 ts2 fs2    -- h2
-  -> Handler sigs1
-             ((osigs1 :\\ sigs2) `Union` osigs2)
+(\\) :: ...
+  => Handler effs1 oeffs1 ts1 fs1    -- h1
+  -> Handler effs2 oeffs2 ts2 fs2    -- h2
+  -> Handler effs1
+             ((oeffs1 :\\ effs2) `Union` oeffs2)
              (ts1 :++ ts2)
              (fs2 :++ fs1)
 ```
@@ -370,7 +367,7 @@ getLineIncr
              '[]                              -- no transformers
              a
              a
-getLineIncr = interpret $ \(GetLine k) ->
+getLineIncr = interpret1 $ \(GetLine k) ->
   do xs <- getLine
      incr
      return (k xs)
@@ -386,7 +383,7 @@ getLineIncrState :: Handler '[GetLine]   -- input effects
                             '[StateT Int]
                             a
                             (a, Int)
-getLineIncrState = getLineIncr ||> (state (0 :: Int))
+getLineIncrState = getLineIncr \\ (state (0 :: Int))
 ```
 This can then be executed using `handleIO`, which will deal with
 the residual `GetLine` effect:

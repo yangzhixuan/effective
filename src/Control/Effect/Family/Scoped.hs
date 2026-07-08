@@ -118,8 +118,8 @@ instance Functor sig => Forward (Scp sig) (ReaderT w) where
 -- operation recursively to all @m@-actions inside the `ListT` value.
 instance U.Unary sig => Forward (Scp sig) ListT where
   type FwdConstraint (Scp sig) ListT = Functor
-  fwd :: forall m. Functor m => Algebra1 (Scp sig) m
-      -> Algebra1 (Scp sig) (ListT m)
+  fwd :: forall m. Functor m => (forall x. Scp sig m x -> m x)
+      -> (forall x. Scp sig (ListT m) x -> ListT m x)
   fwd alg (Scp op) = hmap ualg (U.get op) where
     ualg :: forall y. m y -> m y
     ualg op' = alg (Scp (U.upd op op'))
@@ -144,8 +144,8 @@ A similar problem occurs for these instances of `CutListT` and `LogicT`:
 
 instance (Functor s, U.Unary sig) => Forward (Scp sig) (ResT s) where
   type FwdConstraint (Scp sig) (ResT s) = Functor
-  fwd :: forall m. Functor m => Algebra1 (Scp sig) m
-      -> Algebra1 (Scp sig) (ResT s m)
+  fwd :: forall m. Functor m => (forall x. Scp sig m x -> m x)
+      -> (forall x. Scp sig (ResT s m) x -> ResT s m x)
   fwd alg (Scp op) = hmap ualg (U.get op) where
     ualg :: forall y. m y -> m y
     ualg op' = alg (Scp (U.upd op op'))

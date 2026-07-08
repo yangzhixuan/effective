@@ -19,7 +19,7 @@ module Control.Effect.IO (
   -- ** Operations
   Alg (..),
   IO,
-  io,
+  io, ioM,
 
   -- * Semantics
   -- ** Handlers
@@ -54,6 +54,10 @@ ioAlgC = nativeAlgC
 -- | Treating an IO computation as an operation of signature `Alg IO`.
 io :: IO a -> a ! '[Alg IO]
 io op = call (Alg op)
+
+-- | Treating an IO computation as an operation of signature `Alg IO`.
+ioM :: (Alg IO `Member` effs) => Algebra effs m -> IO a -> m a
+ioM alg op = callM alg (Alg op)
 
 -- | A carrier that stores an `IO` action and ignores the lower monad.
 --

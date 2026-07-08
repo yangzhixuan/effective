@@ -47,7 +47,7 @@ to the terminal can be achieved. The example uses two user-defined operations,
 `getLine` and `putStrLn`, which are generated from their operation signatures:
 ```haskell
 $(makeGen [e| getLine  :: String |])
-$(makeGen [e| putStrLn :: String -> () |])
+$(makeGen [e| putStrLn :: String ~> () |])
 ```
 This generates operations with the following types:
 ```haskell ignore
@@ -93,13 +93,14 @@ For now the main type parameters of this handler of interest indicate the
 --                     |                    |         |  | +- handler result
 --                     |                    |         |  | |
 teletypeIO :: Handler '[GetLine, PutStrLn] '[Alg IO] '[] a a
-teletypeIO = interpret
-  (\case (GetLine k)     -> do x <- io (Prelude.getLine); return (k x)
-         (PutStrLn xs k) -> do x <- io (Prelude.putStrLn xs); return k)
+teletypeIO = interpret $
+  (\(GetLine k)     -> do x <- io (Prelude.getLine); return (k x)) :%
+  (\(PutStrLn xs k) -> do x <- io (Prelude.putStrLn xs); return k) :% endCase
 ```
 Looking at the body of this handler, we can see that it functions by interpreting
 the syntax of `GetLine` and `PutStrLn` in terms of calls to `io` which
-schedules the appropriate actions.
+schedules the appropriate actions. The clauses for the operations are put together
+using the binary operator `(:%)`, finished with `endCase`.
 
 The output effects of `teletypeIO` is `Alg IO`, which must be fully consumed
 before the program can be handled. This is achieved by composing
@@ -111,16 +112,16 @@ The signature of `constIO` promises to consume `Alg IO` and produce no additiona
 effects. It does so by using `ConstIO` internally, and takes the program
 result `a` into a handler result `IO a`
 
-Using the pipe operator `||>`, we combine `teletypeIO` with `constIO` into
+Using the pipe operator `\\`, we combine `teletypeIO` with `constIO` into
 a single handler that can interpret the `echo` program:
 <!--
 ```haskell
 exampleIO :: IO ()
-exampleIO = handle (teletypeIO ||> constIO) echo
+exampleIO = handle (teletypeIO \\ constIO) echo
 ```
 -->
 ```console
-ghci> handle (teletypeIO ||> constIO) echo :: IO ()
+ghci> handle (teletypeIO \\ constIO) echo :: IO ()
 Hello world!
 Hello world!
 ```
@@ -131,14 +132,14 @@ A different interpretation changes only the handler. Instead of running
 the terminal version, the same `echo` program can be given a pure input
 buffer and a pure output log by applying a different handler:
 ```haskell
-teletypeStateWriter :: Handler 
+teletypeStateWriter :: Handler
   '[GetLine, PutStrLn] '[Put [String], Get [String], Tell [String]] '[] a a
-teletypeStateWriter = interpret
-  (\case GetLine k     -> do xs <- get; case xs of
-                                          []    -> return (k "")
-                                          x:xs' -> do put xs'
-                                                      return (k x)
-         PutStrLn xs k -> do tell [xs]; return k)
+teletypeStateWriter = interpret $
+  (\(GetLine k)     ->  do xs <- get; case xs of
+                                        []    -> return (k "")
+                                        x:xs' -> do put xs'
+                                                    return (k x)) :%
+  (\(PutStrLn xs k) -> do tell [xs]; return k) :% endCase
 ```
 This translation replaces `getLine` and `putStrLn` with different operations.
 This can be done in terms of `get`, `put`, and `tell`, and these can
@@ -150,7 +151,7 @@ teletypePure :: [String]
                         '[StateT [String], WriterT [String]]
                         a ([String], a)
 teletypePure input =
-  (teletypeStateWriter ||> state_ input) ||> writer
+  (teletypeStateWriter \\ state_ input) \\ writer
 ```
 The handler consumes strings from its input list; when the list is exhausted it
 returns the blank line that makes `echo` stop, and it returns the strings that

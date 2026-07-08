@@ -144,7 +144,7 @@ instance Monad (Prog sigs) where
 -- | Weaken a program of type @Prog effs a@ so that it can be used in place of a
 -- program of type @Prog effs a@, when every @effs@ is a member of @effs'@.
 {-# INLINE weakenProg #-}
-weakenProg :: forall effs effs' a. ( Injects effs effs')
+weakenProg :: forall effs effs' a. (Injects effs effs')
   => Prog effs a -> Prog effs' a
 weakenProg p = Prog $ \alg -> runProg p (weakenAlg alg)
 
