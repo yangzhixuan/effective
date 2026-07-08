@@ -62,12 +62,3 @@ test3 = handle (h [("x", 3)]) ex
 
 main :: IO()
 main = return ()
-
-euclid :: Int ! '[Put Int, Get Int, "b" :@ Put Int, "b" :@ Get Int]
-euclid = do a <- get; b <- getN "b"
-            if b == 0
-              then return a
-              else do put b; putN "b" (a `mod` b); euclid
-
--- >>> handle (state_ (980 :: Int) |> renameEffs (Proxy @"b") (state_ (400 :: Int))) euclid
--- 20
