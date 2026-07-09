@@ -162,7 +162,7 @@ instance Sequence s => Functor (Case_ s effs f x) where
 -- * Membership of an effect in effect rows
 --------------------------------------------------------------------------------
 
-class Member eff effs where
+class Member (eff :: Effect) (effs :: [Effect]) where
   -- We are relying on GHC to optimise @(1 + 1 + ... + 0)@ to a numeral @n@
   -- statically. A more reliable way is to make the length a type-level @Nat@ and use @KnownNat@.
   memberIndex :: Int
