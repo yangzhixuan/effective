@@ -228,19 +228,58 @@ callKM :: forall eff effs a b m s . (Monad m, Member eff effs, Sequence s)
        => Algebra_ s effs m -> eff m a -> (a -> m b) -> m b
 callKM oalg x k = callM oalg x >>= k
 
--- * Concatenating cases and algebras
+-- * Weakening and concatenating algebras
 --------------------------------------------------------------------------------
 
-class KnownEffs (xs :: [Effect]) where
+-- | @Members xeffs yeffs@ expresses that @xeffs@ is a subset of @yeffs@.
+-- Alongside @'Members_' xeffs yeffs@, @'KnownEffs' xeffs@ is needed for
+-- weakening an algebra of @yeffs@ to an algebra of @xeffs@ by 'weakenAlg'.
+type Members xeffs yeffs = (Members_ xeffs yeffs, KnownEffs xeffs)
+
+-- | @Members_ effs effs'@ holds when every @eff@ which is a 'Member' of in @effs@
+-- is also a 'Member' of @effs'@.
+type family Members_ (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint where
+  Members_ '[]             xyeffs = ()
+  Members_ (xeff ': xeffs) xyeffs = (Member xeff xyeffs, Members_ xeffs xyeffs)
+
+class KnownEffs (xeffs :: [Effect]) where
   lengthEffs :: Int
+
+  -- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
+  -- every effect in @xeffs@ is in @xyeffs@.
+  weakenAlg :: forall xyeffs s m . (Members_ xeffs xyeffs, Sequence s)
+            => Algebra_ s xyeffs m -> Algebra_ s xeffs m
+
+  -- | Weakens a static algebra.
+  weakenAlgC :: Members_ xeffs xyeffs => AlgebraC xyeffs m -> AlgebraC xeffs m
 
 instance KnownEffs '[] where
   {-# INLINE lengthEffs #-}
   lengthEffs = 0
 
+  {-# INLINE weakenAlg #-}
+  weakenAlg _ = endAlg
+
+  weakenAlgC _ = EndAC
+
 instance KnownEffs effs => KnownEffs (eff : effs) where
   {-# INLINE lengthEffs #-}
   lengthEffs = 1 + lengthEffs @effs
+
+  {-# INLINE weakenAlg #-}
+  weakenAlg xyAlg = dispatch xyAlg :# weakenAlg @effs xyAlg
+
+  weakenAlgC cxys = dispatchC cxys :#$ weakenAlgC @effs cxys
+
+-- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
+-- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
+-- If an effect is in both @xeffs@ and @yeffs@, the algebra for @xeffs@ is used.
+{-# INLINE unionAlg #-}
+unionAlg :: forall xeffs yeffs m s.
+     (Members (yeffs :\\ xeffs) yeffs, Sequence s)
+  => Algebra_ s xeffs m -> Algebra_ s yeffs m
+  -> Algebra_ s (xeffs `Union` yeffs) m
+unionAlg xalg yalg = appendAlg @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
 
 {-# INLINE appendCases #-}
 appendCases :: Sequence s => Case_ s xeffs m x y -> Case_ s yeffs m x y
@@ -276,46 +315,6 @@ infixr 6 #
     -> Algebra_ s eff2 m
     -> Algebra_ s (eff1 :++ eff2) m
 falg # galg = appendAlg falg galg
-
--- * Subeffects
---------------------------------------------------------------------------------
-
--- | @AllMember effs effs'@ holds when every @eff@ which is a 'Member' of in @effs@
--- is also a 'Member' of @effs'@.
-type family AllMember (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint where
-  AllMember '[] xyeffs             = ()
-  AllMember (xeff ': xeffs) xyeffs = (Member xeff xyeffs, AllMember xeffs xyeffs)
-
--- | This class expresses that every effect in @xeffs@ is a member of @xyeffs@.
-class (AllMember xeffs xyeffs) => Members (xeffs :: [Effect]) (xyeffs :: [Effect]) where
-  -- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
-  -- every effect in @xeffs@ is in @xyeffs@.
-  weakenAlg :: forall m s . Sequence s => Algebra_ s xyeffs m -> Algebra_ s xeffs m
-
-  -- | Weakens a static algebra.
-  weakenAlgC :: AlgebraC xyeffs m -> AlgebraC xeffs m
-
-instance Members '[] xyeffs where
-  {-# INLINE weakenAlg #-}
-  weakenAlg _ = endAlg
-
-  weakenAlgC _ = EndAC
-
-instance (Member xeff xyeffs, Members xeffs xyeffs) => Members (xeff : xeffs) (xyeffs) where
-  {-# INLINE weakenAlg #-}
-  weakenAlg xyAlg = dispatch xyAlg :# weakenAlg @xeffs @xyeffs xyAlg
-
-  weakenAlgC cxys = dispatchC @xeff @xyeffs cxys :#$ weakenAlgC @xeffs @xyeffs cxys
-
--- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
--- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
--- If an effect is in both @xeffs@ and @yeffs@, the algebra for @xeffs@ is used.
-{-# INLINE unionAlg #-}
-unionAlg :: forall xeffs yeffs m s.
-     (Members (yeffs :\\ xeffs) yeffs, Sequence s)
-  => Algebra_ s xeffs m -> Algebra_ s yeffs m
-  -> Algebra_ s (xeffs `Union` yeffs) m
-unionAlg xalg yalg = appendAlg @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
 
 -- * | Definitions related to staged algebras
 ---------------------------------------------

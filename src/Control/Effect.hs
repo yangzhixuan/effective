@@ -32,9 +32,11 @@ module Control.Effect
   -- * Operations
   , Member(..)
   , Members(..)
-  , dispatch
-  , dispatchCases
+  , KnownEffs(..)
   , HasSplitAlgC (..)
+  , dispatch
+  , dispatchC
+  , dispatchCases
 
   -- * Algebras
   , Algebra, Algebra_, AlgebraArray

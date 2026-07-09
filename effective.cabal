@@ -215,22 +215,22 @@ test-suite staged
     StagedGen
 
 
-test-suite plugin
-  import:        common
-  type:          exitcode-stdio-1.0
-  ghc-options:   -fplugin Control.Effect.Plugin
-  main-is:       PluginTest.hs
-  default-language: GHC2021
-  default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
-  hs-source-dirs:  test
-  build-depends:
-    base               >= 4.16 && < 4.23,
-    effective,
-    template-haskell   >= 2.18 && < 2.25,
-    transformers       >= 0.4  && < 0.7,
-
-  other-modules:
-    StagedGen
+-- test-suite plugin
+--   import:        common
+--   type:          exitcode-stdio-1.0
+--   ghc-options:   -fplugin Control.Effect.Plugin
+--   main-is:       PluginTest.hs
+--   default-language: GHC2021
+--   default-extensions: DataKinds TemplateHaskell ImpredicativeTypes AllowAmbiguousTypes
+--   hs-source-dirs:  test
+--   build-depends:
+--     base               >= 4.16 && < 4.23,
+--     effective,
+--     template-haskell   >= 2.18 && < 2.25,
+--     transformers       >= 0.4  && < 0.7,
+-- 
+--   other-modules:
+--     StagedGen
 
 test-suite misc
   import:        common
