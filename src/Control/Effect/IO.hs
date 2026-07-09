@@ -105,14 +105,14 @@ handleIO
   :: forall effs oeffs ts a b
   . ( Monad (Apply ts IO)
     , ForwardsM '[Alg IO] ts
-    , Injects oeffs '[Alg IO]
+    , Members oeffs '[Alg IO]
     , HandleM# effs '[Alg IO] )
   => Handler effs oeffs ts a b
   -> Prog (effs `Union` '[Alg IO]) a -> IO b
 handleIO = handleM @effs ioAlg
 
 type HandleIO# effs oeffs xeffs =
-  ( Injects (xeffs :\\ effs) xeffs )
+  ( Members (xeffs :\\ effs) xeffs )
 
 -- | @`handleIO'` h p@ evaluates @p@ using the handler @h@. The handler may
 -- output some effects that are a subset of the IO effects and additionally
@@ -124,10 +124,10 @@ type HandleIO# effs oeffs xeffs =
 -- that come with the IO-monad. Otherwise `handleIO` should be used.
 handleIO'
   :: forall xeffs ioeff effs oeffs ts a b
-  . ( Injects oeffs ioeff
+  . ( Members oeffs ioeff
     , ForwardsM xeffs ts
     , Monad (Apply ts IO)
-    , Injects xeffs ioeff
+    , Members xeffs ioeff
     , HandleIO# effs oeffs xeffs )
   => Proxy xeffs
   -> Algebra ioeff IO

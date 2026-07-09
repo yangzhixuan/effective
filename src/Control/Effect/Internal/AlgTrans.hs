@@ -29,7 +29,7 @@ import Control.Effect.Internal.Forward
 {-# INLINE evalAT #-}
 evalAT :: forall effs oeffs xeffs ts cs m a.
        ( cs m
-       , Injects oeffs xeffs
+       , Members oeffs xeffs
        , Monad (Apply ts m) )
        => Algebra xeffs m
        -> AlgTrans effs oeffs ts cs
@@ -81,13 +81,13 @@ compAT alg1 alg2 = AlgTrans \(oalg :: Algebra effs3 m) -> getAT alg1 (getAT alg2
 -- generating more output effects, and/or with stronger carrier constraints.
 {-# INLINE weakenAT #-}
 weakenAT :: forall effs' oeffs' cs' effs oeffs cs ts.
-            (Injects effs' effs, Injects oeffs oeffs', forall m. cs' m => cs m)
+            (Members effs' effs, Members oeffs oeffs', forall m. cs' m => cs m)
          => AlgTrans effs  oeffs  ts cs
          -> AlgTrans effs' oeffs' ts cs'
 weakenAT at = AlgTrans \oalg -> weakenAlg (getAT at (weakenAlg oalg))
 
 type CaseTrans# effs1 effs2 =
-  ( Injects (effs2 :\\ effs1) effs2 )
+  ( Members (effs2 :\\ effs1) effs2 )
 
 -- | Case splitting on the union of two effect rows. Note that `Union` is defined
 -- two be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
@@ -176,7 +176,7 @@ weakenCAnd at = AlgTrans $ getAT at
 -- | Forget some input effects and add some unused output effects.
 {-# INLINE weakenEffs #-}
 weakenEffs
-       :: (Injects effs' effs, Injects oeffs oeffs')
+       :: (Members effs' effs, Members oeffs oeffs')
        => AlgTrans effs  oeffs  ts cs
        -> AlgTrans effs' oeffs' ts cs
 weakenEffs = weakenAT
@@ -184,7 +184,7 @@ weakenEffs = weakenAT
 -- | Add some unused output effects.
 {-# INLINE weakenOEffs #-}
 weakenOEffs :: forall oeffs' oeffs effs ts cs.
-          Injects oeffs oeffs'
+          Members oeffs oeffs'
        => AlgTrans effs oeffs  ts cs
        -> AlgTrans effs oeffs' ts cs
 weakenOEffs at = AlgTrans \ oalg -> getAT at (weakenAlg oalg)
@@ -192,7 +192,7 @@ weakenOEffs at = AlgTrans \ oalg -> getAT at (weakenAlg oalg)
 -- | Forget some input effects of an algebra transformer.
 {-# INLINE weakenIEffs #-}
 weakenIEffs :: forall effs' effs oeffs ts cs.
-          Injects effs' effs
+          Members effs' effs
        => AlgTrans effs  oeffs ts cs
        -> AlgTrans effs' oeffs ts cs
 weakenIEffs at = AlgTrans \ oalg -> weakenAlg (getAT at oalg)
@@ -217,7 +217,7 @@ interpretAT1
   -> AlgTrans '[eff] oeffs '[] Monad
 interpretAT1 rephrase = AlgTrans (\oalg -> singAlg (eval oalg . rephrase))
 
-type HideAT# effs effs' = (Injects (effs :\\ effs') effs)
+type HideAT# effs effs' = (Members (effs :\\ effs') effs)
 
 -- | Forget some input effects @effs'@.
 {-# INLINE hideAT #-}
@@ -247,9 +247,9 @@ caseATSameC'
 caseATSameC' at1 at2 = weakenC (caseAT' at1 at2)
 
 type UnionAT# effs1 effs2 oeffs1 oeffs2 =
-  ( Injects effs1 effs1, Injects effs2 effs2
-  , Injects oeffs1 (oeffs1 `Union` oeffs2)
-  , Injects oeffs2 (oeffs1 `Union` oeffs2)
+  ( Members effs1 effs1, Members effs2 effs2
+  , Members oeffs1 (oeffs1 `Union` oeffs2)
+  , Members oeffs2 (oeffs1 `Union` oeffs2)
   , CaseTrans# effs1 effs2)
 
 -- | The most general form of case splitting on the union of input effects.
@@ -261,9 +261,9 @@ unionAT :: forall effs1 effs2 oeffs1 oeffs2 cs1 cs2 ts.
 unionAT at1 at2 = caseAT (weakenAT @effs1 at1) (weakenAT @effs2 at2)
 
 type AppendAT# effs1 effs2 oeffs1 oeffs2 =
-  ( Injects effs1 effs1, Injects effs2 effs2
-  , Injects oeffs1 (oeffs1 :++ oeffs2)
-  , Injects oeffs2 (oeffs1 :++ oeffs2)
+  ( Members effs1 effs1, Members effs2 effs2
+  , Members oeffs1 (oeffs1 :++ oeffs2)
+  , Members oeffs2 (oeffs1 :++ oeffs2)
   )
 
 -- | The most general form of case splitting on the concatenation of input effects.
@@ -276,10 +276,10 @@ appendAT at1 at2 = caseAT' (weakenAT @effs1 at1) (weakenAT @effs2 at2)
 
 type WithFwds# effs oeffs xeffs =
   ( CaseTrans# effs xeffs
-  , Injects xeffs xeffs
-  , Injects effs effs
-  , Injects oeffs (oeffs `Union` xeffs)
-  , Injects xeffs (oeffs `Union` xeffs) )
+  , Members xeffs xeffs
+  , Members effs effs
+  , Members oeffs (oeffs `Union` xeffs)
+  , Members xeffs (oeffs `Union` xeffs) )
 
 -- | Bypassing some forwardable effects @xeffs@ along an algebra transformer.
 -- Members of @xeffs@ that are already in @effs@ or @xeffs@ are ignored.
@@ -293,10 +293,10 @@ withFwds :: forall xeffs effs oeffs ts cs.
 withFwds _ at = weakenC (unionAT at (fwds @xeffs))
 
 type WithFwds'# effs oeffs xeffs =
-  ( Injects xeffs xeffs
-  , Injects effs effs
-  , Injects oeffs (oeffs :++ xeffs)
-  , Injects xeffs (oeffs :++ xeffs) )
+  ( Members xeffs xeffs
+  , Members effs effs
+  , Members oeffs (oeffs :++ xeffs)
+  , Members xeffs (oeffs :++ xeffs) )
 
 -- | Bypassing a forwardable effect along an algebra transformer.
 {-# INLINE withFwds' #-}
@@ -311,7 +311,7 @@ withFwds' _ at = weakenC (appendAT at (fwds @xeffs))
 -- ** Fusion-based combinators
 type FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
    ( GeneralFuseAT# effs2 effs2 effs1 effs2 oeffs1 oeffs2 ts1 ts2
-   , Injects effs2 effs2 )
+   , Members effs2 effs2 )
 
 infixr 9 `fuseAT`, `fuseAT'`
 
@@ -397,9 +397,9 @@ fuseAppATC at1 at2 = AlgTransC $ \(oalg :: AlgebraC (oeffs1 :++ oeffs2) m) ->
 infixr 9 `pipeAT`
 
 type PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 =
-   ( Injects (oeffs1 :\\ effs2) ((oeffs1 :\\ effs2) `Union` oeffs2)
-   , Injects oeffs2 ((oeffs1 :\\ effs2) `Union` oeffs2)
-   , Injects oeffs1 ((oeffs1 :\\ effs2) :++ effs2)
+   ( Members (oeffs1 :\\ effs2) ((oeffs1 :\\ effs2) `Union` oeffs2)
+   , Members oeffs2 ((oeffs1 :\\ effs2) `Union` oeffs2)
+   , Members oeffs1 ((oeffs1 :\\ effs2) :++ effs2)
    , forall m . Assoc ts1 ts2 m )
 
 -- | @pipeAT at1 at2@ composes @at1@ and @at2@ in a way that
@@ -448,9 +448,9 @@ pipeATC at1 at2 = AlgTransC $ \oalg ->
 infixr 9 `passAT`
 
 type PassAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 =
-   ( Injects (effs2 :\\ effs1) effs2
-   , Injects oeffs2 (oeffs1 `Union` oeffs2)
-   , Injects oeffs1 (oeffs1 `Union` oeffs2)
+   ( Members (effs2 :\\ effs1) effs2
+   , Members oeffs2 (oeffs1 `Union` oeffs2)
+   , Members oeffs1 (oeffs1 `Union` oeffs2)
    , forall m. Assoc ts1 ts2 m )
 
 -- | @passAT at1 at2@ composes @at1@ and @at2@ in a way that
@@ -475,10 +475,10 @@ passAT at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 `Union` oeffs2) m) ->
 
 
 type PassAT'# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 =
-   (  Injects (effs1 :\\ effs2) effs1
-    , Injects oeffs2 (oeffs1 `Union` oeffs2)
-    , Injects oeffs1 (oeffs1 `Union` oeffs2)
-    , Injects (effs1 `Union` effs2) (effs2 `Union` effs1)
+   (  Members (effs1 :\\ effs2) effs1
+    , Members oeffs2 (oeffs1 `Union` oeffs2)
+    , Members oeffs1 (oeffs1 `Union` oeffs2)
+    , Members (effs1 `Union` effs2) (effs2 `Union` effs1)
     , forall m . Assoc ts1 ts2 m )
 
 infixr 9 `passAT'`
@@ -502,11 +502,11 @@ passAT' at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 `Union` oeffs2) m) ->
      (getAT at1 (getAT (fwds @oeffs1 @ts2) (weakenAlg oalg)))
 
 type GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
-   ( Injects (feffs :\\ effs1) feffs
+   ( Members (feffs :\\ effs1) feffs
    , forall m . Assoc ts1 ts2 m
-   , Injects oeffs1 ((oeffs1 :\\ ieffs) :++ ieffs)
-   , Injects oeffs2             ((oeffs1 :\\ ieffs) :++ (oeffs2 :\\ (oeffs1 :\\ ieffs)))
-   , Injects (oeffs1 :\\ ieffs) ((oeffs1 :\\ ieffs) :++ (oeffs2 :\\ (oeffs1 :\\ ieffs)))
+   , Members oeffs1 ((oeffs1 :\\ ieffs) :++ ieffs)
+   , Members oeffs2             ((oeffs1 :\\ ieffs) :++ (oeffs2 :\\ (oeffs1 :\\ ieffs)))
+   , Members (oeffs1 :\\ ieffs) ((oeffs1 :\\ ieffs) :++ (oeffs2 :\\ (oeffs1 :\\ ieffs)))
    )
 
 {-# INLINE generalFuseAT #-}
@@ -524,8 +524,8 @@ type GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
 -- isn't this case defined specially.)
 generalFuseAT
   :: forall feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
-     ( Injects feffs effs2
-     , Injects ieffs effs2
+     ( Members feffs effs2
+     , Members ieffs effs2
      , ForwardsC cs1 feffs ts1
      , ForwardsC cs2 (oeffs1 :\\ ieffs) ts2
      , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 )
@@ -547,8 +547,8 @@ generalFuseAT _ _ at1 at2 = AlgTrans $ \oalg ->
 
 generalFuseATC
   :: forall feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
-     ( Injects feffs effs2
-     , Injects ieffs effs2
+     ( Members feffs effs2
+     , Members ieffs effs2
      , ForwardsC cs1 feffs ts1
      , ForwardsC cs2 (oeffs1 :\\ ieffs) ts2
      , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 )

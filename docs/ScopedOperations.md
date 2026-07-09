@@ -127,7 +127,7 @@ uncensors = hide (Proxy @'[Tell w]) (censors @w id |> writer_ @w)
 ```
 The key combinator here is `hide`:
 ```haskell ignore
-hide :: forall heffs effs oeffs f . (Injects (effs :\\ heffs) effs, Injects oeffs oeffs)
+hide :: forall heffs effs oeffs f . (Members (effs :\\ heffs) effs, Members oeffs oeffs)
      => Proxy heffs
      -> Handler effs             oeffs f
      -> Handler (effs :\\ heffs) oeffs f

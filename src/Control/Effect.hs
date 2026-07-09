@@ -32,7 +32,8 @@ module Control.Effect
   -- * Operations
   , Member(..)
   , Members(..)
-  , Injects(..)
+  , dispatch
+  , dispatchCases
   , HasSplitAlgC (..)
 
   -- * Algebras

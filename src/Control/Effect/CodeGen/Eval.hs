@@ -57,7 +57,7 @@ evalGen :: forall effs oeffs ts cs a.
            ( cs Gen
            , Monad (Apply ts Gen)
            , ForwardsC ((~) Gen) GenEffects ts
-           , Injects (oeffs `Union` GenEffects) GenEffects
+           , Members (oeffs `Union` GenEffects) GenEffects
            , EvalGen# effs oeffs )
         => AlgTrans effs oeffs ts cs
         -> Prog (effs `Union` GenEffects) a -> Apply ts Gen a
@@ -68,7 +68,7 @@ stage :: forall m effs oeffs ts cs a.
          ( cs Gen
          , Monad (Apply ts Gen)
          , ForwardsC ((~) Gen) GenEffects ts
-         , Injects (oeffs `Union` GenEffects) GenEffects
+         , Members (oeffs `Union` GenEffects) GenEffects
          , Apply ts Gen $~> m
          , EvalGen# effs oeffs )
       => AlgTrans effs oeffs ts cs
@@ -85,7 +85,7 @@ evalGenM :: forall m effs oeffs ts cs a.
             ( cs (GenM m), Monad m
             , Monad (Apply ts (GenM m))
             , ForwardsC ((~) (GenM m)) (GenMEffects m) ts
-            , Injects (oeffs `Union` GenMEffects m) (GenMEffects m)
+            , Members (oeffs `Union` GenMEffects m) (GenMEffects m)
             , EvalGenM# effs oeffs m )
          => AlgTrans effs oeffs ts cs
          -> Prog (effs `Union` GenMEffects m) a -> Apply ts (GenM m) a
@@ -96,7 +96,7 @@ stageM :: forall m m' effs oeffs ts cs a.
             ( cs (GenM m), Monad m
             , Monad (Apply ts (GenM m))
             , ForwardsC ((~) (GenM m)) (GenMEffects m) ts
-            , Injects (oeffs `Union` GenMEffects m) (GenMEffects m)
+            , Members (oeffs `Union` GenMEffects m) (GenMEffects m)
             , Apply ts (GenM m) $~> m'
             , EvalGenM# effs oeffs m )
          => Proxy m
@@ -109,7 +109,7 @@ stageM _ at = down . evalGenM @m at
 -- want to run the meta-program, so the function `stage` is probably more useful.
 stageH :: forall effs oeffs ts a b.
          ( Monad (Apply ts Gen)
-         , Injects oeffs GenEffects
+         , Members oeffs GenEffects
          , ForwardsM GenEffects ts
          , HandleM# effs GenEffects)
       => Handler effs oeffs ts (CodeQ a) (CodeQ b)
@@ -124,7 +124,7 @@ stageH h p =
 stageHM :: forall m effs oeffs ts a b.
          ( Monad (Apply ts (GenM m))
          , Monad m
-         , Injects oeffs (GenMEffects m)
+         , Members oeffs (GenMEffects m)
          , ForwardsM (GenMEffects m) ts
          , HandleM# effs (GenMEffects m))
       => Handler effs oeffs ts (CodeQ a) (CodeQ b)
@@ -142,8 +142,8 @@ stageHM' :: forall m f g xeffs yeffs effs oeffs ts a b.
          ( Monad (Apply ts (GenM m))
          , Monad m
          , f $~> g
-         , Injects oeffs xeffs
-         , Injects yeffs xeffs
+         , Members oeffs xeffs
+         , Members yeffs xeffs
          , ForwardsM yeffs ts
          , HandleM# effs yeffs)
       => Proxy yeffs
@@ -161,8 +161,8 @@ stageHML :: forall m f g xeffs yeffs effs oeffs ts a b.
          , Monad (Apply ts (GenM m))
          , Monad m
          , f $~> g
-         , Injects oeffs xeffs
-         , Injects yeffs xeffs
+         , Members oeffs xeffs
+         , Members yeffs xeffs
          , ForwardsM yeffs ts
          , HandleM# effs yeffs)
       => Proxy yeffs

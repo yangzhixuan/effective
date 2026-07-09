@@ -9,6 +9,7 @@ Stability   : experimental
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
@@ -161,22 +162,23 @@ instance Sequence s => Functor (Case_ s effs f x) where
 -- * Membership of an effect in effect rows
 --------------------------------------------------------------------------------
 
--- TODO: move the member functions out of the Member class.
-
 class Member eff effs where
-  {-# INLINE dispatch #-}
-  dispatch :: Sequence s => Algebra_ s effs m -> (forall x. eff m x -> m x)
-  dispatch (Algebra cases) = dispatchCases cases
-
-  {-# INLINE dispatchCases #-}
-  dispatchCases :: Sequence s => Case_ s effs m x y -> (eff m x -> y)
-  dispatchCases (Case cs) = unsafeCoerce @Any (index cs (memberIndex @eff @effs))
+  -- We are relying on GHC to optimise @(1 + 1 + ... + 0)@ to a numeral @n@
+  -- statically. A more reliable way is to make the length a type-level @Nat@ and use @KnownNat@.
+  memberIndex :: Int
 
   dispatchC :: AlgebraC effs f -> CodeQ (eff f -.> f)
 
-  -- TODO (Zhixuan): We are relying on GHC to optimise @(1 + 1 + ... + 0)@ to a numeral @n@
-  -- statically. A more reliable way is to make the length a type-level @Nat@ and use @KnownNat@.
-  memberIndex :: Int
+
+{-# INLINE dispatch #-}
+dispatch :: forall eff effs s m. (Member eff effs, Sequence s)
+         => Algebra_ s effs m -> (forall x. eff m x -> m x)
+dispatch (Algebra cases) = dispatchCases cases
+
+{-# INLINE dispatchCases #-}
+dispatchCases :: forall eff effs s m x y. (Member eff effs, Sequence s)
+              => Case_ s effs m x y -> (eff m x -> y)
+dispatchCases (Case cs) = unsafeCoerce @Any (index cs (memberIndex @eff @effs))
 
 instance {-# OVERLAPPING #-} Member eff (eff : effs) where
   {-# INLINE memberIndex #-}
@@ -189,12 +191,6 @@ instance Member eff effs => Member eff (eff' : effs) where
   memberIndex = 1 + (memberIndex @eff @effs)
 
   dispatchC (_ :#$ cs) = dispatchC @eff @effs cs
-
--- | @Member effs effs'@ holds when every @eff@ which is a 'Member' of in @effs@
--- is also a 'Member' of @effs'@.
-type family Members (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint where
-  Members '[] xyeffs       = ()
-  Members (xeff ': xeffs) xyeffs = (Member xeff xyeffs, Members xeffs xyeffs)
 
 -- | An obvious isomorphism between two representations of an algebra for a single effect @eff@.
 {-# INLINE singAlgIso #-}
@@ -285,8 +281,14 @@ falg # galg = appendAlg falg galg
 -- * Subeffects
 --------------------------------------------------------------------------------
 
+-- | @Member effs effs'@ holds when every @eff@ which is a 'Member' of in @effs@
+-- is also a 'Member' of @effs'@.
+type family AllMembers (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint where
+  AllMembers '[] xyeffs             = ()
+  AllMembers (xeff ': xeffs) xyeffs = (Member xeff xyeffs, AllMembers xeffs xyeffs)
+
 -- | This class expresses that every effect in @xeffs@ is a member of @xyeffs@.
-class Injects (xeffs :: [Effect]) (xyeffs :: [Effect]) where
+class (AllMembers xeffs xyeffs) => Members (xeffs :: [Effect]) (xyeffs :: [Effect]) where
   -- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
   -- every effect in @xeffs@ is in @xyeffs@.
   weakenAlg :: forall m s . Sequence s => Algebra_ s xyeffs m -> Algebra_ s xeffs m
@@ -294,30 +296,24 @@ class Injects (xeffs :: [Effect]) (xyeffs :: [Effect]) where
   -- | Weakens an static algebra.
   weakenAlgC :: AlgebraC xyeffs m -> AlgebraC xeffs m
 
-instance Injects '[] xyeffs where
+instance Members '[] xyeffs where
   {-# INLINE weakenAlg #-}
   weakenAlg _ = endAlg
 
   weakenAlgC _ = EndAC
 
-instance (Member xeff xyeffs, Injects xeffs xyeffs) => Injects (xeff : xeffs) (xyeffs) where
+instance (Member xeff xyeffs, Members xeffs xyeffs) => Members (xeff : xeffs) (xyeffs) where
   {-# INLINE weakenAlg #-}
   weakenAlg xyAlg = dispatch xyAlg :# weakenAlg @xeffs @xyeffs xyAlg
 
   weakenAlgC cxys = dispatchC @xeff @xyeffs cxys :#$ weakenAlgC @xeffs @xyeffs cxys
-
-instance {-# OVERLAPPING #-} Injects (xeff : xeffs) (xeff : xeffs) where
-  {-# INLINE weakenAlg #-}
-  weakenAlg xyAlg = xyAlg
-
-  weakenAlgC cxys = cxys
 
 -- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
 -- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
 -- If an effect is in both @xeffs@ and @yeffs@, the algebra for @xeffs@ is used.
 {-# INLINE unionAlg #-}
 unionAlg :: forall xeffs yeffs m s.
-     (Injects (yeffs :\\ xeffs) yeffs, Sequence s)
+     (Members (yeffs :\\ xeffs) yeffs, Sequence s)
   => Algebra_ s xeffs m -> Algebra_ s yeffs m
   -> Algebra_ s (xeffs `Union` yeffs) m
 unionAlg xalg yalg = appendAlg @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
@@ -357,7 +353,7 @@ pattern a :#.$ as = (a :#$ (as :#$ EndAC))
 
 -- | Static version of `unionAlg`.
 unionAlgC :: forall xeffs yeffs m a b
-  .  ( Injects (yeffs :\\ xeffs) yeffs )
+  .  ( Members (yeffs :\\ xeffs) yeffs )
   => AlgebraC xeffs m -> AlgebraC yeffs m
   -> AlgebraC (xeffs `Union` yeffs) m
 unionAlgC xalg yalg = (#$) @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)

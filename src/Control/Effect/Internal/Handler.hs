@@ -160,13 +160,13 @@ comp (Handler r1 a1) (Handler r2 a2) =
 {-# INLINE weaken #-}
 weaken
   :: forall effs effs' oeffs oeffs' ts a b
-  . ( Injects effs' effs , Injects oeffs oeffs')
+  . ( Members effs' effs , Members oeffs oeffs')
   => Handler effs  oeffs  ts a b
   -> Handler effs' oeffs' ts a b
 weaken (Handler run halg)
   = Handler (weakenR @_ @oeffs' run) (weakenEffs halg)
 
-type Hide# heffs effs oeffs = (Injects (effs :\\ heffs) effs, Injects oeffs oeffs)
+type Hide# heffs effs oeffs = (Members (effs :\\ heffs) effs, Members oeffs oeffs)
 
 -- | Hides the effects in @heffs@ from the handler. The type argument @heffs@
 -- must be given explicitly since it is only mentioned inside a non-injective
@@ -181,11 +181,11 @@ hide
 hide _ h = weaken h
 
 type Bypass# beffs effs oeffs =
-  ( Injects (beffs :\\ effs) beffs
-  , Injects beffs beffs
-  , Injects effs effs
-  , Injects oeffs (oeffs `Union` beffs)
-  , Injects beffs (oeffs `Union` beffs) )
+  ( Members (beffs :\\ effs) beffs
+  , Members beffs beffs
+  , Members effs effs
+  , Members oeffs (oeffs `Union` beffs)
+  , Members beffs (oeffs `Union` beffs) )
 
 -- | Operations from the output effect @oeffs@ of a handler can be added
 -- to the input effect if the handler can forward it.
@@ -456,7 +456,7 @@ pipeC (HandlerC run1 malg1) (HandlerC run2 malg2)
 type Pass# effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
   ( PassAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 Monad
   , FuseR# effs2 oeffs1 oeffs2 ts1 ts2
-  , Injects (oeffs1 `Union` oeffs2) (oeffs1 `Union` oeffs2))
+  , Members (oeffs1 `Union` oeffs2) (oeffs1 `Union` oeffs2))
 
 -- | @pass h1 h2@ results in a handler that recognises all the effects recognised by
 -- @h1@ and @h2@, but unlike @fuse@, @pass@ doesn't use @h2@ to intercept the
@@ -492,13 +492,13 @@ generalFuse
   :: forall feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
      ( forall m . Monad m => MonadApply ts1 m
      , forall m . Monad m => MonadApply ts2 m
-     , Injects feffs effs2
-     , Injects ieffs effs2
+     , Members feffs effs2
+     , Members ieffs effs2
      , ForwardsM feffs ts1
      , ForwardsM (oeffs1 :\\ ieffs) ts2
      , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2
      , FuseR# effs2 oeffs1 oeffs2 ts1 ts2
-     , Injects oeffs2 oeffs2 )
+     , Members oeffs2 oeffs2 )
   => Proxy feffs -> Proxy ieffs
   -> Handler effs1 oeffs1 ts1 a1 a2
   -> Handler effs2 oeffs2 ts2 a2 a3
@@ -535,7 +535,7 @@ handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
   ||]
 
 type HandleM# effs xeffs =
-  ( Injects (xeffs :\\ effs) xeffs )
+  ( Members (xeffs :\\ effs) xeffs )
 
 -- | @handleM xalg h p@ uses the handler @h@ to evaluate the program @p@ into some
 -- monad @m@ (e.g. the @IO@ monad). The monad @m@ may come with some effects @xeffs@
@@ -547,7 +547,7 @@ handleM :: forall effs oeffs xeffs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
   , ForwardsM xeffs ts
-  , Injects oeffs xeffs
+  , Members oeffs xeffs
   , HandleM# effs xeffs
   )
   => Algebra xeffs m                 -- ^ Algebra @xalg@ for external effects @xeffs@
@@ -565,7 +565,7 @@ handleM xalg (Handler run halg)
 handleM' :: forall effs oeffs xeffs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
-  , Injects oeffs xeffs
+  , Members oeffs xeffs
   )
   => Algebra xeffs m                 -- ^ Algebra @xalg@ for external effects @xeffs@
   -> Handler effs oeffs ts a b       -- ^ Handler @h@
@@ -577,7 +577,7 @@ handleM' xalg (Handler run halg)
 handleMC' :: forall effs oeffs xeffs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
-  , Injects oeffs xeffs
+  , Members oeffs xeffs
   , HandleM# effs xeffs
   )
   => AlgebraC xeffs m
@@ -594,8 +594,8 @@ handleMC' xalgC (HandlerC (RunnerC r) (AlgTransC a)) p =
 handleMFwds :: forall yeffs effs oeffs xeffs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
-  , Injects oeffs xeffs
-  , Injects yeffs xeffs
+  , Members oeffs xeffs
+  , Members yeffs xeffs
   , ForwardsM yeffs ts
   , HandleM# effs yeffs )
   => Proxy yeffs                     -- ^ @yeffs@ can't be infered so must be given explicitly
@@ -611,8 +611,8 @@ handleMFwds _ xalg (Handler run halg)
 handleMFwdsC :: forall yeffs effs oeffs xeffs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
-  , Injects oeffs xeffs
-  , Injects yeffs xeffs
+  , Members oeffs xeffs
+  , Members yeffs xeffs
   , ForwardsM yeffs ts
   , HandleM# effs yeffs )
   => Proxy yeffs
@@ -639,7 +639,7 @@ type HandleP# effs xeffs =
 handleP :: forall effs oeffs xeffs ts a b .
   ( Monad (Apply ts (Prog xeffs))
   , ForwardsM xeffs ts
-  , Injects oeffs xeffs
+  , Members oeffs xeffs
   , HandleP# effs xeffs )
   => Handler effs oeffs ts a b        -- ^ Handler @h@
   -> Prog (effs `Union` xeffs) a     -- ^ Program @p@ that contains @xeffs@
@@ -651,7 +651,7 @@ handleP = handleM progAlg
 handleP' :: forall effs oeffs xeffs ts a b .
   ( Monad (Apply ts (Prog xeffs))
   , Forwards xeffs ts
-  , Injects oeffs xeffs
+  , Members oeffs xeffs
   , ProgAlg# xeffs
   )
   => Handler effs oeffs ts a b       -- ^ Handler @h@
@@ -669,7 +669,7 @@ handleMApp :: forall effs oeffs xeffs m ts a b .
   ( Monad m
   , Monad (Apply ts m)
   , ForwardsM xeffs ts
-  , Injects oeffs xeffs
+  , Members oeffs xeffs
   )
   => Algebra xeffs m                -- ^ Algebra @xalg@ for external effects @xeffs@
   -> Handler effs oeffs ts a b       -- ^ Handler @h@
@@ -686,7 +686,7 @@ handleMApp xalg (Handler run halg)
 handlePApp :: forall effs oeffs xeffs ts a b .
   ( ForwardsM xeffs ts
   , Monad (Apply ts (Prog xeffs))
-  , Injects oeffs xeffs
+  , Members oeffs xeffs
   , ProgAlg# xeffs
   ) => Handler effs oeffs ts a b        -- ^ Handler @h@
   -> Prog (effs :++ xeffs) a           -- ^ Program @p@ that contains @xeffs@

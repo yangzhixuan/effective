@@ -29,7 +29,7 @@ source-repository head
 common common
   default-language: GHC2021
   default-extensions:
-    DataKinds, CPP, ViewPatterns, PatternSynonyms, TemplateHaskell, PartialTypeSignatures
+    DataKinds, CPP, ViewPatterns, PatternSynonyms, TemplateHaskell, PartialTypeSignatures, MonoLocalBinds
   if impl(ghc >=9.10.1)
     default-extensions: RequiredTypeArguments
 
@@ -128,6 +128,7 @@ library
     ghc                >= 9.2.1  && < 9.15
 
 test-suite readme
+  import:        common
   type:          exitcode-stdio-1.0
   ghc-options:   -threaded -pgmL markdown-unlit
   main-is:       README.lhs
@@ -184,6 +185,7 @@ test-suite concur
     containers         >= 0.6    && < 0.9,
 
 test-suite hostore
+  import:        common
   type:          exitcode-stdio-1.0
   ghc-options:   -threaded
   main-is:       HOStore.hs
@@ -195,6 +197,7 @@ test-suite hostore
     effective,
 
 test-suite staged
+  import:        common
   type:          exitcode-stdio-1.0
   main-is:       Staged.hs
   default-language: GHC2021
@@ -213,6 +216,7 @@ test-suite staged
 
 
 test-suite plugin
+  import:        common
   type:          exitcode-stdio-1.0
   ghc-options:   -fplugin Control.Effect.Plugin
   main-is:       PluginTest.hs
@@ -229,7 +233,7 @@ test-suite plugin
     StagedGen
 
 test-suite misc
-  import: common
+  import:        common
   type:          exitcode-stdio-1.0
   main-is:       Misc.hs
   default-language: GHC2021
