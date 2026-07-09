@@ -4,21 +4,86 @@ Description : The data structure for storing effect operations.
 License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
+
+This module defines the type @Algebra effs m@ of @effs@-algebras on a monad @m@.
+In programming terms, an \'algebra\' is exactly an implementation of the effects
+@effs@ on the notion of computation @m@. This file is logically the first file
+of this library. Everything else (programs, algebra transformers, handlers, ...) is
+built on top of algebras.
 -}
 
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE ImpredicativeTypes #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 
-module Control.Effect.Internal.Algebra
-  ( module Control.Effect.Internal.Algebra
+module Control.Effect.Internal.Algebra (
+  -- * Basic Definitions
+    Effect
   , module Data.Sequence.Class
+  , Algebra
+  , Algebra_
+  , AlgebraArray
+  , Case
+  , Case_
+
+  -- * Basic interface of algebras
+  , unsafeAlgebra
+  , algebraFromCase
+  , nilAlg
+  , endAlg
+  , tailAlg
+  , viewAlgebra
+  , toAlgebraArray
+  , pattern (:#)
+  , pattern (:#.)
+
+  -- * Basic interface of cases
+  , nilCase
+  , endCase
+  , consCase
+  , tailCase
+  , headCase
+  , viewCase
+  , pattern (:%)
+  , pattern (:%.)
+
+  -- * Membership of an effect in an effect set
+  , Member(..)
+  , Members
+  , Members_
+  , KnownEffs(..)
+  , dispatch
+  , dispatchCases
+  , dispatchC
+  , singAlgIso
+  , singAlg
+  , callM
+  , callMC
+  , unsafeCallM
+  , callJM
+  , callKM
+
+  -- * Appending/union algebras
+  , unionAlg
+  , appendCases
+  , appendAlg
+  , splitCase
+  , splitAlg
+  , (#)
+
+  -- * Static algebras
   , CodeQ
+  , NatTrans(..)
+  , type (-.>)
+  , AlgebraC(..)
+  , CaseC(..)
+  , (#$)
+  , appendAlgC
+  , pattern (:#.$)
+  , unionAlgC
+  , HasSplitAlgC(..)
+  , genAlgebra
   )
   where
 
@@ -79,6 +144,10 @@ type Case effs f x y = Case_ FT.Seq effs f x y
 {-# INLINE unsafeAlgebra #-}
 unsafeAlgebra :: s Any -> Algebra_ s effs m
 unsafeAlgebra cs = Algebra (Case cs)
+
+{-# INLINE algebraFromCase #-}
+algebraFromCase :: (forall x. Case_ s effs f x (f x)) -> Algebra_ s effs f
+algebraFromCase = Algebra
 
 {-# INLINE endCase #-}
 {-# INLINE nilCase #-}

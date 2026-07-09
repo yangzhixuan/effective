@@ -206,7 +206,7 @@ interpretAT
   :: forall effs oeffs.
      (forall m x . Case effs m x (Prog oeffs x))                -- ^ @rephrase@
   -> AlgTrans effs oeffs '[] Monad
-interpretAT rephrase = AlgTrans (\oalg -> Algebra (fmap (eval oalg) rephrase))
+interpretAT rephrase = AlgTrans (\oalg -> algebraFromCase (fmap (eval oalg) rephrase))
 
 {-# INLINE interpretAT1 #-}
 -- | A special case of `interpretAT` for one effect @eff@.
