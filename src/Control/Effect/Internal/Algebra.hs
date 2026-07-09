@@ -281,14 +281,14 @@ falg # galg = appendAlg falg galg
 -- * Subeffects
 --------------------------------------------------------------------------------
 
--- | @Member effs effs'@ holds when every @eff@ which is a 'Member' of in @effs@
+-- | @AllMember effs effs'@ holds when every @eff@ which is a 'Member' of in @effs@
 -- is also a 'Member' of @effs'@.
-type family AllMembers (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint where
-  AllMembers '[] xyeffs             = ()
-  AllMembers (xeff ': xeffs) xyeffs = (Member xeff xyeffs, AllMembers xeffs xyeffs)
+type family AllMember (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint where
+  AllMember '[] xyeffs             = ()
+  AllMember (xeff ': xeffs) xyeffs = (Member xeff xyeffs, AllMember xeffs xyeffs)
 
 -- | This class expresses that every effect in @xeffs@ is a member of @xyeffs@.
-class (AllMembers xeffs xyeffs) => Members (xeffs :: [Effect]) (xyeffs :: [Effect]) where
+class (AllMember xeffs xyeffs) => Members (xeffs :: [Effect]) (xyeffs :: [Effect]) where
   -- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
   -- every effect in @xeffs@ is in @xyeffs@.
   weakenAlg :: forall m s . Sequence s => Algebra_ s xyeffs m -> Algebra_ s xeffs m
