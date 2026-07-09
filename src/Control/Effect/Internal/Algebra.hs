@@ -167,9 +167,6 @@ class Member eff effs where
   -- statically. A more reliable way is to make the length a type-level @Nat@ and use @KnownNat@.
   memberIndex :: Int
 
-  dispatchC :: AlgebraC effs f -> CodeQ (eff f -.> f)
-
-
 {-# INLINE dispatch #-}
 dispatch :: forall eff effs s m. (Member eff effs, Sequence s)
          => Algebra_ s effs m -> (forall x. eff m x -> m x)
@@ -180,17 +177,19 @@ dispatchCases :: forall eff effs s m x y. (Member eff effs, Sequence s)
               => Case_ s effs m x y -> (eff m x -> y)
 dispatchCases (Case cs) = unsafeCoerce @Any (index cs (memberIndex @eff @effs))
 
+dispatchC :: forall eff effs f. Member eff effs => AlgebraC effs f -> CodeQ (eff f -.> f)
+dispatchC algC = unsafeIndex (memberIndex @eff @effs) algC where
+  unsafeIndex :: forall effs'. Int -> AlgebraC effs' f -> CodeQ (eff f -.> f)
+  unsafeIndex 0 (c :#$ _)  = unsafeCoerce c
+  unsafeIndex n (_ :#$ cs) = unsafeIndex (n-1) cs
+
 instance {-# OVERLAPPING #-} Member eff (eff : effs) where
   {-# INLINE memberIndex #-}
   memberIndex = 0
 
-  dispatchC (c :#$ _) = c
-
 instance Member eff effs => Member eff (eff' : effs) where
   {-# INLINE memberIndex #-}
   memberIndex = 1 + (memberIndex @eff @effs)
-
-  dispatchC (_ :#$ cs) = dispatchC @eff @effs cs
 
 -- | An obvious isomorphism between two representations of an algebra for a single effect @eff@.
 {-# INLINE singAlgIso #-}
@@ -220,13 +219,13 @@ unsafeCallM n (Algebra (Case cs)) = unsafeCoerce @Any @(forall x. eff m x -> m x
 -- | A variant of @callJ@ for which the effect is on a given monad rather than the @Prog@ monad.
 {-# INLINE callJM #-}
 callJM :: forall eff effs a m s . (Monad m, Member eff effs, Sequence s)
-      => Algebra_ s effs m -> eff m (m a) -> m a
+       => Algebra_ s effs m -> eff m (m a) -> m a
 callJM oalg x = callM oalg x >>= id
 
 -- | A variant of @callK@ for which the effect is on a given monad rather than the @Prog@ monad.
 {-# INLINE callKM #-}
 callKM :: forall eff effs a b m s . (Monad m, Member eff effs, Sequence s)
-      => Algebra_ s effs m -> eff m a -> (a -> m b) -> m b
+       => Algebra_ s effs m -> eff m a -> (a -> m b) -> m b
 callKM oalg x k = callM oalg x >>= k
 
 -- * Concatenating cases and algebras
@@ -245,13 +244,13 @@ instance KnownEffs effs => KnownEffs (eff : effs) where
 
 {-# INLINE appendCases #-}
 appendCases :: Sequence s => Case_ s xeffs m x y -> Case_ s yeffs m x y
-          -> Case_ s (xeffs :++ yeffs) m x y
+            -> Case_ s (xeffs :++ yeffs) m x y
 appendCases (Case xs) (Case ys) = Case (append xs ys)
 
 {-# INLINE appendAlg #-}
 appendAlg :: forall xeffs yeffs m s. Sequence s
-        => Algebra_ s xeffs m -> Algebra_ s yeffs m
-        -> Algebra_ s (xeffs :++ yeffs) m
+          => Algebra_ s xeffs m -> Algebra_ s yeffs m
+          -> Algebra_ s (xeffs :++ yeffs) m
 appendAlg (Algebra as) (Algebra bs) = Algebra $ appendCases as bs
 
 {-# INLINE splitCase #-}
@@ -273,9 +272,9 @@ infixr 6 #
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
 {-# INLINE (#) #-}
 (#) :: forall eff1 eff2 m s . Sequence s
-  => Algebra_ s eff1 m
-  -> Algebra_ s eff2 m
-  -> Algebra_ s (eff1 :++ eff2) m
+    => Algebra_ s eff1 m
+    -> Algebra_ s eff2 m
+    -> Algebra_ s (eff1 :++ eff2) m
 falg # galg = appendAlg falg galg
 
 -- * Subeffects
@@ -293,7 +292,7 @@ class (AllMember xeffs xyeffs) => Members (xeffs :: [Effect]) (xyeffs :: [Effect
   -- every effect in @xeffs@ is in @xyeffs@.
   weakenAlg :: forall m s . Sequence s => Algebra_ s xyeffs m -> Algebra_ s xeffs m
 
-  -- | Weakens an static algebra.
+  -- | Weakens a static algebra.
   weakenAlgC :: AlgebraC xyeffs m -> AlgebraC xeffs m
 
 instance Members '[] xyeffs where
