@@ -177,6 +177,16 @@ Documentation
 A tutorial for how to use this library can be found in [docs/README.md](docs/README.md).
 Another resource is the paper [Composing and Staging Effect Handlers](https://yangzhixuan.github.io/pdf/effective-paper.pdf), which is a self-contained explanation of the design of this library.
 
+The codebase also contains some Haddock documentation (although not very complete at the moment). A
+logical order of source files is as follows:
+
+* `Control/Effect/Internal/Algebra.hs`
+* `Control/Effect/Internal/Prog/ProgImp.hs`
+* `Control/Effect/Internal/AlgTrans.hs`
+* `Control/Effect/Internal/Forward.hs`
+* `Control/Effect/Internal/Runner.hs`
+* `Control/Effect/Internal/Handler.hs`
+* The standard effects in `Control/Effects/` such as `Control/Effect/Reader.hs`
 
 <!--
 Language Extensions
