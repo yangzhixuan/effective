@@ -95,10 +95,10 @@ resumpWith :: forall a b . Action a => [Bool] -> Handler '[Act a, Par, Res a] '[
 resumpWith choices = handler' (runWith choices) resumpAlg
 
 -- | Resumption-based handler of concurrency. Non-deterministic choices are resolved
--- with the given program (of effect @sig@).
-resumpWithM :: forall sig a b .
+-- with the given program (of effect @eff@).
+resumpWithM :: forall eff a b .
                ( Action a )
-            => Prog sig Bool -> Handler '[Act a, Par, Res a] sig '[C.CResT a] b (ActsMb a b)
+            => Prog eff Bool -> Handler '[Act a, Par, Res a] eff '[C.CResT a] b (ActsMb a b)
 resumpWithM pb = handler (\oalg -> runWithM (eval oalg pb))  (\_ -> resumpAlg)
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
@@ -113,10 +113,10 @@ jresumpWith :: forall a b. Action a => [Bool] -> Handler '[Act a, JPar, Res a] '
 jresumpWith choices = handler' (runWith choices) jresumpAlg
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
--- Non-deterministic choices are resolved with the given program (of effect @sig@).
-jresumpWithM :: forall sig a b.
+-- Non-deterministic choices are resolved with the given program (of effect @eff@).
+jresumpWithM :: forall eff a b.
                 ( Action a )
-             => Prog sig Bool -> Handler '[Act a, JPar, Res a] sig '[C.CResT a] b (ActsMb a b)
+             => Prog eff Bool -> Handler '[Act a, JPar, Res a] eff '[C.CResT a] b (ActsMb a b)
 jresumpWithM pb = handler (\oalg -> runWithM (eval oalg pb)) (\_ -> jresumpAlg)
 
 type QSemMap a = M.Map a (QSem, QSem)

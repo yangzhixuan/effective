@@ -50,41 +50,37 @@ import Control.Monad.Trans.Except (ExceptT(..), runExceptT)
 
 $(makeAlg [e| throw :: forall e. e ~> 0 |])
 
--- | Internal signature for catching exceptions of type @e@.
+-- | Internal Signature for catching exceptions of type @e@.
 type Catch e = Scp (Catch_ e)
--- | Underlying signature for catching exceptions of type @e@.
+-- | Underlying Signature for catching exceptions of type @e@.
 data Catch_ e k where
   Catch_ :: k -> (e -> k) -> Catch_ e k
   deriving Functor
 
 -- | Syntax for catching exceptions of type @e@. This operation is scoped.
 {-# INLINE catch #-}
-catch :: forall e sig a . Member (Catch e) sig => Prog sig a -> (e -> Prog sig a) -> Prog sig a
+catch :: forall e effs a . Member (Catch e) effs => Prog effs a -> (e -> Prog effs a) -> Prog effs a
 catch p q = call @(Catch e) (Scp (Catch_ p q))
 -- Unfortunately `makeScp` currently doesn't support operations like `catch` here, which
 -- binds a new variable @e -> @ in its second argument.
 
 pattern Catch :: f k -> (e -> f k) -> Catch e f k
-pattern Catch p q <- Scp (Catch_ p q) where
-  Catch p q = Scp (Catch_ p q)
-
-pattern Catch' :: f k -> (e -> f k) -> Scp (Catch_ e) f k
-pattern Catch' p q = Scp (Catch_ p q)
+pattern Catch p q = Scp (Catch_ p q)
 
 {-# INLINE catchM #-}
-catchM :: forall e sig m a . Member (Catch e) sig => Algebra sig m -> m a -> (e -> m a) -> m a
+catchM :: forall e effs m a . Member (Catch e) effs => Algebra effs m -> m a -> (e -> m a) -> m a
 catchM alg p q = dispatch alg (Scp (Catch_ p q))
 
 -- | A pattern synonym for a catch operation in an effect row.
 {-# INLINE catchP #-}
-catchP :: forall n e sig a . Member (n :@ Catch e) sig
-       => Proxy n -> Prog sig a -> (e -> Prog sig a) -> Prog sig a
+catchP :: forall n e effs a . Member (n :@ Catch e) effs
+       => Proxy n -> Prog effs a -> (e -> Prog effs a) -> Prog effs a
 catchP n p q = callP n (Catch p q)
 
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
 {-# INLINE catchN #-}
-catchN :: forall n -> forall e sig a . Member (n :@ Catch e) sig
-       => Prog sig a -> (e -> Prog sig a) -> Prog sig a
+catchN :: forall n -> forall e effs a . Member (n :@ Catch e) effs
+       => Prog effs a -> (e -> Prog effs a) -> Prog effs a
 catchN n p q = callN n (Catch p q)
 #endif
 

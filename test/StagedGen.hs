@@ -52,8 +52,8 @@ upGen c = return c
 downGen :: forall a. Gen (CodeQ a) -> CodeQ a
 downGen g = unGen g id
 
-choiceGen :: forall sig m. Members '[CodeGen, UpOp m, Choose, Empty] sig
-          => CodeQ Int -> CodeQ (Int -> m Int) -> Prog sig (CodeQ Int)
+choiceGen :: forall effs m. Members '[CodeGen, UpOp m, Choose, Empty] effs
+          => CodeQ Int -> CodeQ (Int -> m Int) -> Prog effs (CodeQ Int)
 choiceGen cN self =
   do b <- split [|| $$cN > 0 ||]
      if b
@@ -98,8 +98,8 @@ mergePS ma = PushT \kc kn ->
      kc' <- genLet_ [|| \a t -> runIdentity $$(down (kc [||a||] (return [||runIdentity t||]))) ||]
      runPushT ma (\ca mas -> return [|| $$kc' $$ca $$(down mas) ||]) (return kn')
 
-noJoinProg :: (Members '[Put (CodeQ Int), Get (CodeQ Int), Mb.Throw, Mb.Catch, CodeGen] sig)
-         => CodeQ Bool -> Prog sig (CodeQ ())
+noJoinProg :: (Members '[Put (CodeQ Int), Get (CodeQ Int), Mb.Throw, Mb.Catch, CodeGen] effs)
+         => CodeQ Bool -> Prog effs (CodeQ ())
 noJoinProg b =
   do genCase b (\case
          True  -> putC [|| 10 :: Int ||]
@@ -108,8 +108,8 @@ noJoinProg b =
      put [|| $$s + $$s ||]
      return [|| () ||]
 
-resetProg :: (Members '[Put (CodeQ Int), Get (CodeQ Int), Mb.Throw, Mb.Catch, CodeGen, Reset] sig)
-         => CodeQ Bool -> Prog sig (CodeQ ())
+resetProg :: (Members '[Put (CodeQ Int), Get (CodeQ Int), Mb.Throw, Mb.Catch, CodeGen, Reset] effs)
+         => CodeQ Bool -> Prog effs (CodeQ ())
 resetProg b =
   do reset $ genCase b (\case
          True  -> putC [|| 10 :: Int ||] >> return [||()||]
@@ -118,8 +118,8 @@ resetProg b =
      put [|| $$s + $$s ||]
      return [|| () ||]
 
-joinProg :: (Members '[Put (CodeQ Int), Get (CodeQ Int), Mb.Throw, CodeGen, JoinFlow] sig)
-         => CodeQ Bool -> Prog sig (CodeQ ())
+joinProg :: (Members '[Put (CodeQ Int), Get (CodeQ Int), Mb.Throw, CodeGen, JoinFlow] effs)
+         => CodeQ Bool -> Prog effs (CodeQ ())
 joinProg b =
   do joinFlow $ genCase b (\case
          True  -> putC [|| 10 :: Int ||]
@@ -129,8 +129,8 @@ joinProg b =
      return [|| () ||]
 
 
-ioProg :: Members '[UpOp IO, UpOp m, CodeGen, Put (CodeQ Int), Get (CodeQ Int)] sig
-       => CodeQ (m ()) -> Prog sig (CodeQ ())
+ioProg :: Members '[UpOp IO, UpOp m, CodeGen, Put (CodeQ Int), Get (CodeQ Int)] effs
+       => CodeQ (m ()) -> Prog effs (CodeQ ())
 ioProg self =
   do up [|| putStrLn "Hello" ||]
      s <- get @(CodeQ Int)
@@ -138,8 +138,8 @@ ioProg self =
      if b then put [|| $$s - 1||] >> up self
           else return [||()||]
 
-yieldGen :: Members '[Yield (CodeQ Int) (CodeQ Int), CodeGen, UpOp m] sig
-         => CodeQ (Int -> m Int) -> CodeQ Int -> Prog sig (CodeQ Int)
+yieldGen :: Members '[Yield (CodeQ Int) (CodeQ Int), CodeGen, UpOp m] effs
+         => CodeQ (Int -> m Int) -> CodeQ Int -> Prog effs (CodeQ Int)
 yieldGen self i =
   do i' <- split [|| even $$i ||] >>= \case
         True -> genLet [|| $$i `div` 2 ||]
@@ -150,32 +150,32 @@ yieldGen self i =
 
 -- The following programs are the tests from the heftia benchmark
 --
-catchGen :: forall sig m. Members '[CodeGen, UpOp m, Catch (CodeQ ()), Throw (CodeQ ())] sig 
-         => CodeQ Int -> CodeQ (Int -> m ()) -> Prog sig (CodeQ ())
+catchGen :: forall effs m. Members '[CodeGen, UpOp m, Catch (CodeQ ()), Throw (CodeQ ())] effs 
+         => CodeQ Int -> CodeQ (Int -> m ()) -> Prog effs (CodeQ ())
 catchGen cN self = 
   do b <- split [|| $$cN > 0 ||]
      if b 
       then catch (up [|| $$self ($$cN - 1)||]) (\(_ :: CodeQ ()) -> throw @(CodeQ ()) [||()||])
       else throw @(CodeQ ()) [|| () ||]
 
-countdownGen :: Members '[CodeGen, UpOp m, Put (CodeQ Int), Get (CodeQ Int)] sig 
-             => CodeQ (m ()) -> Prog sig (CodeQ ())
+countdownGen :: Members '[CodeGen, UpOp m, Put (CodeQ Int), Get (CodeQ Int)] effs 
+             => CodeQ (m ()) -> Prog effs (CodeQ ())
 countdownGen self = 
   do cs <- get @(CodeQ Int)
      b <- split [|| $$cs > 0 ||]
      if b then do put [|| $$cs - 1 ||]; up self
           else return [|| () ||]
 
-localGen :: forall sig m. Members '[CodeGen, UpOp m, Ask (CodeQ Int), Local (CodeQ Int)] sig
-         => CodeQ Int -> CodeQ (Int -> m Int) -> Prog sig (CodeQ Int)
+localGen :: forall effs m. Members '[CodeGen, UpOp m, Ask (CodeQ Int), Local (CodeQ Int)] effs
+         => CodeQ Int -> CodeQ (Int -> m Int) -> Prog effs (CodeQ Int)
 localGen cN self =
   do b <- split [|| $$cN > 0 ||]
      if b
        then local @(CodeQ Int) (\r -> [|| $$r + 1 ||]) (up [|| $$self ($$cN - 1) ||])
        else ask @(CodeQ Int)
 
-pythGen :: forall sig m. Members '[CodeGen, Choose, Empty, UpOp m] sig
-        => CodeQ Int -> CodeQ (Int -> m Int) -> Prog sig (CodeQ (Int, Int, Int))
+pythGen :: forall effs m. Members '[CodeGen, Choose, Empty, UpOp m] effs
+        => CodeQ Int -> CodeQ (Int -> m Int) -> Prog effs (CodeQ (Int, Int, Int))
 pythGen cN cChoose = 
   do x <- up ([|| $$cChoose $$cN||])
      y <- up ([|| $$cChoose $$cN||])
@@ -184,15 +184,15 @@ pythGen cN cChoose =
        (return [|| ($$x, $$y, $$z) ||])
        empty
 
-chooseGen :: forall sig m. Members '[CodeGen, Choose, Empty, UpOp m] sig
-        => CodeQ Int -> CodeQ (Int -> m Int) -> Prog sig (CodeQ Int)
+chooseGen :: forall effs m. Members '[CodeGen, Choose, Empty, UpOp m] effs
+        => CodeQ Int -> CodeQ (Int -> m Int) -> Prog effs (CodeQ Int)
 chooseGen cN self =
   genIf [|| $$cN > 0 ||]
     (up [|| $$self ($$cN - 1) ||] <|> return cN)
     empty
 
-coroutine1Gen :: forall sig m. Members '[CodeGen, Yield (CodeQ Int) (CodeQ Int), UpOp m] sig
-              => CodeQ [Int] -> CodeQ ([Int] -> m [Int]) -> Prog sig (CodeQ [Int])
+coroutine1Gen :: forall effs m. Members '[CodeGen, Yield (CodeQ Int) (CodeQ Int), UpOp m] effs
+              => CodeQ [Int] -> CodeQ ([Int] -> m [Int]) -> Prog effs (CodeQ [Int])
 coroutine1Gen cXs self =
   do genCase cXs \case
        Nothing         -> return [|| [] ||]
@@ -201,8 +201,8 @@ coroutine1Gen cXs self =
             rs <- up [|| $$self $$cXs' ||]
             return [|| $$cY : $$rs ||]
 
-coroutine2Gen :: forall sig m a. Members '[CodeGen, Yield (CodeQ Int) (CodeQ Int), UpOp m] sig
-              => CodeQ Int -> CodeQ (Int -> m a) -> Prog sig (CodeQ a)
+coroutine2Gen :: forall effs m a. Members '[CodeGen, Yield (CodeQ Int) (CodeQ Int), UpOp m] effs
+              => CodeQ Int -> CodeQ (Int -> m a) -> Prog effs (CodeQ a)
 coroutine2Gen cA self =
   do cB <- yield [|| $$cA + 100 ||]
      up [|| $$self $$cB ||]

@@ -6,14 +6,14 @@ Maintainer  : Nicolas Wu
 Stability   : experimental
 
 This module defines The family of algebraic operations. For every functor
-@sigs :: Type -> Type@, an algebraic operation of signature @sigs@ on a monad
-@m@ is a function @op :: forall a. sigs (m a) -> m a@ satisfying the following
+@sig :: Type -> Type@, an algebraic operation of signature @sig@ on a monad
+@m@ is a function @op :: forall a. sig (m a) -> m a@ satisfying the following
 property:
 
 > op x >>= k  ==  op (fmap (>>= k) x)
 
-for all @x :: sigs (m a)@ and @k :: a -> m b@. Such operations are in bijection
-with polymorphic functions of type @forall a. sigs a -> m a@, witnessed by
+for all @x :: sig (m a)@ and @k :: a -> m b@. Such operations are in bijection
+with polymorphic functions of type @forall a. sig a -> m a@, witnessed by
 `algOpIso` below.
 
 An important property of algebraic operations is that they can always be
@@ -36,19 +36,19 @@ import Data.HFunctor
 import Control.Monad.Trans.Class ( MonadTrans(..) )
 import Control.Effect.Internal.Algebra 
 
--- | @Alg sigs@ is the (higher-order) signature of algebraic operations of
--- (first-order) signature @sigs@.
+-- | @Alg sig@ is the (higher-order) signature of algebraic operations of
+-- (first-order) signature @sig@.
 
-newtype Alg (sigs :: Type -> Type)
+newtype Alg (sig :: Type -> Type)
          (f :: Type -> Type)
          k
-         = Alg (sigs k)
+         = Alg (sig k)
 
-instance Functor sigs => Functor (Alg sigs f) where
+instance Functor sig => Functor (Alg sig f) where
   {-# INLINE fmap #-}
   fmap f (Alg op) = Alg (fmap f op)
 
-instance Functor sigs => HFunctor (Alg sigs) where
+instance Functor sig => HFunctor (Alg sig) where
   {-# INLINE hmap #-}
   hmap f (Alg op) = Alg op
 
@@ -56,7 +56,7 @@ instance Functor sigs => HFunctor (Alg sigs) where
 -- We mark this instance as incoherent because for specific monad transformers we may
 -- have more general lifting instances. For example, we trivially have
 --
--- > instance Forward sigs IdentityT
+-- > instance Forward sig IdentityT
 --
 -- And this is not strictly more speicific than @Forward (Alg f) t@ so we need the
 -- instance here to be incoherent.

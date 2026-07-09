@@ -18,15 +18,15 @@ import Data.Kind
 import Data.List.Kind
 import Control.Effect.Internal.Algebra
 
--- | Transforming effects @osigs@ into effects @sigs@ on a functor satisfying @cs@.
+-- | Transforming effects @oeffs@ into effects @effs@ on a functor satisfying @cs@.
 type AlgTrans
-  :: [Effect]                             -- ^ sigs  : input effects
-  -> [Effect]                             -- ^ osigs : output effects
+  :: [Effect]                             -- ^ effs  : input effects
+  -> [Effect]                             -- ^ oeffs : output effects
   -> [(Type -> Type) -> (Type -> Type)]   -- ^ ts    : carrier transformer
   -> ((Type -> Type) -> Constraint)       -- ^ cs    : carrier constraint
   -> Type
-newtype AlgTrans sigs osigs ts cs = AlgTrans {
-   getAT :: forall m . cs m => Algebra osigs m -> Algebra sigs (Apply ts m) }
+newtype AlgTrans effs oeffs ts cs = AlgTrans {
+   getAT :: forall m . cs m => Algebra oeffs m -> Algebra effs (Apply ts m) }
 
 -- | Transforming /code/ of algebras of @oeffs@ into code of algebras of @effs@.
 type AlgTransC

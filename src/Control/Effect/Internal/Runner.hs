@@ -26,7 +26,7 @@ import Language.Haskell.TH.Syntax (TExp (..))
 
 -- | Running a computation @ts m a@, resulting in a value @m b@
 type Runner
-  :: [Effect]                             -- ^ oeffss : output effects
+  :: [Effect]                             -- ^ oeffs : output effects
   -> [(Type -> Type) -> (Type -> Type)]   -- ^ ts    : carrier transformer
   -> Type                                 -- ^ a     : input type
   -> Type                                 -- ^ b     : output type

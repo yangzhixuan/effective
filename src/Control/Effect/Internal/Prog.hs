@@ -37,12 +37,12 @@ module Control.Effect.Internal.Prog
 import Control.Effect.Internal.Prog.ProgImp
 import Control.Effect.Internal.Algebra
 
--- | A family of programs that may contain at least the effects in @sigs@ in any
+-- | A family of programs that may contain at least the effects in @effs@ in any
 -- order, and that returns an @a@
-type a ! sigs = Progs sigs a
+type a ! effs = Progs effs a
 
--- | A family of programs that may contain at least the effects in @sigs@ in any
+-- | A family of programs that may contain at least the effects in @effs@ in any
 -- order, and that returns an @a@
-type Progs sigs -- ^ A list of effects the program may use
+type Progs effs -- ^ A list of effects the program may use
            a    -- ^ The return value of the program
-  = forall sigs' . Members sigs sigs' => Prog sigs' a
+  = forall effs' . Members effs effs' => Prog effs' a

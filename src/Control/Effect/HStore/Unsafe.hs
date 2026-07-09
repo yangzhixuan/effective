@@ -11,7 +11,7 @@ of /any (lifted) type/.  This implementation is unsafe because references from
 different executions may be wrongly mixed. For example,
 
 @
-goWrong :: forall sigs. Members '[New, Get, Put] sigs => Prog sigs Int
+goWrong :: forall effs. Members '[New, Get, Put] effs => Prog effs Int
 goWrong = do iRef <- new @Int 0
              return (handle hstore (get iRef))
 
@@ -29,12 +29,12 @@ Another way of how things can go wrong is when there is 'multiple-shot algebraic
 import qualified Control.Effect.State as St
 import Control.Effect.Nondet
 
-goWrong2 :: forall sigs.
+goWrong2 :: forall effs.
             Members '[ New, Get, Put,
                        Choose,
                        St.Put (Maybe (Ref Int)), St.Get (Maybe (Ref Int))
-                     ] sigs
-         => Prog sigs Int
+                     ] effs
+         => Prog effs Int
 goWrong2 = do iRef <- new @Int 0
               or (do iRef' <- new @Int 0; St.put (Just iRef'); return 0)
                  (do r <- St.get;
@@ -104,7 +104,7 @@ instance HFunctor New where
   hmap _ (New a k) = New a k
 
 -- | Smart constructor for the t`New` operation.
-new :: forall a sigs. Member New sigs => a -> Prog sigs (Ref a)
+new :: forall a effs. Member New effs => a -> Prog effs (Ref a)
 new a = call (New a id)
 
 -- | Signature for the operation of updating a memory reference
@@ -119,7 +119,7 @@ instance HFunctor Put where
   hmap _ (Put r a k) = Put r a k
 
 -- | Smart constructor for the t`Put` operation.
-put :: forall a sigs. Member Put sigs => Ref a -> a -> Prog sigs ()
+put :: forall a effs. Member Put effs => Ref a -> a -> Prog effs ()
 put r a = call (Put r a ())
 
 -- | Signature for the operation of reading a memory reference.
@@ -133,7 +133,7 @@ instance HFunctor Get where
   hmap _ (Get r k) = Get r k
 
 -- | Smart constructor for the t`Get` operation.
-get :: forall a sigs. Member Get sigs => Ref a -> Prog sigs a
+get :: forall a effs. Member Get effs => Ref a -> Prog effs a
 get r = call (Get r id)
 
 -- | Internally the store is implemented by a map from locations to

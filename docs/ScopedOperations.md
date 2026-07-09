@@ -61,7 +61,7 @@ operations in that program. For example, the `Censor` effect is
 introduced by the accompanying `censor` operation, and is handled
 using the `censors` handler:
 ```
-censor  :: Member (Censor w) sigs => (w -> w) -> Prog sigs a -> Prog sigs a
+censor  :: Member (Censor w) effs => (w -> w) -> Prog effs a -> Prog effs a
 censors :: Monoid w => (w -> w) -> Handler '[Tell w, Censor w] '[Tell w] '[]
 ```
 The result of the `censors cipher` handler is to first apply the `cipher`
@@ -127,12 +127,12 @@ uncensors = hide (Proxy @'[Tell w]) (censors @w id |> writer_ @w)
 ```
 The key combinator here is `hide`:
 ```haskell ignore
-hide :: forall hsigs sigs osigs f . (Injects (sigs :\\ hsigs) sigs, Injects osigs osigs)
-     => Proxy hsigs
-     -> Handler sigs             osigs f
-     -> Handler (sigs :\\ hsigs) osigs f
+hide :: forall heffs effs oeffs f . (Injects (effs :\\ heffs) effs, Injects oeffs oeffs)
+     => Proxy heffs
+     -> Handler effs             oeffs f
+     -> Handler (effs :\\ heffs) oeffs f
 ```
-This takes in a handler, returns it where any effects provided by the type parameter `hsigs`
+This takes in a handler, returns it where any effects provided by the type parameter `heffs`
 are hidden. While this works, the version in `Control.Effect.Writer` processes
 any `censor` by ignoring its argument, and does not accumulate any output, and
 is therefore more efficient.

@@ -24,7 +24,7 @@ $(makeAlg [e| NondetOr :: 2 |])
 
 infixl 6 <+>
 {-# INLINE (<+>) #-}
-(<+>) :: Member NondetOr sig => Prog sig x -> Prog sig x -> Prog sig x
+(<+>) :: Member NondetOr effs => Prog effs x -> Prog effs x -> Prog effs x
 p <+> q = nondetOr p q
 
 $(makeScp [e| once :: 1 |])

@@ -190,11 +190,11 @@ instance Member eff effs => Member eff (eff' : effs) where
 
   dispatchC (_ :#$ cs) = dispatchC @eff @effs cs
 
--- | @Member sigs sigs'@ holds when every @sig@ which is a 'Member' of in @sigs@
--- is also a 'Member' of @sigs'@.
-type family Members (xsigs :: [Effect]) (xysigs :: [Effect]) :: Constraint where
-  Members '[] xysigs       = ()
-  Members (xsig ': xsigs) xysigs = (Member xsig xysigs, Members xsigs xysigs)
+-- | @Member effs effs'@ holds when every @eff@ which is a 'Member' of in @effs@
+-- is also a 'Member' of @effs'@.
+type family Members (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint where
+  Members '[] xyeffs       = ()
+  Members (xeff ': xeffs) xyeffs = (Member xeff xyeffs, Members xeffs xyeffs)
 
 -- | An obvious isomorphism between two representations of an algebra for a single effect @eff@.
 {-# INLINE singAlgIso #-}

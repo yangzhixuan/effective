@@ -26,11 +26,11 @@ class Split a b | a -> b, b -> a where
   genSplit :: CodeQ a -> Gen b
 
 -- | Split operation for meta-programs.
-split :: (Member CodeGen sig, Split a b) => CodeQ a -> Prog sig b
+split :: (Member CodeGen effs, Split a b) => CodeQ a -> Prog effs b
 split = liftGen . genSplit
 
 -- | Split operation for meta-programs.
-splitM :: (Member CodeGen sig, Split a b) => Algebra sig m -> CodeQ a -> m b
+splitM :: (Member CodeGen effs, Split a b) => Algebra effs m -> CodeQ a -> m b
 splitM alg = liftGenA alg . genSplit
 
 -- | With the extension LambdaCase, a useful pattern in meta-programs is
@@ -40,14 +40,14 @@ splitM alg = liftGenA alg . genSplit
 -- >   P2 -> ...
 --
 -- where @a :: CodeQ a@ is a piece of code that splittable.
-genCase :: (Member CodeGen sig, Split a b) => CodeQ a -> (b -> Prog sig c) -> Prog sig c
+genCase :: (Member CodeGen effs, Split a b) => CodeQ a -> (b -> Prog effs c) -> Prog effs c
 genCase ua k = split ua >>= k
 
 instance Split Bool Bool where
   genSplit cb = Gen \k -> [|| if $$cb then $$(k True) else $$(k False) ||]
 
 -- | Meta-level if-then-else.
-genIf :: (Member CodeGen sig) => CodeQ Bool -> Prog sig c -> Prog sig c -> Prog sig c
+genIf :: (Member CodeGen effs) => CodeQ Bool -> Prog effs c -> Prog effs c -> Prog effs c
 genIf uc t e = genCase uc (\b -> if b then t else e)
 
 instance Split (a,b) (CodeQ a, CodeQ b) where

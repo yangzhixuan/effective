@@ -51,16 +51,16 @@ $(makeGen [e| putStrLn :: String ~> () |])
 ```
 This generates operations with the following types:
 ```haskell ignore
-getLine  :: Member GetLine sigs  => Prog sigs String
-putStrLn :: Member PutStrLn sigs => String -> Prog sigs ()
+getLine  :: Member GetLine effs  => Prog effs String
+putStrLn :: Member PutStrLn effs => String -> Prog effs ()
 ```
-These are programs whose signature `sigs` contains `GetLine` and `PutStrLn`,
+These are programs whose effects `effs` contains `GetLine` and `PutStrLn`,
 respectively.
 
 Using these operations, the `echo` program will continue to echo the input
 obtained by `getLine` using `putStrLn` until a blank line is received:
 ```haskell
-echo :: (Members '[GetLine, PutStrLn] sigs) => Prog sigs ()
+echo :: (Members '[GetLine, PutStrLn] effs) => Prog effs ()
 echo = do str <- getLine
           case str of
             [] -> return ()
@@ -77,9 +77,9 @@ operations from `Prelude` for `getLine` and `putStrLn` to interpret
 the syntax for these operations. In `effective`, `IO`
 actions enter a program through the built-in `Alg IO` effect:
 ```haskell ignore
-io :: Members '[Alg IO] sigs => IO a -> Prog sigs a
+io :: Members '[Alg IO] effs => IO a -> Prog effs a
 ```
-The call to `io` records the action as syntax to be handled later on. 
+The call to `io` records the action as syntax to be handled later on.
 
 The interpretation is given by the `teletypeIO` *handler*, defined as follows.
 For now the main type parameters of this handler of interest indicate the

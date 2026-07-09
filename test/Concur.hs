@@ -28,7 +28,7 @@ ioPar = ioAlg # parIOAlg # jparIOAlg
 main :: IO ()
 main = return ()
 
-prog :: Members '[Par, Act HR, Res HR, Tell String] sig => Prog sig ()
+prog :: Members '[Par, Act HR, Res HR, Tell String] effs => Prog effs ()
 prog = resHS (par (do tell "A"; handshake; tell "C")
                   (do tell "B"; shakehand; tell "D"))
 
@@ -54,7 +54,7 @@ test33 = handle (fuse (resumpWith (False : False : True : True : [])) (writer @S
 test34 :: (String, ActsMb HR ())
 test34 = handle (fuse (resumpWith (False : False : True : False : [])) (writer @String)) prog
 
-prog2 :: Members '[Par, Alg IO] sigs => Prog sigs ()
+prog2 :: Members '[Par, Alg IO] effs => Prog effs ()
 prog2 =
   do p <- io (QSem.newQSem 0)
      q <- io (QSem.newQSem 0)
@@ -70,10 +70,10 @@ prog2 =
 test4 :: IO ()
 test4 = handleIO' (Proxy @IOPar) ioPar (identity @'[]) prog2
 
-tell' :: forall w sigs. (Member ("t2" :@ (Tell w)) sigs, Monoid w) => w -> Prog sigs ()
+tell' :: forall w effs. (Member ("t2" :@ (Tell w)) effs, Monoid w) => w -> Prog effs ()
 tell' w = callPAlg (Proxy @"t2") (Tell_ w ())
 
-prog3 :: Members '[Par, Act HR, Res HR, Tell String, "t2" :@ (Tell String)] sig => Prog sig ()
+prog3 :: Members '[Par, Act HR, Res HR, Tell String, "t2" :@ (Tell String)] effs => Prog effs ()
 prog3 = resHS (par (do tell "A"; handshake; tell' "C")
                    (do tell "B"; shakehand; tell' "D"))
 
@@ -82,7 +82,7 @@ prog3 = resHS (par (do tell "A"; handshake; tell' "C")
 test5 :: (String, ListActs HR (String, ()))
 test5 = handle (renameEffs (Proxy @"t2") writer |> resump |> writer) prog3
 
-prog4 :: Member (Alg IO) sigs => Prog sigs ()
+prog4 :: Member (Alg IO) effs => Prog effs ()
 prog4 = io (putChar 'x')
 
 test6 :: IO ()
@@ -92,7 +92,7 @@ test7 :: IO (Either String ())
 test7 = handleIO' (Proxy @IOPar) ioPar (ccsByQSem @ActNames |> writerIO) (prog >> io (putStrLn ""))
 
 
-prog5 :: Members '[JPar, Act HR, Res HR, Tell String] sig => Prog sig (Int, Int)
+prog5 :: Members '[JPar, Act HR, Res HR, Tell String] effs => Prog effs (Int, Int)
 prog5 = resHS (jpar (do tell "A"; handshake; tell "C"; return 0)
                     (do tell "B"; shakehand; tell "D"; return 1))
 
@@ -102,12 +102,12 @@ test8 = handle (jresump |> writer @String) prog5
 test9 :: IO (Either String (Int, Int))
 test9 = handleIO' (Proxy @IOPar) ioPar (ccsByQSem @ActNames |> writerIO) prog5
 
-prog6 :: Members '[Yield Int Int, Alg IO] sigs => Int -> Prog sigs Int
+prog6 :: Members '[Yield Int Int, Alg IO] effs => Int -> Prog effs Int
 prog6 n = do io (putStrLn ("Ping " ++ show n))
              n' <- yield (n + 1)
              prog6 n'
 
-prog6' :: Members '[Yield Int Int, Alg IO] sigs => Int -> Prog sigs Int
+prog6' :: Members '[Yield Int Int, Alg IO] effs => Int -> Prog effs Int
 prog6' n
   | n > 100   = do io (putStrLn "Too big"); return n
   | otherwise = do io (putStrLn ("Pong " ++ show n))

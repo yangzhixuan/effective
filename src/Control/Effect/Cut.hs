@@ -43,7 +43,7 @@ $(makeAlg [e| cutFail :: 0 |])
 $(makeScp [e| cutCall :: 1 |])
 
 -- | Perform a cut operation, pruning the search space.
-cut :: (Members [Empty, Choose, CutFail] sigs) => Prog sigs ()
+cut :: (Members [Empty, Choose, CutFail] effs) => Prog effs ()
 cut = skip <|> cutFail
 
 -- | A no-op computation that does nothing.

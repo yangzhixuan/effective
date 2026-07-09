@@ -55,10 +55,9 @@ getLineState = interpret1 $ \(GetLine k) ->
 ```
 
 The signature of `getLineState` says that it is a handler that recognizes
-`GetLine` operations and interprets them in terms of some output effects in
-`osig`, which consist of `Get [String]` and `Put [String]`. Interpreting
-effects in terms of other, more primitive, effects allows other handlers to
-deal with those more primitive effects.
+`GetLine` operations and interprets them in terms of output effects `Get [String]` and `Put [String]`.
+Interpreting effects in terms of other, more primitive, effects allows other
+handlers to deal with those more primitive effects.
 
 The `getLineState` handler will process the `GetLine` effect in the
 echo program, and in so doing will output `Get [String]` and `Put [String]`

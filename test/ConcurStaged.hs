@@ -24,13 +24,13 @@ bohem = par (resHS $ par (do tell "I am just a poor boy"; handshake)
                          (do shakehand; tell "I need no sympathy"))
             (tell "Oh poor boy")
 
-handshake :: Member (Act HR) sig => Prog sig ()
+handshake :: Member (Act HR) effs => Prog effs ()
 handshake = act (Action Handshake)
 
-shakehand :: Member (Act HR) sig => Prog sig ()
+shakehand :: Member (Act HR) effs => Prog effs ()
 shakehand = act (CoAction Handshake)
 
-resHS :: Member (Res HR) sig => Prog sig x -> Prog sig x
+resHS :: Member (Res HR) effs => Prog effs x -> Prog effs x
 resHS x = res (Action Handshake) x
 
 

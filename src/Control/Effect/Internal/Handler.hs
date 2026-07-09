@@ -41,10 +41,10 @@ import Language.Haskell.TH hiding (Type)
 --
 -- Singular and plural forms:
 --
--- * @eff@                 — one signature (e.g. in @Member eff effs@).
--- * @effs@                — a list of signatures, the input to a handler (default).
--- * @oeff@ \/ @oeffs@     — single \/ list of /output/ signatures from a handler.
--- * @xeffs@               — e/x/ternal signatures supplied by an outside algebra,
+-- * @eff@                 — one effect (e.g. in @Member eff effs@).
+-- * @effs@                — a list of effects, the input to a handler (default).
+-- * @oeff@ \/ @oeffs@     — single \/ list of /output/ effects from a handler.
+-- * @xeffs@               — e/x/ternal effects supplied by an outside algebra,
 --                          monad, or residual program (e.g. @handleM@, @evalAT@).
 -- * @effs1@, @effs2@      — operands of a binary type operation (e.g. 'Union', ':\\'),
 --                          numbered handlers in compositions (e.g. @generalFuse@),

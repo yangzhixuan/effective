@@ -102,14 +102,14 @@ evalIO = eval ioAlg
 -- | @`handleIO` h p@ evaluates @p@ using the handler @h@. The handler is
 -- allowed to emit the operation @Alg IO@ and the program can used @Alg IO@ too.
 handleIO
-  :: forall sigs osigs ts a b
+  :: forall effs oeffs ts a b
   . ( Monad (Apply ts IO)
     , ForwardsM '[Alg IO] ts
-    , Injects osigs '[Alg IO]
-    , HandleM# sigs '[Alg IO] )
-  => Handler sigs osigs ts a b
-  -> Prog (sigs `Union` '[Alg IO]) a -> IO b
-handleIO = handleM @sigs ioAlg
+    , Injects oeffs '[Alg IO]
+    , HandleM# effs '[Alg IO] )
+  => Handler effs oeffs ts a b
+  -> Prog (effs `Union` '[Alg IO]) a -> IO b
+handleIO = handleM @effs ioAlg
 
 type HandleIO# effs oeffs xeffs =
   ( Injects (xeffs :\\ effs) xeffs )
@@ -123,14 +123,14 @@ type HandleIO# effs oeffs xeffs =
 -- This function is useful when you want to use some non-algebraic operations
 -- that come with the IO-monad. Otherwise `handleIO` should be used.
 handleIO'
-  :: forall xsigs iosig sigs osigs ts a b
-  . ( Injects osigs iosig
-    , ForwardsM xsigs ts
+  :: forall xeffs ioeff effs oeffs ts a b
+  . ( Injects oeffs ioeff
+    , ForwardsM xeffs ts
     , Monad (Apply ts IO)
-    , Injects xsigs iosig
-    , HandleIO# sigs osigs xsigs )
-  => Proxy xsigs
-  -> Algebra iosig IO
-  -> Handler sigs osigs ts a b
-  -> Prog (sigs `Union` xsigs) a -> IO b
+    , Injects xeffs ioeff
+    , HandleIO# effs oeffs xeffs )
+  => Proxy xeffs
+  -> Algebra ioeff IO
+  -> Handler effs oeffs ts a b
+  -> Prog (effs `Union` xeffs) a -> IO b
 handleIO' p ioAlg h = handleMFwds p ioAlg h

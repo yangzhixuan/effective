@@ -67,16 +67,16 @@ selects (x:xs)  =  return (x, xs)  <|> do  (y, ys) <- selects xs
 
 
 -- | Instance for 'Alternative' that uses @Empty@ and @Choose@.
-instance (Member Empty sigs, Member Choose sigs)
-  => Alternative (Prog sigs) where
+instance (Member Empty effs, Member Choose effs)
+  => Alternative (Prog effs) where
   {-# INLINE empty #-}
 -- | Syntax for an empty alternative. This is an algebraic operation.
-  empty :: Member Empty sigs => Prog sigs a
+  empty :: Member Empty effs => Prog effs a
   empty = call (Alg Empty_)
 
   {-# INLINE (<|>) #-}
 -- | Syntax for a choice of alternatives. This is a scoped operation.
-  (<|>) :: (Member Choose sigs) => Prog sigs a -> Prog sigs a -> Prog sigs a
+  (<|>) :: (Member Choose effs) => Prog effs a -> Prog effs a -> Prog effs a
   xs <|> ys = call (Scp (Choose_ xs ys))
 
 -- | The 'alternative' handler makes use of an 'Alternative' functor @f@

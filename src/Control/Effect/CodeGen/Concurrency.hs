@@ -63,7 +63,7 @@ instance ParUp_ $~> ParUp_ where
   down (ParUp_ x y) = [|| ParUp_ $$x $$y ||]
 
 -- | Staged par operation
-parUp :: Member ParUp sig => Prog sig (CodeQ x) -> Prog sig (CodeQ x) -> Prog sig (CodeQ x)
+parUp :: Member ParUp eff => Prog eff (CodeQ x) -> Prog eff (CodeQ x) -> Prog eff (CodeQ x)
 parUp p q = call (ParUp p q id)
 
 -- | Par operation on @GenM IO@ using the native implementation of `forkIO`

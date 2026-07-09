@@ -56,7 +56,7 @@ import Data.Proxy
 newtype Prog (effs :: [Effect]) a =
   Prog { runProg :: forall m . Monad m => AlgebraArray effs m -> m a }
 
--- | Construct a program of type @Prog sigs a@ using an operation @sig@.
+-- | Construct a program of type @Prog effs a@ using an operation @eff@.
 {-# INLINE call #-}
 call :: forall eff effs a . (Member eff effs, HFunctor eff) => eff (Prog effs) a -> Prog effs a
 call x = Prog $ \(alg :: AlgebraArray effs m) ->
@@ -75,15 +75,15 @@ unsafeCall n x = Prog $ \(alg :: AlgebraArray effs m) ->
 -- | A variant of `call` with an continuation argument given as return values.
 -- Semantically, @callJ = join . `call`@.
 {-# INLINE callJ #-}
-callJ :: forall sig sigs a . (Member sig sigs, HFunctor sig)
-     => sig (Prog sigs) (Prog sigs a) -> Prog sigs a
+callJ :: forall eff effs a . (Member eff effs, HFunctor eff)
+     => eff (Prog effs) (Prog effs a) -> Prog effs a
 callJ = join . call
 
 -- | A variant of `call` with an continuation argument given as a function.
 -- Semantically, @callK x k = `call` x >>= k@.
 {-# INLINE callK #-}
-callK :: forall sig sigs a b . (Member sig sigs, HFunctor sig)
-      => sig (Prog sigs) a -> (a -> Prog sigs b) -> Prog sigs b
+callK :: forall eff effs a b . (Member eff effs, HFunctor eff)
+      => eff (Prog effs) a -> (a -> Prog effs b) -> Prog effs b
 callK x k = call x >>= k
 
 
@@ -120,21 +120,21 @@ instance (HFunctor eff, KnownNat n, ProgAlg effs effs' (n + 1)) => ProgAlg (eff 
     f :: forall x. eff (Prog effs') x -> Prog effs' x
     f = unsafeCall (fromIntegral $ natVal @n Proxy)
 
-instance Functor (Prog sigs) where
+instance Functor (Prog effs) where
   {-# INLINE fmap #-}
-  fmap :: (a -> b) -> Prog sigs a -> Prog sigs b
+  fmap :: (a -> b) -> Prog effs a -> Prog effs b
   fmap f p = Prog $ \alg -> fmap f (runProg p alg)
 
-instance Applicative (Prog sigs) where
+instance Applicative (Prog effs) where
   {-# INLINE pure #-}
-  pure :: a -> Prog sigs a
+  pure :: a -> Prog effs a
   pure a = Prog $ \alg -> return a
 
   {-# INLINE (<*>) #-}
-  (<*>) :: Prog sigs (a -> b) -> Prog sigs a -> Prog sigs b
+  (<*>) :: Prog effs (a -> b) -> Prog effs a -> Prog effs b
   (<*>) = ap
 
-instance Monad (Prog sigs) where
+instance Monad (Prog effs) where
   {-# INLINE return #-}
   return = pure
 
@@ -149,7 +149,7 @@ weakenProg :: forall effs effs' a. (Injects effs effs')
 weakenProg p = Prog $ \alg -> runProg p (weakenAlg alg)
 
 -- | Evaluate a program using the supplied algebra. This is the universal
--- property from initial monad @Prog sig a@ equipped with the algebra @Eff effs
+-- property from initial monad @Prog effs a@ equipped with the algebra @Eff effs
 -- m -> m@.
 {-# INLINE eval #-}
 eval

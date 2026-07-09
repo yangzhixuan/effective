@@ -31,15 +31,15 @@ pattern Put s k = Alg (Put_ s k)
 
 -- | Syntax for putting a value into the state.
 {-# INLINE put #-}
-put :: Member (Put s) sig => s -> Prog sig ()
+put :: Member (Put s) effs => s -> Prog effs ()
 put s = call (Alg (Put_ s ()))
 
 {-# INLINE putP #-}
-putP :: Member (WithName n (Put s)) sig => Proxy n -> s -> Prog sig ()
+putP :: Member (WithName n (Put s)) effs => Proxy n -> s -> Prog effs ()
 putP p s = callP p (Alg (Put_ s ()))
 
 {-# INLINE putN #-}
-putN :: forall n -> Member (WithName n (Put s)) sig => s -> Prog sig ()
+putN :: forall n -> Member (WithName n (Put s)) effs => s -> Prog effs ()
 putN p s = callN p (Alg (Put_ s ()))
 -}
 
@@ -58,14 +58,14 @@ pattern Get k = Alg (Get_ k)
 
 -- | Syntax for getting a value from the state.
 {-# INLINE get #-}
-get :: Member (Get s) sig => Prog sig s
+get :: Member (Get s) effs => Prog effs s
 get = call (Alg (Get_ id))
 
 {-# INLINE getP #-}
-getP :: Member (WithName n (Get s)) sig => Proxy n -> Prog sig s
+getP :: Member (WithName n (Get s)) effs => Proxy n -> Prog effs s
 getP p = callP p (Alg (Get_ id))
 
 {-# INLINE getN #-}
-getN :: forall n -> Member (WithName n (Get s)) sig => Prog sig s
+getN :: forall n -> Member (WithName n (Get s)) effs => Prog effs s
 getN p = callN p (Alg (Get_ id))
 -}

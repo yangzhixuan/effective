@@ -61,9 +61,9 @@ $(makeGen [e| ask :: forall r. r |])
 
 -- | Retrieve a function of the current environment.
 {-# INLINE asks #-}
-asks :: Member (Ask r) sigs
+asks :: Member (Ask r) effs
   => (r -> a) -- ^ The selector function to apply to the environment
-  -> Prog sigs a
+  -> Prog effs a
 asks f = fmap f ask
 
 $(makeScp [e| local :: forall r. (r -> r) ~> 1 |])
@@ -102,10 +102,10 @@ reader r = handler' (flip R.runReaderT r) readerAlg
 -- output effects to the program that can be accessed with `ask`, and
 -- locally transformed with `local`.
 {-# INLINE reader' #-}
-reader' :: forall osigs r a . (forall m . Monad m => Algebra osigs m -> m r)
-        -> Handler [Ask r, Local r] osigs '[R.ReaderT r] a a
+reader' :: forall oeffs r a . (forall m . Monad m => Algebra oeffs m -> m r)
+        -> Handler [Ask r, Local r] oeffs '[R.ReaderT r] a a
 reader' mr = handler run (\_ -> readerAlg) where
-  run :: forall m . Monad m => Algebra osigs m
+  run :: forall m . Monad m => Algebra oeffs m
       -> (R.ReaderT r m a -> m a)
   run oalg rmx = do r <- mr oalg
                     x <- R.runReaderT rmx r

@@ -105,21 +105,21 @@ upAlgIso :: forall n m. Functor n => Iso (Algebra '[UpOp m] n)  (forall x. CodeQ
 upAlgIso = trans singAlgIso upIso
 
 -- | Syntactic up-operations on (meta-)programs.
-up :: Member (UpOp m) sig => CodeQ (m a) -> Prog sig (CodeQ a)
+up :: Member (UpOp m) effs => CodeQ (m a) -> Prog effs (CodeQ a)
 up = Iso.fwd upIso call
 
 -- | Syntactic up-operations on (meta-)programs with an additional continuation
 -- argument @CodeQ a -> x@.
-up' :: Member (UpOp m) sig => CodeQ (m a) -> (CodeQ a -> x) -> Prog sig x
+up' :: Member (UpOp m) effs => CodeQ (m a) -> (CodeQ a -> x) -> Prog effs x
 up' u k = call (Alg (UpOp u k))
 
 -- | Up-operations on a monad @n@.
-upM :: forall m sig n a. (Member (UpOp m) sig, Functor n)
-    => Algebra sig n -> CodeQ (m a) -> n (CodeQ a)
+upM :: forall m effs n a. (Member (UpOp m) effs, Functor n)
+    => Algebra effs n -> CodeQ (m a) -> n (CodeQ a)
 upM alg = Iso.fwd upIso (callM alg)
 
 -- | Up-operations on a monad @n@ with an additional continuation argument.
-upM' :: Member (UpOp m) sig => Algebra sig n -> CodeQ (m a) -> (CodeQ a -> x) -> n x
+upM' :: Member (UpOp m) effs => Algebra effs n -> CodeQ (m a) -> (CodeQ a -> x) -> n x
 upM' alg u k = callM alg (Alg (UpOp u k))
 
 -- * Algebra transformers for the up-operation
@@ -296,8 +296,8 @@ instance HFunctor Reset where
   hmap f (Reset o k) = Reset (f o) k
 
 -- | Reset code generation.
-reset :: forall x sig. Member Reset sig
-      => Prog sig (CodeQ x) -> Prog sig (CodeQ x)
+reset :: forall x effs. Member Reset effs
+      => Prog effs (CodeQ x) -> Prog effs (CodeQ x)
 reset p = call (Reset p id)
 
 -- | Resetting is interpreted as @up@ followed by @down@.
@@ -442,7 +442,7 @@ instance Monad n => Monad (CacheT m n) where
 instance MonadTrans (CacheT m) where
   lift = Iso.bwd cacheConversion
 
-instance Functor sigs => Forward (Scp sigs) (CacheT m) where
+instance Functor sig => Forward (Scp sig) (CacheT m) where
   fwd alg op = Iso.bwd cacheConversion (alg (hmap (Iso.fwd cacheConversion) op))
   -- Note that the following is wrong
   --
@@ -451,7 +451,7 @@ instance Functor sigs => Forward (Scp sigs) (CacheT m) where
   -- because the scoped operation is only applied to the @n@ part while semantically
   -- it should apply to both the @n@-part and also the cached computation.
 
-instance Functor sigs => Forward (Distr sigs) (CacheT m) where
+instance Functor sig => Forward (Distr sig) (CacheT m) where
   fwd alg op = Iso.bwd cacheConversion (alg (hmap (Iso.fwd cacheConversion) op))
 
 instance (Functor n, Monad m, n $~>> m) => CacheT m n $~> m where

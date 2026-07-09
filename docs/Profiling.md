@@ -96,7 +96,7 @@ A new `profiler f instrument p` will inject the `instrument` before and after
 executed. These are then combined by the given function `f` and emitted using
 `ask`.
 ```haskell
-profiler :: (a -> a -> b) -> Prog osigs a -> Handler '[Profile] (Tell [(String, b)] ': osigs) '[] c c
+profiler :: (a -> a -> b) -> Prog oeffs a -> Handler '[Profile] (Tell [(String, b)] ': oeffs) '[] c c
 profiler f instrument = interpretM1 $ \oalg (Profile name p) ->
   do t  <- eval (tailAlg oalg) instrument
      k  <- p

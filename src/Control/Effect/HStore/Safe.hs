@@ -71,7 +71,7 @@ instance HFunctor (New w) where
   hmap _ (New a k) = New a k
 
 -- | Smart constructor for the t`New` operation.
-new :: forall a w sig. Member (New w) sig => a -> Prog sig (Ref w a)
+new :: forall a w effs. Member (New w) effs => a -> Prog effs (Ref w a)
 new a = call (New a id)
 
 -- | Signature for the operation of updating a memory reference
@@ -86,7 +86,7 @@ instance HFunctor (Put w) where
   hmap _ (Put r a k) = Put r a k
 
 -- | Smart constructor for the t`Put` operation.
-put :: forall a w sig. Member (Put w) sig => Ref w a -> a -> Prog sig ()
+put :: forall a w effs. Member (Put w) effs => Ref w a -> a -> Prog effs ()
 put r a = call (Put r a ())
 
 -- | Signature for the operation of reading a memory reference.
@@ -100,7 +100,7 @@ instance HFunctor (Get w) where
   hmap _ (Get r k) = Get r k
 
 -- | Smart constructor for the t`Get` operation.
-get :: forall a w sig. Member (Get w) sig => Ref w a -> Prog sig a
+get :: forall a w effs. Member (Get w) effs => Ref w a -> Prog effs a
 get r = call (Get r id)
 
 -- | Internal representation of the store.
@@ -139,7 +139,7 @@ runHS p = handle identity (handleHSP p)
 
 handleHS = runHS
 
--- | Running a program with higher-order store and other effects @sigs@ on @m@,
+-- | Running a program with higher-order store and other effects @effs@ on @m@,
 -- resulting in an @m@ program.
 handleHSM :: forall effs a m.
           ( forall s. ForwardsM effs '[St.StateT s]
