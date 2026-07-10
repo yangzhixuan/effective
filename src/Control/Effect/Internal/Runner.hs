@@ -209,40 +209,40 @@ weakenREffs :: forall effs' cs effs ts a b.
         -> Runner effs' ts a b cs
 weakenREffs r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 
-{-# INLINE weakenRC #-}
-weakenRC :: forall cs' cs effs ts a b.
+{-# INLINE weakenRCS #-}
+weakenRCS :: forall cs' cs effs ts a b.
            (forall m. cs' m => cs m)
         => Runner effs ts a b cs
         -> Runner effs ts a b cs'
-weakenRC r1 = Runner \oalg -> getR r1 oalg
+weakenRCS r1 = Runner \oalg -> getR r1 oalg
 
-{-# INLINE weakenRCMonad #-}
+{-# INLINE weakenRCSMonad #-}
 -- | Drop a @'CompC' ts2 Monad Monad@ carrier constraint down to plain @Monad@.
 --
 -- This is the @cs = 'CompC' ts2 Monad Monad@, @cs' = Monad@ specialisation of
--- 'weakenRC'. As of GHC 9.14, callers such as 'Control.Effect.Internal.Handler.comp'
--- cannot use 'weakenRC' directly: with /two/ quantified givens
+-- 'weakenRCS'. As of GHC 9.14, callers such as 'Control.Effect.Internal.Handler.comp'
+-- cannot use 'weakenRCS' directly: with /two/ quantified givens
 -- @forall m. Monad m => MonadApply ts1 m@ and @forall m. Monad m => MonadApply ts2 m@
 -- in scope, the solver refuses to choose between them when discharging
 -- @Monad ('Apply' ts2 m)@, because the superclass heads mention the
 -- non-injective family 'Apply'. This wrapper narrows the context to the
 -- single relevant quantified given, making the choice unambiguous.
-weakenRCMonad
+weakenRCSMonad
   :: forall ts2 effs ts a b
    . (forall m. Monad m => MonadApply ts2 m)
   => Runner effs ts a b (CompC ts2 Monad Monad)
   -> Runner effs ts a b Monad
-weakenRCMonad = weakenRC
+weakenRCSMonad = weakenRCS
 
-weakenRCC :: forall cs' cs effs ts a b.
+weakenRCSC :: forall cs' cs effs ts a b.
            (forall m. cs' m => cs m)
         => RunnerC effs ts a b cs
         -> RunnerC effs ts a b cs'
-weakenRCC r1 = RunnerC \oalg -> getRC r1 oalg
+weakenRCSC r1 = RunnerC \oalg -> getRC r1 oalg
 
-weakenRCCMonad
+weakenRCSCMonad
   :: forall ts2 effs ts a b.
      (forall m. Monad m => MonadApply ts2 m)
   => RunnerC effs ts a b (CompC ts2 Monad Monad)
   -> RunnerC effs ts a b Monad
-weakenRCCMonad = weakenRCC
+weakenRCSCMonad = weakenRCSC

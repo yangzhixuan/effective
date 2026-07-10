@@ -133,7 +133,7 @@ infixr <:
 (<:) :: forall effs oeffs effs' oeffs' ts a b . UnionAT# effs effs' oeffs oeffs'
       => AlgTrans effs oeffs ts Monad
       -> Handler effs' oeffs' ts a b -> Handler (effs `Union` effs') (oeffs `Union` oeffs') ts a b
-algs <: Handler hrun halg = Handler (weakenREffs hrun) (weakenC (algs `unionAT` halg))
+algs <: Handler hrun halg = Handler (weakenREffs hrun) (weakenCS (algs `unionAT` halg))
 
 -- | The identity handler that doesn't transform the effects.
 {-# INLINE identity #-}
@@ -153,7 +153,7 @@ comp :: ( forall m. Monad m => MonadApply ts1 m
      -> Handler effs2 effs3 ts2 a2 a3
      -> Handler effs1 effs3 (ts1 :++ ts2) a1 a3
 comp (Handler r1 a1) (Handler r2 a2) =
-  Handler (weakenRCMonad (compRunner a2 r1 r2)) (weakenCMonad (compAT a1 a2))
+  Handler (weakenRCSMonad (compRunner a2 r1 r2)) (weakenCSMonad (compAT a1 a2))
 
 -- | Weakens a handler from @Handler effs oeffs ts fs@ to @Handler effs' oeffs' ts fs@,
 -- when @effs'@ injects into @effs@ and @oeffs@ injects into @oeffs'@.
@@ -286,7 +286,7 @@ unionHdl :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
        => Handler effs1 oeffs1 ts a1 a2
        -> Handler effs2 oeffs2 ts a3 a4
        -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
-unionHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenC (unionAT a1 a2))
+unionHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenCS (unionAT a1 a2))
 
 -- | Case splitting on the union of two effect rows, and the two handlers may output
 -- different effects.
@@ -295,7 +295,7 @@ unionHdlAT :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
        => Handler  effs1 oeffs1 ts a1 a2
        -> AlgTrans effs2 oeffs2 ts Monad
        -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
-unionHdlAT (Handler r1 a1) a2 = Handler (weakenR r1) (weakenC (unionAT a1 a2))
+unionHdlAT (Handler r1 a1) a2 = Handler (weakenR r1) (weakenCS (unionAT a1 a2))
 
 {-# INLINE appendHdl #-}
 -- | Case splitting on the append of two effect rows, and the two handlers may output
@@ -305,7 +305,7 @@ appendHdl :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
        => Handler effs1 oeffs1 ts a1 a2
        -> Handler effs2 oeffs2 ts a3 a4
        -> Handler (effs1 :++ effs2) (oeffs1 :++ oeffs2) ts a1 a2
-appendHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenC (appendAT a1 a2))
+appendHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenCS (appendAT a1 a2))
 
 -- * Fusion-based handler combinators
 
@@ -338,7 +338,7 @@ fuse, (|>)
 --
 -- Moreover, the effects @effs2@ are handled by @h2@ so they must be forwardable by @ts1@.
 fuse (Handler run1 malg1) (Handler run2 malg2)
-  = Handler (weakenRCMonad (fuseR malg2 run1 run2)) (weakenCMonad (fuseAT malg1 malg2))
+  = Handler (weakenRCSMonad (fuseR malg2 run1 run2)) (weakenCSMonad (fuseAT malg1 malg2))
 
 -- | A synonym for `fuse`.
 (|>) = fuse
@@ -361,7 +361,7 @@ fuseC, (|>$)
               (ts1 :++ ts2)
               a1 a3
 fuseC (HandlerC run1 malg1) (HandlerC run2 malg2)
-  = HandlerC (weakenRCCMonad (fuseRC malg2 run1 run2)) (weakenCCMonad (fuseATC malg1 malg2))
+  = HandlerC (weakenRCSCMonad (fuseRC malg2 run1 run2)) (weakenCSCMonad (fuseATC malg1 malg2))
 
 (|>$) = fuseC
 
@@ -380,7 +380,7 @@ fuseApp, (++>)
              (ts1 :++ ts2)
              a1 a3
 fuseApp (Handler run1 malg1) (Handler run2 malg2)
-  = Handler (weakenRCMonad (fuseAppR malg2 run1 run2)) (weakenCMonad (fuseAppAT malg1 malg2))
+  = Handler (weakenRCSMonad (fuseAppR malg2 run1 run2)) (weakenCSMonad (fuseAppAT malg1 malg2))
 
 (++>) = fuseApp
 
@@ -399,7 +399,7 @@ fuseAppC, (++>$)
               (ts1 :++ ts2)
               a1 a3
 fuseAppC (HandlerC run1 malg1) (HandlerC run2 malg2)
-  = HandlerC (weakenRCCMonad (fuseAppRC run1 run2)) (weakenCCMonad (fuseAppATC malg1 malg2))
+  = HandlerC (weakenRCSCMonad (fuseAppRC run1 run2)) (weakenCSCMonad (fuseAppATC malg1 malg2))
 
 (++>$) = fuseAppC
 
@@ -427,7 +427,7 @@ pipe, (\\)
 -- input effects of @h2@ (as required by `comp`). Instead, if an output effect
 -- produced by @h1@ is not handled by @h2@, it will be re-produced by @pipe h1 h2@.
 pipe (Handler run1 malg1)  (Handler run2 malg2)
-  = Handler (weakenRCMonad (fuseR malg2 run1 run2)) (weakenCMonad (pipeAT malg1 malg2))
+  = Handler (weakenRCSMonad (fuseR malg2 run1 run2)) (weakenCSMonad (pipeAT malg1 malg2))
 
 -- | A synonym for 'pipe'
 (\\) = pipe
@@ -447,7 +447,7 @@ pipeC, (\\$)
              (ts1 :++ ts2)
              a1 a3
 pipeC (HandlerC run1 malg1) (HandlerC run2 malg2)
-  = HandlerC (weakenRCCMonad (fuseRC malg2 run1 run2)) (weakenCCMonad (pipeATC malg1 malg2))
+  = HandlerC (weakenRCSCMonad (fuseRC malg2 run1 run2)) (weakenCSCMonad (pipeATC malg1 malg2))
 
 -- | A synonym for 'pipe'
 (\\$) = pipeC
@@ -473,7 +473,7 @@ pass :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
                 (ts1 :++ ts2)
                 a1 a3
 pass (Handler r1 a1) (Handler r2 a2)
-  = Handler (weakenRCMonad (passR a2 r1 r2)) (weakenCMonad (passAT a1 a2))
+  = Handler (weakenRCSMonad (passR a2 r1 r2)) (weakenCSMonad (passAT a1 a2))
 
 {-# INLINE generalFuse #-}
 -- | `generalFuse` subsumes @fuse@, @pass@, and @pipe@ by having two type arguments
@@ -507,8 +507,8 @@ generalFuse
              (ts1 :++ ts2)
              a1 a3
 generalFuse p1 p2 (Handler r1 a1) (Handler r2 a2)
-  = Handler (weakenRCMonad (fuseR (weakenIEffs @ieffs a2) r1 r2))
-            (weakenCMonad (generalFuseAT p1 p2 a1 a2))
+  = Handler (weakenRCSMonad (fuseR (weakenIEffs @ieffs a2) r1 r2))
+            (weakenCSMonad (generalFuseAT p1 p2 a1 a2))
 
 -- * Using handlers
 

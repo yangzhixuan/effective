@@ -407,13 +407,13 @@ joinEx1 :: Bool -> StateT Int (MaybeT Identity) ()
 joinEx1 b = $$(stage
   (letPut @Int
      `fuseAT` resetAT' @(StateT Int (MaybeT Identity))
-     `fuseAT` weakenC @((~) Gen) (upState @Int @(MaybeT Identity)
+     `fuseAT` weakenCS @((~) Gen) (upState @Int @(MaybeT Identity)
      `fuseAT` stateAT @(CodeQ Int)
      `fuseAT` upMaybe @Identity
      `fuseAT` Mb.exceptAT))
   (resetProg [||b||]))
 {-
-The in the code above, `weakenCAnd @Monad` is for overcoming a bug (or limitation?)
+The in the code above, `weakenCSAnd @Monad` is for overcoming a bug (or limitation?)
 of the extension UndecidableSuperClasses. Without it we would get an error report:
 
 > Could not deduce ‘Monad m’
@@ -431,7 +431,7 @@ of the extension UndecidableSuperClasses. Without it we would get an error repor
 although `Monad m` /is/ implied by this big `CompC` constraint. I suspect that this
 is because `CompC` is defined using UndecidableSuperClasses and GHC only expands
 CompC up until a fixed step, so it failed to see that `Monad m` is implied. We
-overcome this by using `weakenC` to replace the above big @CompC@ constraint
+overcome this by using `weakenCS` to replace the above big @CompC@ constraint
 with the simpler and stronger constraint @(~) Gen@.
 
 Alternatively, we can use the combinator `fuseAT'` that keeps the constraints simple.

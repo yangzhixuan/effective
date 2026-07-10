@@ -38,7 +38,7 @@ pushWithUpAT :: Monad m =>
            '[UpOp m]
            '[PushT]
             (MonadDown m)
-pushWithUpAT = weakenC (appendAT upPush pushAT)
+pushWithUpAT = weakenCS (appendAT upPush pushAT)
 
 -- | Algebra of the non-deterministic operations and the
 -- up-operation on @PushT Gen@.

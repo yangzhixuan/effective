@@ -61,7 +61,7 @@ evalGen :: forall effs oeffs ts cs a.
            , EvalGen# effs oeffs )
         => AlgTrans effs oeffs ts cs
         -> Prog (effs `Union` GenEffects) a -> Apply ts Gen a
-evalGen at = evalAT genAlg (withFwds (Proxy @GenEffects) (weakenC @((~) Gen) at))
+evalGen at = evalAT genAlg (withFwds (Proxy @GenEffects) (weakenCS @((~) Gen) at))
 
 -- | Stage a meta-level program into an object-level monadic computation via t`Gen`.
 stage :: forall m effs oeffs ts cs a.
@@ -89,7 +89,7 @@ evalGenM :: forall m effs oeffs ts cs a.
             , EvalGenM# effs oeffs m )
          => AlgTrans effs oeffs ts cs
          -> Prog (effs `Union` GenMEffects m) a -> Apply ts (GenM m) a
-evalGenM at = evalAT genMAlg (withFwds (Proxy @(GenMEffects m)) (weakenC @((~) (GenM m)) at))
+evalGenM at = evalAT genMAlg (withFwds (Proxy @(GenMEffects m)) (weakenCS @((~) (GenM m)) at))
 
 -- | Stage a meta-level program into an object-level monadic computation via t`GenM`.
 stageM :: forall m m' effs oeffs ts cs a.

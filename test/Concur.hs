@@ -8,7 +8,7 @@ import Control.Effect.Writer
 import Control.Effect.Concurrency
 import Control.Effect.Except
 import Control.Effect.State
-import Control.Effect.Internal.AlgTrans (weakenC)
+import Control.Effect.Internal.AlgTrans (weakenCS)
 import Control.Effect.Family.Algebraic
 import Control.Monad
 import Control.Effect.WithName
