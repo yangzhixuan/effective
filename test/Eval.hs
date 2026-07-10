@@ -28,7 +28,7 @@ evalExpr p = runIdentity . runMaybeT . flip runContT return $
 h :: [(String, Int)] -> Handler '[Var, Add] '[] [ContT Int, MaybeT] Int (Maybe Int)
 h env = expr env \\ except
 
--- evalExpr' :: [(String, Int)] -> Progs [Var, Add, Catch] Int -> Maybe Int
+-- evalExpr' :: [(String, Int)] -> Int ! [Var, Add, Catch] -> Maybe Int
 -- evalExpr' env p = handle (expr env |> except) p
 
 -- >>> :t runIdentity . runMaybeT . flip runContT return

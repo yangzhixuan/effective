@@ -7,7 +7,7 @@ Stability   : experimental
 
 This module provides a representation of effectful programs based on impredicative encoding,
 which provides good performance for monadic binding and deep handling, but is very bad at
-shallow handling (pattern matching). The @effective@ library emphasises deep handling, so
+shallow handling (pattern matching). The @effective@ library is all about deep handling, so
 the representation from this module is suitable for our purpose.
 -}
 
@@ -52,7 +52,6 @@ import Data.Proxy
 
 -- | The impredicative-encoding of effectful programs. We work with array-based
 -- representation of algebras for fast accessing.
-
 newtype Prog (effs :: [Effect]) a =
   Prog { runProg :: forall m . Monad m => AlgebraArray effs m -> m a }
 
@@ -85,7 +84,6 @@ callJ = join . call
 callK :: forall eff effs a b . (Member eff effs, HFunctor eff)
       => eff (Prog effs) a -> (a -> Prog effs b) -> Prog effs b
 callK x k = call x >>= k
-
 
 {-
 -- The following is type-safe but its performance is awful.

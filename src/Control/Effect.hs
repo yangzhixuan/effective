@@ -12,10 +12,8 @@ The README file contains a tutorial on how to use this library.
 
 module Control.Effect
   ( -- * Programs
-    type (!)
-  , Progs
-  , Prog
---  , Effs (Eff, Effs)
+    Prog
+  , type (!)
   , WithName, (:@)
   , call,  callJ,  callK
   , callM, callJM, callKM
@@ -113,7 +111,6 @@ module Control.Effect
   -- * Auxiliary types
   , Apply
   , Proxy (..)
-
 
   -- * Lightweight staging
   , CodeQ

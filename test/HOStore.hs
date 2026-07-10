@@ -10,7 +10,7 @@ import Control.Effect.Nondet
 import Data.List.Kind
 import Data.Functor.Identity
 
-prog1 :: Progs '[New, Get, Put] Int
+prog1 :: Int ! '[New, Get, Put]
 prog1 = do iRef <- new @Int 1
            fRef <- new @(Int -> Int) (\i -> i * i)
            f <- get fRef
@@ -69,7 +69,7 @@ test4 = runIdentity (Safe.handleHSM @'[] nilAlg progS') where
   progS' :: forall w. Prog (Safe.HSEffs w) Int
   progS' = progS @w
 
-prog2 :: forall w. Progs '[Choose, Empty, Safe.Put w, Safe.Get w, Safe.New w] Int
+prog2 :: forall w. Int ! '[Choose, Empty, Safe.Put w, Safe.Get w, Safe.New w]
 prog2 = do iRef <- Safe.new @Int @w 1
            (do Safe.put iRef 2; return 0) <|> (do Safe.get iRef)
 
