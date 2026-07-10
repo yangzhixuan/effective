@@ -509,7 +509,7 @@ joinEx3 :: Bool -> StateT Int (ListT (MaybeT Identity)) ()
 joinEx3 b = $$(down $ evalAT'
   (letPut @Int
   `fuseAT'` stateAT @(CodeQ Int)
-  `fuseAT'` caseATSameC' (joinPush @(MaybeT Identity))
+  `fuseAT'` caseATsameCS' (joinPush @(MaybeT Identity))
                          (weakenOEffs pushWithUpAT)
   `fuseAT'` upMaybe @Identity
   `fuseAT'` (hideAT @'[Mb.Catch] Mb.exceptAT)
@@ -543,7 +543,7 @@ joinEx4 :: Bool -> StateT Int (ListT (MaybeT Identity)) ()
 joinEx4 b = $$(down $ evalAT'
   (letPut @Int
   `fuseAT'` stateAT @(CodeQ Int)
-  `fuseAT'` caseATSameC' (joinPush @(MaybeT Identity))
+  `fuseAT'` caseATsameCS' (joinPush @(MaybeT Identity))
                          (weakenOEffs pushWithUpAT)
   `fuseAT'` upCache @(MaybeT Identity)
   `fuseAT'` upMaybe @Identity

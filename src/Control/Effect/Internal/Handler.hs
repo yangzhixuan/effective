@@ -276,7 +276,7 @@ caseHdl :: forall effs1 effs2 oeffs ts a1 a2 a3 a4.
        => Handler effs1 oeffs ts a1 a2
        -> Handler effs2 oeffs ts a3 a4
        -> Handler (effs1 `Union` effs2) oeffs ts a1 a2
-caseHdl (Handler r1 a1) (Handler _ a2) = Handler r1 (caseATSameC a1 a2)
+caseHdl (Handler r1 a1) (Handler _ a2) = Handler r1 (caseATsameCS a1 a2)
 
 {-# INLINE unionHdl #-}
 -- | Case splitting on the union of two effect rows, and the two handlers may output

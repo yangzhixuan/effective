@@ -210,23 +210,23 @@ hideAT :: forall effs' effs oeffs ts cs.
 hideAT at = AlgTrans \ oalg -> weakenAlg (getAT at oalg)
 
 -- | Case splitting with the same carrier constraint.
-{-# INLINE caseATSameC #-}
-caseATSameC
+{-# INLINE caseATsameCS #-}
+caseATsameCS
   :: forall effs1 effs2 cs oeffs ts.
      CaseTrans# effs1 effs2
   => AlgTrans effs1 oeffs ts cs
   -> AlgTrans effs2 oeffs ts cs
   -> AlgTrans (effs1 `Union` effs2) oeffs ts cs
-caseATSameC at1 at2 = weakenCS (caseAT at1 at2)
+caseATsameCS at1 at2 = weakenCS (caseAT at1 at2)
 
 -- | Case splitting with the same carrier constraint.
-{-# INLINE caseATSameC' #-}
-caseATSameC'
+{-# INLINE caseATsameCS' #-}
+caseATsameCS'
   :: forall effs1 effs2 cs oeffs ts.
       AlgTrans effs1 oeffs ts cs
   -> AlgTrans effs2 oeffs ts cs
   -> AlgTrans (effs1 :++ effs2) oeffs ts cs
-caseATSameC' at1 at2 = weakenCS (caseAT' at1 at2)
+caseATsameCS' at1 at2 = weakenCS (caseAT' at1 at2)
 
 type UnionAT# effs1 effs2 oeffs1 oeffs2 =
   ( Members effs1 effs1, Members effs2 effs2
@@ -289,7 +289,7 @@ withFwds' :: forall feffs effs oeffs ts cs.
             , WithFwds'# effs oeffs feffs )
          => Proxy feffs
          -> AlgTrans effs oeffs ts cs
-         -> AlgTrans (effs :++ feffs) (oeffs :++ feffs)ts cs
+         -> AlgTrans (effs :++ feffs) (oeffs :++ feffs) ts cs
 withFwds' _ at = weakenCS (appendAT at (fwds @feffs))
 
 -- ** Fusion-based combinators
@@ -495,6 +495,13 @@ algTrans1C :: forall eff oeffs ts cs
           -> AlgTransC '[eff] oeffs ts cs
 algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg :#$ EndAC
 
+-- | Static version of `hideAT`.
+hideATC :: forall effs' effs oeffs ts cs.
+           HideAT# effs effs'
+        => AlgTransC effs oeffs ts cs
+        -> AlgTransC (effs :\\ effs') oeffs ts cs
+hideATC at = AlgTransC \oalg -> weakenAlgC (getATC at oalg)
+
 -- | Static version of `weakenCS`
 weakenCSC :: forall cs' cs effs oeffs ts.
           (forall m. cs' m => cs m)
@@ -509,6 +516,33 @@ weakenCSCMonad
   => AlgTransC effs oeffs ts (CompC ts2 Monad Monad)
   -> AlgTransC effs oeffs ts Monad
 weakenCSCMonad = weakenCSC
+
+-- | Static version of `withFwds`.
+{-# INLINE withFwdsC #-}
+withFwdsC
+  :: forall feffs effs oeffs ts cs.
+     ( ForwardsC cs feffs ts
+     , WithFwds# effs oeffs feffs )
+  => Proxy feffs
+  -> AlgTransC effs oeffs ts cs
+  -> AlgTransC (effs `Union` feffs) (oeffs `Union` feffs) ts cs
+withFwdsC _ at = AlgTransC $ \oalg ->
+  unionAlgC @effs @feffs
+    (getATC at (weakenAlgC @oeffs oalg))
+    (getATC (fwdsC @feffs @ts) (weakenAlgC @feffs oalg))
+
+-- | Static version of `withFwds'`.
+{-# INLINE withFwdsC' #-}
+withFwdsC' :: forall feffs effs oeffs ts cs.
+              ( ForwardsC cs feffs ts
+              , WithFwds'# effs oeffs feffs )
+           => Proxy feffs
+           -> AlgTransC effs oeffs ts cs
+           -> AlgTransC (effs :++ feffs) (oeffs :++ feffs) ts cs
+withFwdsC' _ at = AlgTransC $ \oalg ->
+  appendAlgC @effs @feffs
+    (getATC at (weakenAlgC @oeffs oalg))
+    (getATC (fwdsC @feffs @ts) (weakenAlgC @feffs oalg))
 
 -- | Static version of `fuseAT`
 fuseATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
@@ -553,6 +587,40 @@ pipeATC at1 at2 = AlgTransC $ \oalg ->
     appendAlgC @(oeffs1 :\\ effs2) @effs2
       (getATC (fwdsC @(oeffs1 :\\ effs2) @ts2) (weakenAlgC oalg))
       (getATC at2 (weakenAlgC oalg)))
+
+-- | Static version of `passAT`.
+passATC
+  :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+     ( ForwardsC cs1 effs2 ts1
+     , ForwardsC cs2 oeffs1 ts2
+     , PassAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 )
+  => AlgTransC effs1 oeffs1 ts1 cs1
+  -> AlgTransC effs2 oeffs2 ts2 cs2
+  -> AlgTransC (effs1 `Union` effs2)
+               (oeffs1 `Union` oeffs2)
+               (ts1 :++ ts2)
+               (CompC ts2 cs1 cs2)
+passATC at1 at2 = AlgTransC $ \(oalg :: AlgebraC (oeffs1 `Union` oeffs2) m) ->
+  unionAlgC @effs1 @effs2
+    (getATC at1 @(Apply ts2 m) (getATC (fwdsC @oeffs1 @ts2) @m (weakenAlgC oalg)))
+    (getATC (fwdsC @effs2 @ts1) (getATC at2 (weakenAlgC oalg)))
+
+-- | Static version of `passAT'`.
+passATC'
+  :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+     ( ForwardsC cs1 effs2 ts1
+     , ForwardsC cs2 oeffs1 ts2
+     , PassAT'# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 )
+  => AlgTransC effs1 oeffs1 ts1 cs1
+  -> AlgTransC effs2 oeffs2 ts2 cs2
+  -> AlgTransC (effs1 `Union` effs2)
+               (oeffs1 `Union` oeffs2)
+               (ts1 :++ ts2)
+               (CompC ts2 cs1 cs2)
+passATC' at1 at2 = AlgTransC $ \oalg ->
+   weakenAlgC $ unionAlgC @effs2 @effs1
+     (getATC (fwdsC @effs2 @ts1) (getATC at2 (weakenAlgC oalg)))
+     (getATC at1 (getATC (fwdsC @oeffs1 @ts2) (weakenAlgC oalg)))
 
 -- | Static version of `generalFuseAT`.
 generalFuseATC
