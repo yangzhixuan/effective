@@ -53,6 +53,7 @@ module Control.Effect.Internal.Algebra (
   , Members
   , Members_
   , KnownEffs(..)
+  , SEffs(..)
   , dispatch
   , dispatchCases
   , dispatchC
@@ -311,7 +312,18 @@ type family Members_ (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint wher
   Members_ '[]             xyeffs = ()
   Members_ (xeff ': xeffs) xyeffs = (Member xeff xyeffs, Members_ xeffs xyeffs)
 
+-- | Runtime representation of a list of effects.
+data SEffs (effs :: [Effect]) where
+  SNil :: SEffs '[]
+  SCons :: forall eff effs. SEffs effs -> SEffs (eff ': effs)
+
 class KnownEffs (xeffs :: [Effect]) where
+  -- | Runtime representation of @xeffs@. By induction on @singEffs@, the other
+  -- members such as @lengthEffs@ can be defined, but we still include them in
+  -- this type class so that they can be statically simplified by GHC.
+  singEffs :: SEffs xeffs
+
+  -- | The number of effects in @xeffs@
   lengthEffs :: Int
 
   -- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
@@ -323,6 +335,9 @@ class KnownEffs (xeffs :: [Effect]) where
   weakenAlgC :: Members_ xeffs xyeffs => AlgebraC xyeffs m -> AlgebraC xeffs m
 
 instance KnownEffs '[] where
+  {-# INLINE singEffs #-}
+  singEffs = SNil
+
   {-# INLINE lengthEffs #-}
   lengthEffs = 0
 
@@ -332,6 +347,9 @@ instance KnownEffs '[] where
   weakenAlgC _ = EndAC
 
 instance KnownEffs effs => KnownEffs (eff : effs) where
+  {-# INLINE singEffs #-}
+  singEffs = SCons singEffs
+
   {-# INLINE lengthEffs #-}
   lengthEffs = 1 + lengthEffs @effs
 
