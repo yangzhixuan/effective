@@ -33,7 +33,7 @@ module Control.Effect.Internal.Algebra (
   , nilAlg
   , endAlg
   , tailAlg
-  , viewAlgebra
+  , viewAlg
   , toAlgebraArray
   , pattern (:#)
   , pattern (:#.)
@@ -142,7 +142,7 @@ type Case effs f x y = Case_ FT.Seq effs f x y
 -- * Simple functions manipulating cases and algebras.
 --------------------------------------------------------------------------------
 
--- | Constructing an algebra from its components represented as the `Any` type.
+-- | Unsafely construct an algebra from its components represented as the `Any` type.
 {-# INLINE unsafeAlgebra #-}
 unsafeAlgebra :: s Any -> Algebra_ s effs m
 unsafeAlgebra cs = Algebra (Case cs)
@@ -185,35 +185,41 @@ viewCase :: forall eff effs m x y s. Sequence s
          -> (eff m x -> y, Case_ s effs m x y)
 viewCase cs = (headCase cs, tailCase cs)
 
-{-# INLINE viewAlgebra #-}
-viewAlgebra :: forall eff effs m s. Sequence s
-            => Algebra_ s (eff : effs) m
-            -> (forall x. eff m x -> m x, Algebra_ s effs m)
-viewAlgebra (Algebra aas) = (headCase aas, Algebra $ tailCase aas)
+{-# INLINE viewAlg #-}
+viewAlg :: forall eff effs m s. Sequence s
+        => Algebra_ s (eff : effs) m
+        -> (forall x. eff m x -> m x, Algebra_ s effs m)
+viewAlg (Algebra aas) = (headCase aas, Algebra $ tailCase aas)
 
 {-# INLINE toAlgebraArray #-}
 toAlgebraArray :: (Sequence s) => Algebra_ s effs m -> AlgebraArray effs m
 toAlgebraArray (Algebra (Case s)) = Algebra (Case (seqToArray s))
 
+-- | The @cons@-constructor for algebras. In this library, the character @#@ is associated to
+-- operations on algebras.
 infixr 5 :#
 {-# INLINE (:#) #-}
 pattern (:#) :: Sequence s => (forall x. eff m x -> m x) -> Algebra_ s effs m -> Algebra_ s (eff : effs) m
-pattern a :# as <- (viewAlgebra -> (a,as)) where
+pattern a :# as <- (viewAlg -> (a,as)) where
   a :# (Algebra as) = Algebra (consCase a as)
 
+-- | @a :#. b@ is the same as @a :# b :# endAlg@
 infixr 5 :#.
 {-# INLINE (:#.) #-}
 pattern (:#.) :: Sequence s => (forall x. eff m x -> m x) -> (forall x. eff' m x -> m x)
               -> Algebra_ s ([eff, eff']) m
-pattern a :#. b <- (viewAlgebra -> (a,viewAlgebra -> (b, _))) where
+pattern a :#. b <- (viewAlg -> (a,viewAlg -> (b, _))) where
   a :#. b = a :# (b :# endAlg)
 
+-- | The @cons@-constructor for cases. In this library, the character @%@ is associated to
+-- operations on cases.
 infixr 5 :%
 {-# INLINE (:%) #-}
 pattern (:%) :: Sequence s => (eff m x -> y) -> Case_ s effs m x y -> Case_ s (eff : effs) m x y
 pattern a :% as <- (viewCase -> (a,as)) where
   a :% as = consCase a as
 
+-- | @a :%. b@ is the same as @a :% b :% endCase@
 infixr 5 :%.
 {-# INLINE (:%.) #-}
 pattern (:%.) :: Sequence s => (eff m x -> y) -> (eff' m x -> y)
@@ -233,10 +239,14 @@ instance Sequence s => Functor (Case_ s effs f x) where
 -- * Membership of an effect in effect rows
 --------------------------------------------------------------------------------
 
+-- | @Member eff effs@ is the constraint that @eff@ is an member of the list @effs@.
+-- This class is inductively instantiated.
 class Member (eff :: Effect) (effs :: [Effect]) where
+  -- | The index of @eff@ in @effs@.
+  memberIndex :: Int
+
   -- We are relying on GHC to optimise @(1 + 1 + ... + 0)@ to a numeral @n@
   -- statically. A more reliable way is to make the length a type-level @Nat@ and use @KnownNat@.
-  memberIndex :: Int
 
 {-# INLINE dispatch #-}
 dispatch :: forall eff effs s m. (Member eff effs, Sequence s)
@@ -272,12 +282,14 @@ singAlgIso = Iso dispatch singAlg
 singAlg :: Sequence s => (forall x. eff m x -> m x) -> Algebra_ s '[eff] m
 singAlg alg = alg :# endAlg
 
--- | A variant of `call` for which the effect is on a given monad rather than the @Prog@ monad.
+-- | A variant of `Control.Effect.call` for which the effect is on a given monad
+-- rather than the `Control.Effect.Prog` monad.
 {-# INLINE callM #-}
 callM :: forall eff effs a m s . (Member eff effs, Sequence s)
       => Algebra_ s effs m -> eff m a -> m a
 callM oalg = dispatch oalg
 
+-- | A static variant of `callM`.
 callMC :: forall eff effs a m x. (Member eff effs)
        => AlgebraC effs m -> CodeQ (eff m x -> m x)
 callMC oalg = [|| at $$(dispatchC oalg) ||]
@@ -318,6 +330,8 @@ data SEffs (effs :: [Effect]) where
   SNil :: SEffs '[]
   SCons :: forall eff effs. SEffs effs -> SEffs (eff ': effs)
 
+-- | @KnownEffs xeffs@ when @xeffs@ is a canonical elements of @[Effect]@; that is to say,
+-- @xeffs@ is built from @[]@ and @:@. This allows us to do induction on @xeffs@.
 class KnownEffs (xeffs :: [Effect]) where
   -- | Runtime representation of @xeffs@. By induction on @singEffs@, the other
   -- members such as @lengthEffs@ can be defined, but we still include them in
@@ -342,7 +356,6 @@ instance KnownEffs '[] where
 
   {-# INLINE weakenAlg #-}
   weakenAlg _ = endAlg
-
 
 instance KnownEffs effs => KnownEffs (eff : effs) where
   {-# INLINE singEffs #-}
@@ -375,6 +388,16 @@ appendAlg :: forall xeffs yeffs m s. Sequence s
           -> Algebra_ s (xeffs :++ yeffs) m
 appendAlg (Algebra as) (Algebra bs) = Algebra $ appendCases as bs
 
+infixr 6 #
+-- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
+{-# INLINE (#) #-}
+(#) :: forall eff1 eff2 m s . Sequence s
+    => Algebra_ s eff1 m
+    -> Algebra_ s eff2 m
+    -> Algebra_ s (eff1 :++ eff2) m
+falg # galg = appendAlg falg galg
+
+
 {-# INLINE splitCase #-}
 splitCase :: forall xeffs yeffs f x y s. (Sequence s, KnownEffs xeffs)
           => Case_ s (xeffs :++ yeffs) f x y
@@ -389,15 +412,6 @@ splitAlg :: forall xeffs yeffs m s. (Sequence s, KnownEffs xeffs)
 splitAlg (Algebra (Case s))
   = let (l, r) = split s (lengthEffs @xeffs)
     in (Algebra (Case l), Algebra (Case r))
-
-infixr 6 #
--- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
-{-# INLINE (#) #-}
-(#) :: forall eff1 eff2 m s . Sequence s
-    => Algebra_ s eff1 m
-    -> Algebra_ s eff2 m
-    -> Algebra_ s (eff1 :++ eff2) m
-falg # galg = appendAlg falg galg
 
 -- * | Definitions related to staged algebras
 ---------------------------------------------
