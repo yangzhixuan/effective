@@ -50,8 +50,8 @@ module Control.Effect.Internal.Algebra (
 
   -- * Membership of an effect in an effect set
   , Member(..)
-  , Members
-  , Members_
+  , Members(..)
+  , Members_(..)
   , KnownEffs(..)
   , SEffs(..)
   , dispatch
@@ -83,7 +83,8 @@ module Control.Effect.Internal.Algebra (
   , appendAlgC
   , pattern (:#.$)
   , unionAlgC
-  , HasSplitAlgC(..)
+  , weakenAlgC
+  , splitAlgC
   , genAlgebra
   )
   where
@@ -320,7 +321,8 @@ data SEffs (effs :: [Effect]) where
 class KnownEffs (xeffs :: [Effect]) where
   -- | Runtime representation of @xeffs@. By induction on @singEffs@, the other
   -- members such as @lengthEffs@ can be defined, but we still include them in
-  -- this type class so that they can be statically simplified by GHC.
+  -- this type class so that they can be statically simplified by GHC (GHC doesn't
+  -- simplify recursive definitions but it simplies recursive type instances).
   singEffs :: SEffs xeffs
 
   -- | The number of effects in @xeffs@
@@ -330,9 +332,6 @@ class KnownEffs (xeffs :: [Effect]) where
   -- every effect in @xeffs@ is in @xyeffs@.
   weakenAlg :: forall xyeffs s m . (Members_ xeffs xyeffs, Sequence s)
             => Algebra_ s xyeffs m -> Algebra_ s xeffs m
-
-  -- | Weakens a static algebra.
-  weakenAlgC :: Members_ xeffs xyeffs => AlgebraC xyeffs m -> AlgebraC xeffs m
 
 instance KnownEffs '[] where
   {-# INLINE singEffs #-}
@@ -344,7 +343,6 @@ instance KnownEffs '[] where
   {-# INLINE weakenAlg #-}
   weakenAlg _ = endAlg
 
-  weakenAlgC _ = EndAC
 
 instance KnownEffs effs => KnownEffs (eff : effs) where
   {-# INLINE singEffs #-}
@@ -355,8 +353,6 @@ instance KnownEffs effs => KnownEffs (eff : effs) where
 
   {-# INLINE weakenAlg #-}
   weakenAlg xyAlg = dispatch xyAlg :# weakenAlg @effs xyAlg
-
-  weakenAlgC cxys = dispatchC cxys :#$ weakenAlgC @effs cxys
 
 -- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
 -- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
@@ -443,18 +439,20 @@ unionAlgC :: forall xeffs yeffs m a b
   -> AlgebraC (xeffs `Union` yeffs) m
 unionAlgC xalg yalg = (#$) @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
 
--- | To split a static algebra we need to perform induction on |xs|, so
--- we need to create a typeclass.
-class HasSplitAlgC (xs :: [Effect]) (ys :: [Effect]) where
-  splitAlgC :: AlgebraC (xs :++ ys) m -> (AlgebraC xs m, AlgebraC ys m)
+-- | Weaken a static algebra.
+weakenAlgC :: forall xs ys m. Members xs ys => AlgebraC ys m -> AlgebraC xs m
+weakenAlgC = go (singEffs @xs) where
+  go :: forall xs'. Members_ xs' ys => SEffs xs' -> AlgebraC ys m -> AlgebraC xs' m
+  go SNil _ = EndAC
+  go (SCons s) cxys = dispatchC cxys :#$ go s cxys
 
-instance HasSplitAlgC '[] ys where
-  splitAlgC :: AlgebraC ('[] :++ ys) m -> (AlgebraC '[] m, AlgebraC ys m)
-  splitAlgC cbs = (EndAC, cbs)
-
-instance HasSplitAlgC xs ys => HasSplitAlgC (x ': xs) ys where
-  splitAlgC :: AlgebraC ((x : xs) :++ ys) m -> (AlgebraC (x : xs) m, AlgebraC ys m)
-  splitAlgC (ca :#$ cabs) = let (cas, cbs) = splitAlgC cabs in ((ca :#$ cas), cbs)
+-- | To split a static algebra @AlgebraC (xs :++ ys) m@ we need to perform
+-- induction on @xs@, so we need @KnownEffs xs@.
+splitAlgC :: forall xs ys m. KnownEffs xs => AlgebraC (xs :++ ys) m -> (AlgebraC xs m, AlgebraC ys m)
+splitAlgC = go singEffs where
+  go :: forall xs'. SEffs xs' -> AlgebraC (xs' :++ ys) m -> (AlgebraC xs' m, AlgebraC ys m)
+  go SNil cbs = (EndAC, cbs)
+  go (SCons s) (ca :#$ cabs) = let (cas, cbs) = go s cabs in ((ca :#$ cas), cbs)
 
 -- | Generating a code of an algebra from a static algebra
 genAlgebra :: AlgebraC effs f -> CodeQ (Algebra effs f)

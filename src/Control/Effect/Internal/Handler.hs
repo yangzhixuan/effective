@@ -391,7 +391,7 @@ fuseAppC, (++>$)
     , forall m . Monad m => MonadApply ts2 m
     , CompAT# ts1 ts2
     , ForwardsM effs2 ts1, ForwardsM oeffs1 ts2
-    , HasSplitAlgC oeffs1 oeffs2)
+    , KnownEffs oeffs1)
   => HandlerC effs1 oeffs1 ts1 a1 a2   -- ^ @h1@
   -> HandlerC effs2 oeffs2 ts2 a2 a3   -- ^ @h2@
   -> HandlerC (effs1 :++ effs2)

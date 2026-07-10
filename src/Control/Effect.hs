@@ -33,7 +33,6 @@ module Control.Effect
   , Member(..)
   , Members(..)
   , KnownEffs(..)
-  , HasSplitAlgC (..)
   , dispatch
   , dispatchC
   , dispatchCases

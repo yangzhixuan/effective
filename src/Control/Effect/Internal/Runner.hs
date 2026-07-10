@@ -161,7 +161,7 @@ circCode (Code qG) (Code qF) = Code $
              else fmap TExp [| $(pure g) . $(pure f)|]
 
 fuseAppRC :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
-          ( ForwardsC cs2 oeffs1 ts2, forall m. Assoc ts1 ts2 m, HasSplitAlgC oeffs1 oeffs2)
+          ( ForwardsC cs2 oeffs1 ts2, forall m. Assoc ts1 ts2 m, KnownEffs oeffs1)
        => RunnerC oeffs1 ts1 a1 a2 cs1
        -> RunnerC oeffs2 ts2 a2 a3 cs2
        -> RunnerC (oeffs1  :++ oeffs2)

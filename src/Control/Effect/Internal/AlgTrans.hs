@@ -381,7 +381,7 @@ fuseAppAT at1 at2 = AlgTrans $ \(oalg :: Algebra (oeffs1 :++ oeffs2) m) ->
 {-# INLINE fuseAppATC #-}
 fuseAppATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
               ( CompAT# ts1 ts2, ForwardsC cs1 effs2 ts1, ForwardsC cs2 oeffs1 ts2
-              , HasSplitAlgC oeffs1 oeffs2 )
+              , KnownEffs oeffs1 )
        => AlgTransC effs1 oeffs1 ts1 cs1
        -> AlgTransC effs2 oeffs2 ts2 cs2
        -> AlgTransC (effs1 :++ effs2)
