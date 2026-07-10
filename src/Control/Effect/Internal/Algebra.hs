@@ -73,7 +73,7 @@ module Control.Effect.Internal.Algebra (
   , splitAlg
   , (#)
 
-  -- * Static algebras
+  -- * Staged algebras
   , CodeQ
   , NatTrans(..)
   , type (-.>)
@@ -289,7 +289,7 @@ callM :: forall eff effs a m s . (Member eff effs, Sequence s)
       => Algebra_ s effs m -> eff m a -> m a
 callM oalg = dispatch oalg
 
--- | A static variant of `callM`.
+-- | A staged variant of `callM`.
 callMC :: forall eff effs a m x. (Member eff effs)
        => AlgebraC effs m -> CodeQ (eff m x -> m x)
 callMC oalg = [|| at $$(dispatchC oalg) ||]
@@ -446,21 +446,21 @@ infixr 5 :#.$
 pattern (:#.$) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff, eff']) m
 pattern a :#.$ as = (a :#$ (as :#$ EndAC))
 
--- | Static version of `unionAlg`.
+-- | Staged version of `unionAlg`.
 unionAlgC :: forall xeffs yeffs m a b
   .  ( Members (yeffs :\\ xeffs) yeffs )
   => AlgebraC xeffs m -> AlgebraC yeffs m
   -> AlgebraC (xeffs `Union` yeffs) m
 unionAlgC xalg yalg = (#$) @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
 
--- | Weaken a static algebra.
+-- | Weaken a staged algebra.
 weakenAlgC :: forall xs ys m. Members xs ys => AlgebraC ys m -> AlgebraC xs m
 weakenAlgC = go (singEffs @xs) where
   go :: forall xs'. Members_ xs' ys => SEffs xs' -> AlgebraC ys m -> AlgebraC xs' m
   go SNil _ = EndAC
   go (SCons s) cxys = dispatchC cxys :#$ go s cxys
 
--- | To split a static algebra @AlgebraC (xs :++ ys) m@ we need to perform
+-- | To split a staged algebra @AlgebraC (xs :++ ys) m@ we need to perform
 -- induction on @xs@, so we need @KnownEffs xs@.
 splitAlgC :: forall xs ys m. KnownEffs xs => AlgebraC (xs :++ ys) m -> (AlgebraC xs m, AlgebraC ys m)
 splitAlgC = go singEffs where
@@ -468,7 +468,7 @@ splitAlgC = go singEffs where
   go SNil cbs = (EndAC, cbs)
   go (SCons s) (ca :#$ cabs) = let (cas, cbs) = go s cabs in ((ca :#$ cas), cbs)
 
--- | Generating a code of an algebra from a static algebra
+-- | Generating a code of an algebra from a staged algebra
 genAlgebra :: AlgebraC effs f -> CodeQ (Algebra effs f)
 genAlgebra EndAC = [|| endAlg ||]
 genAlgebra (ac :#$ acs) = [|| at $$ac :# $$(genAlgebra acs) ||]

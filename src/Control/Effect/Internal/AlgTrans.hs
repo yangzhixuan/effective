@@ -488,28 +488,32 @@ generalFuseAT _ _ at1 at2 = AlgTrans $ \oalg ->
      (getAT (fwds @feffs @ts1) (weakenAlg (getAT at2 (weakenAlg oalg))))
 
 -- ** Staged algebra transformers
+--
+-- Combinators for staged algebra transformers mirror those for ordinary algebra
+-- transformers. In the future I hope to find a way to unify the dynamic
+-- version and staged version into a single definition.
 
--- | Static version of 'algTrans1'
+-- | Staged version of 'algTrans1'
 algTrans1C :: forall eff oeffs ts cs
           .  (forall m. cs m => AlgebraC oeffs m -> CodeQ (eff (Apply ts m) -.> Apply ts m))
           -> AlgTransC '[eff] oeffs ts cs
 algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg :#$ EndAC
 
--- | Static version of `hideAT`.
+-- | Staged version of `hideAT`.
 hideATC :: forall effs' effs oeffs ts cs.
            HideAT# effs effs'
         => AlgTransC effs oeffs ts cs
         -> AlgTransC (effs :\\ effs') oeffs ts cs
 hideATC at = AlgTransC \oalg -> weakenAlgC (getATC at oalg)
 
--- | Static version of `weakenCS`
+-- | Staged version of `weakenCS`
 weakenCSC :: forall cs' cs effs oeffs ts.
           (forall m. cs' m => cs m)
          => AlgTransC effs oeffs ts cs
          -> AlgTransC effs oeffs ts cs'
 weakenCSC at = AlgTransC $ getATC at
 
--- | Static version of `weakenCSMonad`
+-- | Staged version of `weakenCSMonad`
 weakenCSCMonad
   :: forall ts2 effs oeffs ts
    . (forall m. Monad m => MonadApply ts2 m)
@@ -517,7 +521,7 @@ weakenCSCMonad
   -> AlgTransC effs oeffs ts Monad
 weakenCSCMonad = weakenCSC
 
--- | Static version of `withFwds`.
+-- | Staged version of `withFwds`.
 {-# INLINE withFwdsC #-}
 withFwdsC
   :: forall feffs effs oeffs ts cs.
@@ -531,7 +535,7 @@ withFwdsC _ at = AlgTransC $ \oalg ->
     (getATC at (weakenAlgC @oeffs oalg))
     (getATC (fwdsC @feffs @ts) (weakenAlgC @feffs oalg))
 
--- | Static version of `withFwds'`.
+-- | Staged version of `withFwds'`.
 {-# INLINE withFwdsC' #-}
 withFwdsC' :: forall feffs effs oeffs ts cs.
               ( ForwardsC cs feffs ts
@@ -544,7 +548,7 @@ withFwdsC' _ at = AlgTransC $ \oalg ->
     (getATC at (weakenAlgC @oeffs oalg))
     (getATC (fwdsC @feffs @ts) (weakenAlgC @feffs oalg))
 
--- | Static version of `fuseAT`
+-- | Staged version of `fuseAT`
 fuseATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
            FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
         => (ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2)
@@ -572,7 +576,7 @@ fuseAppATC at1 at2 = AlgTransC $ \(oalg :: AlgebraC (oeffs1 :++ oeffs2) m) ->
        (getATC at1 (getATC (fwdsC @oeffs1 @ts2) oalg1))
        (getATC (fwdsC @effs2 @ts1) (getATC at2 oalg2))
 
--- | Static version of `pipeAT`
+-- | Staged version of `pipeAT`
 pipeATC :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
           ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
           , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 )
@@ -588,7 +592,7 @@ pipeATC at1 at2 = AlgTransC $ \oalg ->
       (getATC (fwdsC @(oeffs1 :\\ effs2) @ts2) (weakenAlgC oalg))
       (getATC at2 (weakenAlgC oalg)))
 
--- | Static version of `passAT`.
+-- | Staged version of `passAT`.
 passATC
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
      ( ForwardsC cs1 effs2 ts1
@@ -605,7 +609,7 @@ passATC at1 at2 = AlgTransC $ \(oalg :: AlgebraC (oeffs1 `Union` oeffs2) m) ->
     (getATC at1 @(Apply ts2 m) (getATC (fwdsC @oeffs1 @ts2) @m (weakenAlgC oalg)))
     (getATC (fwdsC @effs2 @ts1) (getATC at2 (weakenAlgC oalg)))
 
--- | Static version of `passAT'`.
+-- | Staged version of `passAT'`.
 passATC'
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
      ( ForwardsC cs1 effs2 ts1
@@ -622,7 +626,7 @@ passATC' at1 at2 = AlgTransC $ \oalg ->
      (getATC (fwdsC @effs2 @ts1) (getATC at2 (weakenAlgC oalg)))
      (getATC at1 (getATC (fwdsC @oeffs1 @ts2) (weakenAlgC oalg)))
 
--- | Static version of `generalFuseAT`.
+-- | Staged version of `generalFuseAT`.
 generalFuseATC
   :: forall feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
      ( Members feffs effs2

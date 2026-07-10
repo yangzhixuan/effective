@@ -51,7 +51,7 @@ class Forward (eff :: Effect) (t :: (Type -> Type) -> (Type -> Type)) where
       => (forall x . eff m x     -> m x)
       -> (forall x . eff (t m) x -> t m x)
 
-  -- | @fwdC@ is the static version of `fwd` that works on code of algebras. It has a default
+  -- | @fwdC@ is the staged version of `fwd` that works on code of algebras. It has a default
   -- implementation in terms of `fwd` but it is possible more efficient implementations exist
   -- for some @t@.
   fwdC :: forall m . FwdConstraint eff t m
