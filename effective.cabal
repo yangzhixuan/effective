@@ -2,13 +2,12 @@ cabal-version:       3.0
 name:                effective
 version:             0.1.0.0
 synopsis:            Effect handlers
-description:         Effect handlers library for algebraic, scoped, and other effects.
+description:         Composable and stageable handlers of higher-order algebraic effects
 license:             BSD-3-Clause
 license-file:        LICENSE
-author:              Nicolas Wu
+author:              Nicolas Wu, Zhixuan Yang
 maintainer:          Nicolas Wu   <n.wu@imperial.ac.uk>
                      Zhixuan Yang <zhixuan.yang@protonmail.com>
--- copyright:
 category:            Control
 build-type:          Simple
 extra-source-files:
