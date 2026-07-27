@@ -266,15 +266,15 @@ type WithFwds# effs oeffs xeffs =
 
 -- | Bypassing some forwardable effects @feffs@ along an algebra transformer.
 -- Members of @feffs@ that are already in @effs@ or @oeffs@ are ignored.
-{-# INLINE withFwds #-}
-withFwds
+{-# INLINE withFwdsAT #-}
+withFwdsAT
   :: forall feffs effs oeffs ts cs.
      ( ForwardsC cs feffs ts
      , WithFwds# effs oeffs feffs )
   => Proxy feffs                  -- ^ The effects to be forwarded
   -> AlgTrans effs oeffs ts cs    -- ^ An algebra transformer that can forward @feffs@
   -> AlgTrans (effs `Union` feffs) (oeffs `Union` feffs) ts cs
-withFwds _ at = weakenCS (unionAT at (fwds @feffs))
+withFwdsAT _ at = weakenCS (unionAT at (fwds @feffs))
 
 type WithFwds'# effs oeffs xeffs =
   ( Members xeffs xeffs
@@ -283,14 +283,15 @@ type WithFwds'# effs oeffs xeffs =
   , Members xeffs (oeffs :++ xeffs) )
 
 -- | Bypassing forwardable effects along an algebra transformer.
-{-# INLINE withFwds' #-}
-withFwds' :: forall feffs effs oeffs ts cs.
-            ( ForwardsC cs feffs ts
-            , WithFwds'# effs oeffs feffs )
-         => Proxy feffs
-         -> AlgTrans effs oeffs ts cs
-         -> AlgTrans (effs :++ feffs) (oeffs :++ feffs) ts cs
-withFwds' _ at = weakenCS (appendAT at (fwds @feffs))
+{-# INLINE withFwdsAT' #-}
+withFwdsAT'
+  :: forall feffs effs oeffs ts cs.
+     ( ForwardsC cs feffs ts
+     , WithFwds'# effs oeffs feffs )
+  => Proxy feffs
+  -> AlgTrans effs oeffs ts cs
+  -> AlgTrans (effs :++ feffs) (oeffs :++ feffs) ts cs
+withFwdsAT' _ at = weakenCS (appendAT at (fwds @feffs))
 
 -- ** Fusion-based combinators
 type FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 =
@@ -303,15 +304,16 @@ infixr 9 `fuseAT`, `fuseAT'`
 --    1. all the input effects @effs2@ of @at2@ are visible in the input effects of the final result, and
 --    2. the output effects @oeffs1@ of @at1@ are intercepted by @effs2@ as much as possible.
 {-# INLINE fuseAT #-}
-fuseAT :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
-          FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
-       => (ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2)
-       => AlgTrans effs1 oeffs1 ts1 cs1
-       -> AlgTrans effs2 oeffs2 ts2 cs2
-       -> AlgTrans (effs1 `Union` effs2)
-                   ((oeffs1 :\\ effs2) `Union` oeffs2)
-                   (ts1 :++ ts2)
-                   (CompC ts2 cs1 cs2)
+fuseAT
+  :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
+     FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
+  => (ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2)
+  => AlgTrans effs1 oeffs1 ts1 cs1
+  -> AlgTrans effs2 oeffs2 ts2 cs2
+  -> AlgTrans (effs1 `Union` effs2)
+              ((oeffs1 :\\ effs2) `Union` oeffs2)
+              (ts1 :++ ts2)
+              (CompC ts2 cs1 cs2)
 fuseAT at1 at2 = generalFuseAT (Proxy @effs2) (Proxy @effs2) at1 at2
 
 -- | A variant of `fuseAT` that demands the carrier constraint @cs1@ of the
@@ -521,29 +523,29 @@ weakenCSCMonad
   -> AlgTransC effs oeffs ts Monad
 weakenCSCMonad = weakenCSC
 
--- | Staged version of `withFwds`.
-{-# INLINE withFwdsC #-}
-withFwdsC
+-- | Staged version of `withFwdsAT`.
+{-# INLINE withFwdsATC #-}
+withFwdsATC
   :: forall feffs effs oeffs ts cs.
      ( ForwardsC cs feffs ts
      , WithFwds# effs oeffs feffs )
   => Proxy feffs
   -> AlgTransC effs oeffs ts cs
   -> AlgTransC (effs `Union` feffs) (oeffs `Union` feffs) ts cs
-withFwdsC _ at = AlgTransC $ \oalg ->
+withFwdsATC _ at = AlgTransC $ \oalg ->
   unionAlgC @effs @feffs
     (getATC at (weakenAlgC @oeffs oalg))
     (getATC (fwdsC @feffs @ts) (weakenAlgC @feffs oalg))
 
--- | Staged version of `withFwds'`.
-{-# INLINE withFwdsC' #-}
-withFwdsC' :: forall feffs effs oeffs ts cs.
+-- | Staged version of `withFwdsAT'`.
+{-# INLINE withFwdsATC' #-}
+withFwdsATC' :: forall feffs effs oeffs ts cs.
               ( ForwardsC cs feffs ts
               , WithFwds'# effs oeffs feffs )
            => Proxy feffs
            -> AlgTransC effs oeffs ts cs
            -> AlgTransC (effs :++ feffs) (oeffs :++ feffs) ts cs
-withFwdsC' _ at = AlgTransC $ \oalg ->
+withFwdsATC' _ at = AlgTransC $ \oalg ->
   appendAlgC @effs @feffs
     (getATC at (weakenAlgC @oeffs oalg))
     (getATC (fwdsC @feffs @ts) (weakenAlgC @feffs oalg))

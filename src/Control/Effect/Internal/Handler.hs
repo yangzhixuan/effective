@@ -4,6 +4,28 @@ Description : Handlers and handler combinators
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu, Zhixuan Yang
 Stability   : experimental
+
+This module contains the definition of handlers in @effective@. An handler
+consists of an algebra transformer and a runner. The algebra transformer handles
+operations and is the main component of a handler, while a runner is supposed to
+some initialisation or finalisation work.
+
+The function `handle` and its variations apply a handler to a program. Other
+functions in this module are handler combinators that builld handlers from
+smaller ones.
+
+Handler combinators are the main innovation of this library.
+
+  1. They improve runtime performance of effect handling by collapsing nested
+  layers of effect handlers into a single handler (which is stored with
+  efficient data structures).
+
+  2. They provide an expressive language for controlling the interaction of
+  effect handlers.
+
+A good way to think about a handler @Handler effs oeffs ts a b@ is as a circuit with
+input wire @effs@ and output wire @oeffs@. Then handler combinators provide
+different ways to wire those circuits together.
 -}
 
 {-# LANGUAGE CPP #-}
@@ -31,7 +53,6 @@ import Data.List.Kind
 import Data.Functor.Identity
 import Data.HFunctor
 import Data.Proxy
-import Language.Haskell.TH hiding (Type)
 
 -- $namingConvention
 --
@@ -55,7 +76,7 @@ import Language.Haskell.TH hiding (Type)
 -- surrounding @effs@\/@oeffs@:
 --
 -- * @heffs@ — signatures to /h/ide       ('hide').
--- * @beffs@ — signatures to /b/ypass     ('bypass').
+-- * @beffs@ — signatures to /b/ypass     ('withFwds').
 -- * @feffs@ — signatures to /f/use       ('generalFuse').
 -- * @ieffs@ — signatures to /i/ntercept  ('generalFuse', paired with @feffs@).
 
@@ -82,6 +103,7 @@ data Handler effs oeffs ts a b =
   , halg :: AlgTrans effs oeffs ts Monad
   }
 
+-- | Staged version of handlers.
 type HandlerC
   :: [Effect]                             -- ^ effs  : input effects
   -> [Effect]                             -- ^ oeffs : output effects
@@ -100,7 +122,7 @@ data HandlerC effs oeffs ts a b =
   , halgC :: AlgTransC effs oeffs ts Monad
   }
 
--- * Building handlers
+-- * Handler Combinators
 
 -- | A wrapper of the @Handler@ constructor.
 {-# INLINE handler #-}
@@ -121,18 +143,21 @@ handler'
   -> Handler effs oeffs ts a b
 handler' run alg = Handler (Runner (\_ -> run)) (AlgTrans (\(_ :: Algebra oeffs m) -> alg @m))
 
+-- | A handler that handles nothing. This function is supposed to be used with `<:` by
+-- @a1 <: a2 <: a3 <: ... <: fromRunner r@.
 {-# INLINE fromRunner #-}
 fromRunner
   :: forall ts a b. (forall m . Monad m => Apply ts m a -> m b)
   -> Handler '[] '[] ts a b
 fromRunner run = Handler (Runner (\_ -> run)) (AlgTrans (const endAlg))
 
+-- | Adding an algebra transformer to an existing handler. This function is supposed to be used with 
+-- `fromRunner` by @a1 <: a2 <: a3 <: ... <: fromRunner r@.
 {-# INLINE (<:) #-}
 infixr <:
-
 (<:) :: forall effs oeffs effs' oeffs' ts a b . UnionAT# effs effs' oeffs oeffs'
-      => AlgTrans effs oeffs ts Monad
-      -> Handler effs' oeffs' ts a b -> Handler (effs `Union` effs') (oeffs `Union` oeffs') ts a b
+     => AlgTrans effs oeffs ts Monad
+     -> Handler effs' oeffs' ts a b -> Handler (effs `Union` effs') (oeffs `Union` oeffs') ts a b
 algs <: Handler hrun halg = Handler (weakenREffs hrun) (weakenCS (algs `unionAT` halg))
 
 -- | The identity handler that doesn't transform the effects.
@@ -140,18 +165,17 @@ algs <: Handler hrun halg = Handler (weakenREffs hrun) (weakenCS (algs `unionAT`
 identity :: Handler effs effs '[] a a
 identity = Handler idRunner idAT
 
-type Comp# effs1 ts1 ts2 =
-  ( CompR# ts1 ts2
-  , CompAT# ts1 ts2)
+type Comp# effs1 ts1 ts2 = (CompR# ts1 ts2 , CompAT# ts1 ts2)
 
--- | Composing two handlers.
+-- | Compose two handlers.
 {-# INLINE comp #-}
-comp :: ( forall m. Monad m => MonadApply ts1 m
-        , forall m. Monad m => MonadApply ts2 m
-        , Comp# effs1 ts1 ts2 )
-     => Handler effs1 effs2 ts1 a1 a2
-     -> Handler effs2 effs3 ts2 a2 a3
-     -> Handler effs1 effs3 (ts1 :++ ts2) a1 a3
+comp
+  :: (forall m. Monad m => MonadApply ts1 m
+     , forall m. Monad m => MonadApply ts2 m
+     , Comp# effs1 ts1 ts2 )
+  => Handler effs1 effs2 ts1 a1 a2
+  -> Handler effs2 effs3 ts2 a2 a3
+  -> Handler effs1 effs3 (ts1 :++ ts2) a1 a3
 comp (Handler r1 a1) (Handler r2 a2) =
   Handler (weakenRCSMonad (compR a2 r1 r2)) (weakenCSMonad (compAT a1 a2))
 
@@ -159,8 +183,8 @@ comp (Handler r1 a1) (Handler r2 a2) =
 -- when @effs'@ injects into @effs@ and @oeffs@ injects into @oeffs'@.
 {-# INLINE weaken #-}
 weaken
-  :: forall effs effs' oeffs oeffs' ts a b
-  . ( Members effs' effs , Members oeffs oeffs')
+  :: forall effs effs' oeffs oeffs' ts a b.
+     (Members effs' effs , Members oeffs oeffs')
   => Handler effs  oeffs  ts a b
   -> Handler effs' oeffs' ts a b
 weaken (Handler run halg)
@@ -189,15 +213,15 @@ type Bypass# beffs effs oeffs =
 
 -- | Operations from the output effect @oeffs@ of a handler can be added
 -- to the input effect if the handler can forward it.
-{-# INLINE bypass #-}
-bypass
+{-# INLINE withFwds #-}
+withFwds
   :: forall beffs effs oeffs ts a b
   . ( ForwardsM beffs ts
     , Bypass# beffs effs oeffs )
   => Proxy beffs
   -> Handler effs oeffs ts a b
   -> Handler (effs `Union` beffs) (oeffs `Union` beffs) ts a b
-bypass _ (Handler run alg) = Handler (weakenR run) (withFwds (Proxy @beffs) alg)
+withFwds _ (Handler run alg) = Handler (weakenR run) (withFwdsAT (Proxy @beffs) alg)
 
 -- | An algebra transformer that doesn't transform the carrier can be
 -- regarded as a handler trivially.
@@ -218,8 +242,8 @@ interpret
   -> Handler effs oeffs '[] a a
 interpret = fromAT . interpretAT
 
-{-# INLINE interpret1 #-}
 -- | A special case of `interpret` for one effect @eff@.
+{-# INLINE interpret1 #-}
 interpret1
   :: forall eff oeffs a
   .  ( HFunctor eff )
@@ -242,6 +266,7 @@ interpretM
 interpretM mrephrase
   = handler @effs @oeffs @'[] (const id) mrephrase
 
+-- | Staged version of `interpretM`.
 interpretMC
   :: forall effs oeffs a .
      (forall m . Monad m => AlgebraC oeffs m
@@ -250,6 +275,7 @@ interpretMC
 interpretMC mrephrase
   = HandlerC (RunnerC $ \_ -> [|| id ||]) (AlgTransC mrephrase)
 
+-- | Interpreting one operation.
 {-# INLINE interpretM1 #-}
 interpretM1
   :: forall eff oeffs a.
@@ -259,6 +285,7 @@ interpretM1
 interpretM1 mrephrase
   = handler @'[eff] @oeffs @'[] (const id) (\oalg -> mrephrase oalg :# endAlg)
 
+-- | Staged version of `interpretM1`
 interpretM1C
   :: forall eff oeffs a .
      (forall m . Monad m => AlgebraC oeffs m
@@ -271,46 +298,52 @@ interpretM1C mrephrase
 -- two be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
 -- and @effs2@, it is consumed by the first handler.
 {-# INLINE caseHdl #-}
-caseHdl :: forall effs1 effs2 oeffs ts a1 a2 a3 a4.
-           CaseTrans# effs1 effs2
-       => Handler effs1 oeffs ts a1 a2
-       -> Handler effs2 oeffs ts a3 a4
-       -> Handler (effs1 `Union` effs2) oeffs ts a1 a2
+caseHdl
+  :: forall effs1 effs2 oeffs ts a1 a2 a3 a4.
+     CaseTrans# effs1 effs2
+  => Handler effs1 oeffs ts a1 a2
+  -> Handler effs2 oeffs ts a3 a4
+  -> Handler (effs1 `Union` effs2) oeffs ts a1 a2
 caseHdl (Handler r1 a1) (Handler _ a2) = Handler r1 (caseATsameCS a1 a2)
 
-{-# INLINE unionHdl #-}
 -- | Case splitting on the union of two effect rows, and the two handlers may output
--- different effects.
-unionHdl :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
-          UnionAT# effs1 effs2 oeffs1 oeffs2
-       => Handler effs1 oeffs1 ts a1 a2
-       -> Handler effs2 oeffs2 ts a3 a4
-       -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
+-- different effects. The runner of the resulting handler is the runner of the argument.
+{-# INLINE unionHdl #-}
+unionHdl
+  :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
+     UnionAT# effs1 effs2 oeffs1 oeffs2
+  => Handler effs1 oeffs1 ts a1 a2
+  -> Handler effs2 oeffs2 ts a3 a4
+  -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
 unionHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenCS (unionAT a1 a2))
 
 -- | Case splitting on the union of two effect rows, and the two handlers may output
 -- different effects.
-unionHdlAT :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
-          UnionAT# effs1 effs2 oeffs1 oeffs2
-       => Handler  effs1 oeffs1 ts a1 a2
-       -> AlgTrans effs2 oeffs2 ts Monad
-       -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
+{-# INLINE unionHdlAT #-}
+unionHdlAT
+  :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
+     UnionAT# effs1 effs2 oeffs1 oeffs2
+  => Handler  effs1 oeffs1 ts a1 a2
+  -> AlgTrans effs2 oeffs2 ts Monad
+  -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
 unionHdlAT (Handler r1 a1) a2 = Handler (weakenR r1) (weakenCS (unionAT a1 a2))
 
-{-# INLINE appendHdl #-}
 -- | Case splitting on the append of two effect rows, and the two handlers may output
 -- different effects.
-appendHdl :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
-          AppendAT# effs1 effs2 oeffs1 oeffs2
-       => Handler effs1 oeffs1 ts a1 a2
-       -> Handler effs2 oeffs2 ts a3 a4
-       -> Handler (effs1 :++ effs2) (oeffs1 :++ oeffs2) ts a1 a2
+{-# INLINE appendHdl #-}
+appendHdl
+  :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
+     AppendAT# effs1 effs2 oeffs1 oeffs2
+  => Handler effs1 oeffs1 ts a1 a2
+  -> Handler effs2 oeffs2 ts a3 a4
+  -> Handler (effs1 :++ effs2) (oeffs1 :++ oeffs2) ts a1 a2
 appendHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenCS (appendAT a1 a2))
 
--- * Fusion-based handler combinators
-
+-- | The combinator `h1 |> h2` is an archetype of handler fusion. Its property is that
+-- @
+--    handleP h2 (handleP h1 prog) = handleP (h1 |> h2) prog
+-- @
 infixr 9 `fuse`, |>
-
 {-# INLINE fuse #-}
 {-# INLINE (|>) #-}
 fuse, (|>)

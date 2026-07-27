@@ -61,8 +61,7 @@ module Control.Effect
   , comp
   , weaken
   , hide
-  , bypass
-  , fromAT
+  , withFwds
   , interpret, interpretAT, interpretM, interpretMC
   , interpret1, interpretAT1, interpretM1, interpretM1C
   , caseHdl
