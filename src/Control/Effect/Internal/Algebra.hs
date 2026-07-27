@@ -422,6 +422,10 @@ newtype NatTrans f g = NT { at :: forall x. f x -> g x }
 type (-.>) = NatTrans
 
 infixr 5 :#$
+
+-- | Staged version of @effs@-algebras on @f@. We are using a GADT to represent
+-- staged algebras. In the future this may be changed to efficient sequence data
+-- structures for faster compilation speed.
 data AlgebraC (effs :: [Effect]) (f :: Type -> Type) where
   EndAC :: AlgebraC '[] f
   (:#$) :: CodeQ (eff m -.> m) -> AlgebraC effs m -> AlgebraC (eff ': effs) m
@@ -430,8 +434,8 @@ data CaseC (effs :: [Effect]) (f :: Type -> Type) a b where
   EndCC :: CaseC '[] f a b
   (:#%) :: CodeQ (eff f a -> b) -> CaseC effs f a b -> CaseC (eff ': effs) f a b
 
-infixr 6 #$
 -- | @alg1 #$ alg2@ joins together code of algebras @alg1@ and @alg2@.
+infixr 6 #$
 (#$), appendAlgC :: forall eff1 eff2 m .
      AlgebraC eff1 m
   -> AlgebraC eff2 m
@@ -441,10 +445,12 @@ EndAC #$ galg = galg
 
 appendAlgC = (#$)
 
+
+-- | It is useful in @a :#.$ b :#.$ c :#.$ d@ to end a squence of staged algebras.
 infixr 5 :#.$
 {- INLINE $:# -}
 pattern (:#.$) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff, eff']) m
-pattern a :#.$ as = (a :#$ (as :#$ EndAC))
+pattern a :#.$ b = (a :#$ (b :#$ EndAC))
 
 -- | Staged version of `unionAlg`.
 unionAlgC :: forall xeffs yeffs m a b

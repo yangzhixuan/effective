@@ -141,7 +141,7 @@ identity :: Handler effs effs '[] a a
 identity = Handler idRunner idAT
 
 type Comp# effs1 ts1 ts2 =
-  ( CompRunner# ts1 ts2
+  ( CompR# ts1 ts2
   , CompAT# ts1 ts2)
 
 -- | Composing two handlers.
@@ -153,7 +153,7 @@ comp :: ( forall m. Monad m => MonadApply ts1 m
      -> Handler effs2 effs3 ts2 a2 a3
      -> Handler effs1 effs3 (ts1 :++ ts2) a1 a3
 comp (Handler r1 a1) (Handler r2 a2) =
-  Handler (weakenRCSMonad (compRunner a2 r1 r2)) (weakenCSMonad (compAT a1 a2))
+  Handler (weakenRCSMonad (compR a2 r1 r2)) (weakenCSMonad (compAT a1 a2))
 
 -- | Weakens a handler from @Handler effs oeffs ts fs@ to @Handler effs' oeffs' ts fs@,
 -- when @effs'@ injects into @effs@ and @oeffs@ injects into @oeffs'@.
@@ -473,7 +473,7 @@ pass :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
                 (ts1 :++ ts2)
                 a1 a3
 pass (Handler r1 a1) (Handler r2 a2)
-  = Handler (weakenRCSMonad (passR a2 r1 r2)) (weakenCSMonad (passAT a1 a2))
+  = Handler (weakenRCSMonad (passR r1 r2)) (weakenCSMonad (passAT a1 a2))
 
 {-# INLINE generalFuse #-}
 -- | `generalFuse` subsumes @fuse@, @pass@, and @pipe@ by having two type arguments
