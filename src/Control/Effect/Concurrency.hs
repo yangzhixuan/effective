@@ -5,11 +5,11 @@ License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
 
-This module provides the operations and handlers for concurrency synchronised
+This module provides the operations and handlers for concurrency with synchronised
 communications (in the style of process calculi). There are currently two kinds
 of handlers:
 
-  1. resumption-based handlers that are useful for exploring all the possible
+  1. resumption-based handlers, which are useful for exploring all the possible
      behaviours of a concurrent system, and
 
   2. native-IO-based handlers that are useful for actually running a concurrent

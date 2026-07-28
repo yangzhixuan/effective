@@ -41,16 +41,11 @@ import Control.Effect.Internal.Handler
 import Control.Effect.Internal.AlgTrans.Type
 import Control.Effect.Internal.Prog
 import Data.Proxy
-import Data.List.Kind
 import Data.HFunctor
 import Unsafe.Coerce
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 import Data.Kind (Type)
-
-import Control.Effect.Internal.AlgTrans
-import Control.Effect.Internal.Runner
-
 
 -- | Make a copy of an effect signature and attach a name to it.
 -- This is useful when more than one instances of the same effect

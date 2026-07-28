@@ -1,6 +1,6 @@
 {-|
-Module      : Control.Effect.Distributive
-Description : The distributive effect family
+Module      : Control.Effect.Family.Distributive
+Description : Distributive operations
 License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
@@ -11,8 +11,8 @@ functions of type @forall x. (exists b. (r (m b) , r b -> a)) -> m x@ by
 left Kan extension. A good example of operations in this form is
 @jpar :: forall x. (m x, m x) -> m (x, x)@ that runs two computations
 in paralell and wait until both of them finish (this is in contrast from
-the operation @par :: forall x. (m x, m x) -> m x@ from "Control.Effect.Distributive",
-which only keeps the result from the first computation).
+the scoped operation @par :: forall x. (m x, m x) -> m x@ which only keeps the
+result from one of the two arguments).
 
 These operations were called \'parallel effects\' in the paper "A framework for
 higher-order effects & handlers" by Birthe van den Berg and Tom Schrijvers, but

@@ -1,12 +1,12 @@
 {-|
-Module      : Control.Effect.Scoped
-Description : The scoped effect family
+Module      : Control.Effect.Family.Scoped
+Description : Scoped operations
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
 
 A scoped operation of signature @sig :: Type -> Type@ on a monad @m@ is a
-function @s :: forall x. sig (m x) -> m x@. Unlike \'algebraic operations\'
+function @s :: forall x. sig (m x) -> m x@. Unlike algebraic operations
 defined in "Control.Effect.Family.Algebraic", scoped operations don't need
 to satisfy the equation:
 

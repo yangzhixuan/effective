@@ -1,11 +1,31 @@
 {-|
 Module      : Control.Effect.Concurrency.Types
-Description : Common definitions for modules around the concurrency effect
+Description : The operations the concurrency effect
 License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
 
-This module provides some shared definitions around the effect of concurrency.
+This module contains the operations for the effect of concurrency (in the style
+of process calculi). We have the following operations:
+
+  1. an algebraic operation @`act` :: a ~> ()@ for performing an operation
+  2. a binary scoped operation @`par`@ for running two processes in parallel
+  3. a unary scoped operation @`act` a@ with an parameter @a@ for restricting
+     the action @a@ in the scope.
+
+Any type @a@ satisfying the constraint `Action a` can be used as the type of
+action.  This typeclass has exactly one member @`merge` :: a -> a -> Maybe a@,
+which returns @Nothing@ if the two actions cannot synchronise and returns @Just
+a'@ if the two arguments can synchronise and produce the action @a'@ together.
+
+A canonical choice of the type of actions is `CCSAction`, in which an action can
+only synchronise with its dual actions, producing some silent action together.
+This is exactly how /calculus of communication systems/ works.
+
+Currently this module doesn't have an operation for passing values between
+processes. This may change in the future, but for now you can use a shared
+mutable state between processes for sending/receiving values and use the
+operations of this module to structure their synchronisation.
 -}
 
 {-# LANGUAGE TemplateHaskell #-}
@@ -13,8 +33,6 @@ This module provides some shared definitions around the effect of concurrency.
 module Control.Effect.Concurrency.Type where
 
 import Data.Functor.Unary
-import Control.Effect.Family.Algebraic
-import Control.Effect.Family.Scoped
 import Control.Effect.Family.Distributive
 import Control.Effect
 
@@ -74,6 +92,20 @@ data JPar_ x = JPar_ x x deriving (Functor, Foldable, Traversable)
 {-# INLINE jpar #-}
 jpar :: Member JPar effs => Prog effs x -> Prog effs x -> Prog effs (x, x)
 jpar l r = call (Distr (JPar_ l r) (\(JPar_ x y) -> (x , y)))
+
+{-# INLINE jparM #-}
+jparM :: Member JPar effs => Algebra effs m -> m x -> m x -> m (x, x)
+jparM alg l r = callM alg (Distr (JPar_ l r) (\(JPar_ x y) -> (x , y)))
+
+{-# INLINE jparP #-}
+jparP :: Member (n :@ JPar) effs => Proxy n -> Prog effs x -> Prog effs x -> Prog effs (x, x)
+jparP p l r = callP p (Distr (JPar_ l r) (\(JPar_ x y) -> (x , y)))
+
+#if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
+{-# INLINE jparN #-}
+jparN :: forall n -> Member (n :@ JPar) effs => Prog effs x -> Prog effs x -> Prog effs (x, x)
+jparN n l r = callN n (Distr (JPar_ l r) (\(JPar_ x y) -> (x , y)))
+#endif
 
 pattern JPar x y k = Distr (JPar_ x y) k
 

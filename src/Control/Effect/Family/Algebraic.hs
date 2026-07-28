@@ -1,5 +1,5 @@
 {-|
-Module      : Control.Effect.Algebraic
+Module      : Control.Effect.Family.Algebraic
 Description : Algebraic operations
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
@@ -71,5 +71,6 @@ algOpIso = Iso
 nativeAlg :: Algebra '[Alg m] m
 nativeAlg = (\(Alg op) -> op) :# emptyAlg
 
+-- | Staged version of `nativeAlg`
 nativeAlgC :: AlgebraC '[Alg m] m
 nativeAlgC = [|| NT $ (\(Alg op) -> op) ||] :#$ emptyAlgC
