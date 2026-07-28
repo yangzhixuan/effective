@@ -57,9 +57,9 @@ getAlg (Get p) = do s <- Lazy.get; return (p s)
 stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Lazy.StateT s] a (a, s)
 stateC cs = HandlerC
   (RunnerC $ \_ -> [|| flip Lazy.runStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ emptyAlgC)
 
 stateC_ :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Lazy.StateT s] a a
 stateC_ cs = HandlerC
   (RunnerC $ \_ -> [|| flip Lazy.evalStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ emptyAlgC)

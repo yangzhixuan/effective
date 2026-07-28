@@ -512,7 +512,7 @@ algTrans1C
   :: forall eff oeffs ts cs.
      (forall m. cs m => AlgebraC oeffs m -> CodeQ (eff (Apply ts m) -.> Apply ts m))
   -> AlgTransC '[eff] oeffs ts cs
-algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg :#$ EndAC
+algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg :#$ emptyAlgC
 
 -- | Staged version of `hideAT`.
 hideATC

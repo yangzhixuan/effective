@@ -57,9 +57,9 @@ import Data.Proxy
 -- | The family of scoped operations. Forwarding scoped operations through a
 -- transformer must be given explicitly using the `Forward` class.
 newtype Scp (sig :: Type -> Type)
-         (f :: Type -> Type)
-         k
-         = Scp (sig (f k))
+        (f :: Type -> Type)
+        k
+        = Scp (sig (f k))
 {-
 We can optimise the constructor @Scp@ by using a Coyoneda representation so that
 instead the constructor becomes:

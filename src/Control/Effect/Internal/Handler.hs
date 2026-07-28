@@ -295,7 +295,7 @@ interpretM1C
                         -> CodeQ (eff m -.> m))   -- ^ @mrephrase@
   -> HandlerC '[eff] oeffs '[] a a
 interpretM1C mrephrase
-  = HandlerC (RunnerC $ \_ -> [|| id ||]) (AlgTransC (\oalgc -> mrephrase oalgc :#$ EndAC ))
+  = HandlerC (RunnerC $ \_ -> [|| id ||]) (AlgTransC (\oalgc -> mrephrase oalgc :#$ emptyAlgC ))
 
 -- | Case splitting on the union of two effect rows. Note that `Union` is defined
 -- two be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
@@ -567,8 +567,8 @@ handleC
   -> CodeQ b
 handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
   [||
-      let alg = $$(genAlgebra (a @Identity EndAC))
-      in runIdentity ($$(r EndAC) (eval' alg $$p))
+      let alg = $$(genAlgebra (a @Identity emptyAlgC))
+      in runIdentity ($$(r emptyAlgC) (eval' alg $$p))
   ||]
 
 type HandleM# effs xeffs =

@@ -78,6 +78,8 @@ module Control.Effect.Internal.Algebra (
   , AlgebraC(..)
   , CaseC(..)
   , (#$)
+  , emptyAlgC
+  , emptyCaseC
   , appendAlgC
   , pattern (:#.$)
   , unionAlgC
@@ -476,12 +478,20 @@ infixr 5 :#$
 -- staged algebras. In the future this may be changed to efficient sequence data
 -- structures for faster compilation speed.
 data AlgebraC (effs :: [Effect]) (f :: Type -> Type) where
-  EndAC :: AlgebraC '[] f
+  EmptyAlgC :: AlgebraC '[] f
   (:#$) :: CodeQ (eff m -.> m) -> AlgebraC effs m -> AlgebraC (eff ': effs) m
 
 data CaseC (effs :: [Effect]) (f :: Type -> Type) a b where
-  EndCC :: CaseC '[] f a b
+  EmptyCaseC :: CaseC '[] f a b
   (:#%) :: CodeQ (eff f a -> b) -> CaseC effs f a b -> CaseC (eff ': effs) f a b
+
+-- | For consistency with @emptyAlg@, we define a synonym @emptyAlgC@ of @EmptyAlgC@.
+emptyAlgC :: AlgebraC '[] f
+emptyAlgC = EmptyAlgC
+
+-- | For consistency with @emptyCase@, we define a synonym @emptyCaseC@ of @EmptyCaseC@.
+emptyCaseC :: CaseC '[] f a b
+emptyCaseC = EmptyCaseC
 
 -- | @alg1 #$ alg2@ joins together code of algebras @alg1@ and @alg2@.
 infixr 6 #$
@@ -489,16 +499,15 @@ infixr 6 #$
      AlgebraC eff1 m
   -> AlgebraC eff2 m
   -> AlgebraC (eff1 :++ eff2) m
-EndAC #$ galg = galg
+EmptyAlgC #$ galg = galg
 (a :#$ as) #$ galg = a :#$ (as #$ galg)
 
 appendAlgC = (#$)
 
-
 -- | It is useful in @a :#.$ b :#.$ c :#.$ d@ to end a squence of staged algebras.
 infixr 5 :#.$
 pattern (:#.$) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff, eff']) m
-pattern a :#.$ b = (a :#$ (b :#$ EndAC))
+pattern a :#.$ b = (a :#$ (b :#$ EmptyAlgC))
 
 -- | Staged version of `unionAlg`.
 unionAlgC
@@ -513,7 +522,7 @@ unionAlgC xalg yalg = (#$) @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
 weakenAlgC :: forall xs ys m. Members xs ys => AlgebraC ys m -> AlgebraC xs m
 weakenAlgC = go (singEffs @xs) where
   go :: forall xs'. Members_ xs' ys => SEffs xs' -> AlgebraC ys m -> AlgebraC xs' m
-  go SNil _ = EndAC
+  go SNil _ = EmptyAlgC
   go (SCons s) cxys = dispatchC cxys :#$ go s cxys
 
 -- | To split a staged algebra @AlgebraC (xs :++ ys) m@ we need to perform
@@ -521,10 +530,10 @@ weakenAlgC = go (singEffs @xs) where
 splitAlgC :: forall xs ys m. KnownEffs xs => AlgebraC (xs :++ ys) m -> (AlgebraC xs m, AlgebraC ys m)
 splitAlgC = go singEffs where
   go :: forall xs'. SEffs xs' -> AlgebraC (xs' :++ ys) m -> (AlgebraC xs' m, AlgebraC ys m)
-  go SNil cbs = (EndAC, cbs)
+  go SNil cbs = (EmptyAlgC, cbs)
   go (SCons s) (ca :#$ cabs) = let (cas, cbs) = go s cabs in ((ca :#$ cas), cbs)
 
 -- | Generating a code of an algebra from a staged algebra
 genAlgebra :: AlgebraC effs f -> CodeQ (Algebra effs f)
-genAlgebra EndAC = [|| emptyAlg ||]
+genAlgebra EmptyAlgC = [|| emptyAlg ||]
 genAlgebra (ac :#$ acs) = [|| at $$ac :# $$(genAlgebra acs) ||]

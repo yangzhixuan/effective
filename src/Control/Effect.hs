@@ -114,6 +114,8 @@ module Control.Effect
   -- * Lightweight staging
   , CodeQ
   , AlgebraC (..)
+  , emptyCaseC
+  , emptyAlgC
   , (#$), pattern (:#.$)
   , NatTrans (..), type (-.>)
   , unionAlgC, appendAlgC

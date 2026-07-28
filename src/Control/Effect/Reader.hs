@@ -135,4 +135,4 @@ readerC r = HandlerC
 
 askerC :: CodeQ r -> HandlerC '[Ask r] '[] '[] a a
 askerC r = HandlerC (RunnerC $ \_ -> [|| id ||])
-  (AlgTransC $ \_ -> ([|| NT $ \(Ask p) -> return (p $$r) ||] :#$ EndAC))
+  (AlgTransC $ \_ -> ([|| NT $ \(Ask p) -> return (p $$r) ||] :#$ emptyAlgC))

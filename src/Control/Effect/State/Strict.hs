@@ -44,7 +44,7 @@ stateAT :: AlgTrans [Put s, Get s] '[] '[Strict.StateT s] Monad
 stateAT = algTrans' $ putAlg :#. getAlg
 
 stateATC :: AlgTransC [Put s, Get s] '[] '[Strict.StateT s] Monad
-stateATC = AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC
+stateATC = AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ emptyAlgC
 
 -- | The `state` handler deals with stateful operations and
 -- returns the result and final state @s@.
@@ -63,9 +63,9 @@ state_ s = Handler (runner' $ flip Strict.evalStateT s) stateAT
 stateC :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a (a, s)
 stateC cs = HandlerC
   (RunnerC $ \_ -> [|| flip Strict.runStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ emptyAlgC)
 
 stateC_ :: CodeQ s -> HandlerC [Put s, Get s] '[] '[Strict.StateT s] a a
 stateC_ cs = HandlerC
   (RunnerC $ \_ -> [|| flip Strict.evalStateT $$cs ||])
-  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ EndAC)
+  (AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ emptyAlgC)

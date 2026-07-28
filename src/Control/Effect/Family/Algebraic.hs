@@ -1,6 +1,6 @@
 {-|
 Module      : Control.Effect.Algebraic
-Description : The algebraic effect family
+Description : Algebraic operations
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
@@ -40,9 +40,9 @@ import Control.Effect.Internal.Algebra
 -- (first-order) signature @sig@.
 
 newtype Alg (sig :: Type -> Type)
-         (f :: Type -> Type)
-         k
-         = Alg (sig k)
+        (f :: Type -> Type)
+        k
+        = Alg (sig k)
 
 instance Functor sig => Functor (Alg sig f) where
   {-# INLINE fmap #-}
@@ -53,14 +53,7 @@ instance Functor sig => HFunctor (Alg sig) where
   hmap f (Alg op) = Alg op
 
 -- | Algebraic operations can be lifted along any monad transformers canonically.
--- We mark this instance as incoherent because for specific monad transformers we may
--- have more general lifting instances. For example, we trivially have
---
--- > instance Forward sig IdentityT
---
--- And this is not strictly more speicific than @Forward (Alg f) t@ so we need the
--- instance here to be incoherent.
-instance {-# INCOHERENT #-} MonadTrans t => Forward (Alg f) t where
+instance MonadTrans t => Forward (Alg f) t where
   {-# INLINE fwd #-}
   fwd alg (Alg op) = lift (alg (Alg op))
 
@@ -79,4 +72,4 @@ nativeAlg :: Algebra '[Alg m] m
 nativeAlg = (\(Alg op) -> op) :# emptyAlg
 
 nativeAlgC :: AlgebraC '[Alg m] m
-nativeAlgC = [|| NT $ (\(Alg op) -> op) ||] :#$ EndAC
+nativeAlgC = [|| NT $ (\(Alg op) -> op) ||] :#$ emptyAlgC

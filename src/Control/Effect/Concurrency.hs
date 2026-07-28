@@ -220,7 +220,7 @@ parIOAlg :: Algebra '[Par] IO
 parIOAlg = singAlg $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l
 
 parIOAlgC :: AlgebraC '[Par] IO
-parIOAlgC = [|| NT $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l ||] :#$ EndAC
+parIOAlgC = [|| NT $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l ||] :#$ emptyAlgC
 
 -- | Interprets t`Control.Effect.Concurrency.JPar` using the native concurrency API.
 -- from "Control.Concurrent". The result from the child thread is passed back to the
@@ -229,7 +229,7 @@ jparIOAlg :: Algebra '[JPar] IO
 jparIOAlg = singAlg $ \(JPar l r c) -> jparIOImp l r c
 
 jparIOAlgC :: AlgebraC '[JPar] IO
-jparIOAlgC = [|| NT $ \(JPar l r c) -> jparIOImp l r c ||] :#$ EndAC
+jparIOAlgC = [|| NT $ \(JPar l r c) -> jparIOImp l r c ||] :#$ emptyAlgC
 
 jparIOImp :: IO x -> IO x -> (JPar_ x -> b) -> IO b
 jparIOImp l r c =
