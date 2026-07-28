@@ -45,7 +45,7 @@ evalAT' :: forall m effs ts cs a.
         => AlgTrans effs '[] ts cs
         -> Prog effs a
         -> Apply ts m a
-evalAT' alg = eval (getAT alg (endAlg @m))
+evalAT' alg = eval (getAT alg (emptyAlg @m))
 
 -- * Building algebra transformers
 
@@ -114,7 +114,7 @@ caseAT' at1 at2 = AlgTrans \oalg -> appendAlg (getAT at1 oalg) (getAT at2 oalg)
 algTrans1 :: forall eff oeffs ts cs
           .  (forall m. cs m => Algebra oeffs m -> forall x. eff (Apply ts m) x -> Apply ts m x)
           -> AlgTrans '[eff] oeffs ts cs
-algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) -> at oalg :# endAlg
+algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) -> at oalg :# emptyAlg
 
 -- | Algebra transformer that doesn't need an output effect.
 {-# INLINE algTrans' #-}

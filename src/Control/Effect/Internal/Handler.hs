@@ -149,7 +149,7 @@ handler' run alg = Handler (Runner (\_ -> run)) (AlgTrans (\(_ :: Algebra oeffs 
 fromRunner
   :: forall ts a b. (forall m . Monad m => Apply ts m a -> m b)
   -> Handler '[] '[] ts a b
-fromRunner run = Handler (Runner (\_ -> run)) (AlgTrans (const endAlg))
+fromRunner run = Handler (Runner (\_ -> run)) (AlgTrans (const emptyAlg))
 
 -- | Adding an algebra transformer to an existing handler. This function is supposed to be used with 
 -- `fromRunner` by @a1 <: a2 <: a3 <: ... <: fromRunner r@.
@@ -249,7 +249,7 @@ interpret1
   .  ( HFunctor eff )
   => (forall m x . eff m x -> Prog oeffs x)
   -> Handler '[eff] oeffs '[] a a
-interpret1 rephrase = interpret (rephrase :% endCase)
+interpret1 rephrase = interpret (rephrase :% emptyCase)
 
 {-# INLINE interpretM #-}
 -- | A generalisation of `interpret` for non-algebraic operations.
@@ -283,7 +283,7 @@ interpretM1
                          -> (forall x . eff m x -> m x))   -- ^ @mrephrase@
   -> Handler '[eff] oeffs '[] a a
 interpretM1 mrephrase
-  = handler @'[eff] @oeffs @'[] (const id) (\oalg -> mrephrase oalg :# endAlg)
+  = handler @'[eff] @oeffs @'[] (const id) (\oalg -> mrephrase oalg :# emptyAlg)
 
 -- | Staged version of `interpretM1`
 interpretM1C
@@ -424,7 +424,7 @@ fuseAppC, (++>$)
     , forall m . Monad m => MonadApply ts2 m
     , CompAT# ts1 ts2
     , ForwardsM effs2 ts1, ForwardsM oeffs1 ts2
-    , KnownEffs oeffs1)
+    , KnownEffs oeffs1 )
   => HandlerC effs1 oeffs1 ts1 a1 a2   -- ^ @h1@
   -> HandlerC effs2 oeffs2 ts2 a2 a3   -- ^ @h2@
   -> HandlerC (effs1 :++ effs2)
@@ -448,9 +448,8 @@ pipe, (\\)
     , forall m . Monad m => MonadApply ts2 m
     , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2
     , FuseR# effs2 oeffs1 oeffs2 ts1 ts2
-    , ForwardsM (oeffs1 :\\ effs2) ts2
-    )
-  => Handler effs1 oeffs1 ts1 a1 a2 -- ^ Handler @h1@
+    , ForwardsM (oeffs1 :\\ effs2) ts2 )
+  => Handler effs1 oeffs1 ts1 a1 a2    -- ^ Handler @h1@
   -> Handler effs2 oeffs2 ts2 a2 a3    -- ^ Handler @h2@
   -> Handler effs1
              ((oeffs1 :\\ effs2) `Union` oeffs2)
@@ -554,7 +553,7 @@ handle :: forall effs ts a b .
   -> Prog effs a                  -- ^ Program @p@ with effects @effs@
   -> b
 handle (Handler run halg)
-  = runIdentity . getR run endAlg. eval (getAT halg (endAlg @Identity))
+  = runIdentity . getR run emptyAlg. eval (getAT halg (emptyAlg @Identity))
 
 -- | Static version of `handle`
 handleC

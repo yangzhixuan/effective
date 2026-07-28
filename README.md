@@ -95,12 +95,12 @@ For now the main type parameters of this handler of interest indicate the
 teletypeIO :: Handler '[GetLine, PutStrLn] '[Alg IO] '[] a a
 teletypeIO = interpret $
   (\(GetLine k)     -> do x <- io (Prelude.getLine); return (k x)) :%
-  (\(PutStrLn xs k) -> do x <- io (Prelude.putStrLn xs); return k) :% endCase
+  (\(PutStrLn xs k) -> do x <- io (Prelude.putStrLn xs); return k) :% emptyCase
 ```
 Looking at the body of this handler, we can see that it functions by interpreting
 the syntax of `GetLine` and `PutStrLn` in terms of calls to `io` which
 schedules the appropriate actions. The clauses for the operations are put together
-using the binary operator `(:%)`, finished with `endCase`.
+using the binary operator `(:%)`, finished with `emptyCase`.
 
 The output effects of `teletypeIO` is `Alg IO`, which must be fully consumed
 before the program can be handled. This is achieved by composing
@@ -139,7 +139,7 @@ teletypeStateWriter = interpret $
                                         []    -> return (k "")
                                         x:xs' -> do put xs'
                                                     return (k x)) :%
-  (\(PutStrLn xs k) -> do tell [xs]; return k) :% endCase
+  (\(PutStrLn xs k) -> do tell [xs]; return k) :% emptyCase
 ```
 This translation replaces `getLine` and `putStrLn` with different operations.
 This can be done in terms of `get`, `put`, and `tell`, and these can

@@ -39,7 +39,7 @@ list' = eval halg where
   halg :: Algebra [Empty, Choose, Once] []
   halg = (\Empty -> []) :#
          (\(Choose xs ys) -> xs ++ ys) :#
-         (\(Once xs) -> case xs of [] -> []; (x:xs) -> [x]) :# endAlg
+         (\(Once xs) -> case xs of [] -> []; (x:xs) -> [x]) :# emptyAlg
 
 -- `list'` is not a modular handler and uses `eval` directly
 example_Nondet1' :: Property

@@ -49,7 +49,7 @@ handlers:
 teletypePure :: String -> Handler '[GetLine, PutStrLn] '[] '[] a a
 teletypePure input = interpret $
   (\(GetLine k) -> return (k input)) :%
-  (\(PutStrLn _ k) -> return k) :% endCase
+  (\(PutStrLn _ k) -> return k) :% emptyCase
 ```
 
 

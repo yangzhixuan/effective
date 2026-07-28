@@ -73,7 +73,7 @@ writerAT = algTrans1 (\_ -> tellAlg)
 -- | The `writer` handler consumes `tell` operations, and
 -- returns the final state @w@.
 writer :: Monoid w => Handler '[Tell w] '[] '[W.WriterT w] a (w, a)
-writer = handler' (fmap swap . W.runWriterT) (tellAlg :# endAlg)
+writer = handler' (fmap swap . W.runWriterT) (tellAlg :# emptyAlg)
 
 writerC :: Monoid w => HandlerC '[Tell w] '[] '[W.WriterT w] a (w, a)
 writerC = HandlerC
@@ -83,7 +83,7 @@ writerC = HandlerC
 -- | The `writer_` handler deals with `tell` operations, and
 -- silently discards the final state.
 writer_ :: Monoid w => Handler '[Tell w] '[] '[W.WriterT w] a a
-writer_ = handler' (fmap fst . W.runWriterT) (tellAlg :# endAlg)
+writer_ = handler' (fmap fst . W.runWriterT) (tellAlg :# emptyAlg)
 
 writerC_ :: Monoid w => HandlerC '[Tell w] '[] '[W.WriterT w] a a
 writerC_ = HandlerC
@@ -108,7 +108,7 @@ instance U.Unary (Censor_ w) where
 
 -- | The `uncensors` handler removes any occurrences of `censor`.
 uncensors :: forall w a . Handler '[Censor w] '[] '[] a a
-uncensors = handler' id ((\(Censor (_ :: w -> w) k) -> k) :# endAlg)
+uncensors = handler' id ((\(Censor (_ :: w -> w) k) -> k) :# emptyAlg)
 
 censorAT :: AlgTrans '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] Monad
 censorAT = AlgTrans alg where

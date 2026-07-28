@@ -115,7 +115,7 @@ except = Handler (runner' runExceptT) exceptAT
 
 -- | The algebra transformer for the 'except' handler.
 exceptAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
-exceptAT = algTrans' (throwAlg :# catchAlg :# endAlg)
+exceptAT = algTrans' (throwAlg :# catchAlg :# emptyAlg)
 
 -- | The 'retry' handler will interpet @catch p q@  by first trying @p@.
 -- If it fails, then @q@ is executed as a recovering clause.

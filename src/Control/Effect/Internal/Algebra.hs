@@ -30,8 +30,8 @@ module Control.Effect.Internal.Algebra (
   -- * Basic interface of algebras
   , unsafeAlgebra
   , algebraFromCase
-  , nilAlg
-  , endAlg
+  , emptyAlg
+  , emptyAlg
   , tailAlg
   , viewAlg
   , toAlgebraArray
@@ -40,7 +40,7 @@ module Control.Effect.Internal.Algebra (
 
   -- * Basic interface of cases
   , nilCase
-  , endCase
+  , emptyCase
   , consCase
   , tailCase
   , headCase
@@ -151,11 +151,9 @@ unsafeAlgebra cs = Algebra (Case cs)
 algebraFromCase :: (forall x. Case_ s effs f x (f x)) -> Algebra_ s effs f
 algebraFromCase = Algebra
 
-{-# INLINE endCase #-}
-{-# INLINE nilCase #-}
-endCase, nilCase :: Sequence s => Case_ s '[] f x y
-endCase = Case $ nil
-nilCase = endCase
+{-# INLINE emptyCase #-}
+emptyCase :: Sequence s => Case_ s '[] f x y
+emptyCase = Case $ nil
 
 {-# INLINE consCase #-}
 consCase :: Sequence s => (eff f x -> y) -> Case_ s effs f x y -> Case_ s (eff ': effs) f x y
@@ -169,11 +167,9 @@ tailCase (Case aas) = case view aas of Just (_, as) -> Case as
 headCase :: Sequence s => Case_ s (eff:effs) f x y -> (eff f x -> y)
 headCase (Case aas) = case view aas of Just (a, _) -> unsafeCoerce @Any @_ a
 
-{-# INLINE endAlg #-}
-{-# INLINE nilAlg #-}
-endAlg, nilAlg :: forall f s. Sequence s => Algebra_ s '[] f
-endAlg = Algebra $ endCase
-nilAlg = endAlg
+{-# INLINE emptyAlg #-}
+emptyAlg :: forall f s. Sequence s => Algebra_ s '[] f
+emptyAlg = Algebra $ emptyCase
 
 {-# INLINE tailAlg #-}
 tailAlg :: forall eff effs f s. Sequence s => Algebra_ s (eff ': effs) f -> Algebra_ s effs f
@@ -203,13 +199,13 @@ pattern (:#) :: Sequence s => (forall x. eff m x -> m x) -> Algebra_ s effs m ->
 pattern a :# as <- (viewAlg -> (a,as)) where
   a :# (Algebra as) = Algebra (consCase a as)
 
--- | @a :#. b@ is the same as @a :# b :# endAlg@
+-- | @a :#. b@ is the same as @a :# b :# emptyAlg@
 infixr 5 :#.
 {-# INLINE (:#.) #-}
 pattern (:#.) :: Sequence s => (forall x. eff m x -> m x) -> (forall x. eff' m x -> m x)
               -> Algebra_ s ([eff, eff']) m
 pattern a :#. b <- (viewAlg -> (a,viewAlg -> (b, _))) where
-  a :#. b = a :# (b :# endAlg)
+  a :#. b = a :# (b :# emptyAlg)
 
 -- | The @cons@-constructor for cases. In this library, the character @%@ is associated to
 -- operations on cases.
@@ -219,13 +215,13 @@ pattern (:%) :: Sequence s => (eff m x -> y) -> Case_ s effs m x y -> Case_ s (e
 pattern a :% as <- (viewCase -> (a,as)) where
   a :% as = consCase a as
 
--- | @a :%. b@ is the same as @a :% b :% endCase@
+-- | @a :%. b@ is the same as @a :% b :% emptyCase@
 infixr 5 :%.
 {-# INLINE (:%.) #-}
 pattern (:%.) :: Sequence s => (eff m x -> y) -> (eff' m x -> y)
               -> Case_ s [eff, eff'] m x y
 pattern a :%. b <- (viewCase -> (a,viewCase -> (b, _))) where
-  a :%. b = a :% (b :% endCase)
+  a :%. b = a :% (b :% emptyCase)
 
 -- There is a type-safe way to implement the following (by doing induction on @effs@) but the
 -- following gives the correct time complexity.
@@ -245,8 +241,11 @@ class Member (eff :: Effect) (effs :: [Effect]) where
   -- | The index of @eff@ in @effs@.
   memberIndex :: Int
 
-  -- We are relying on GHC to optimise @(1 + 1 + ... + 0)@ to a numeral @n@
-  -- statically. A more reliable way is to make the length a type-level @Nat@ and use @KnownNat@.
+  -- TODO: We are relying on GHC to optimise @(1 + 1 + ... + 0)@ to a numeral
+  -- @n@ statically. A more reliable way is to make the length a type-level
+  -- @Nat@ and use @KnownNat@, but this makes the error message slightly more
+  -- complex, and in all tests the current implementation always has @1 + 1 + + -- ... 0@
+  -- folded.
 
 {-# INLINE dispatch #-}
 dispatch :: forall eff effs s m. (Member eff effs, Sequence s)
@@ -280,7 +279,7 @@ singAlgIso = Iso dispatch singAlg
 
 {-# INLINE singAlg #-}
 singAlg :: Sequence s => (forall x. eff m x -> m x) -> Algebra_ s '[eff] m
-singAlg alg = alg :# endAlg
+singAlg alg = alg :# emptyAlg
 
 -- | A variant of `Control.Effect.call` for which the effect is on a given monad
 -- rather than the `Control.Effect.Prog` monad.
@@ -355,7 +354,7 @@ instance KnownEffs '[] where
   lengthEffs = 0
 
   {-# INLINE weakenAlg #-}
-  weakenAlg _ = endAlg
+  weakenAlg _ = emptyAlg
 
 instance KnownEffs effs => KnownEffs (eff : effs) where
   {-# INLINE singEffs #-}
@@ -448,7 +447,6 @@ appendAlgC = (#$)
 
 -- | It is useful in @a :#.$ b :#.$ c :#.$ d@ to end a squence of staged algebras.
 infixr 5 :#.$
-{- INLINE $:# -}
 pattern (:#.$) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff, eff']) m
 pattern a :#.$ b = (a :#$ (b :#$ EndAC))
 
@@ -476,5 +474,5 @@ splitAlgC = go singEffs where
 
 -- | Generating a code of an algebra from a staged algebra
 genAlgebra :: AlgebraC effs f -> CodeQ (Algebra effs f)
-genAlgebra EndAC = [|| endAlg ||]
+genAlgebra EndAC = [|| emptyAlg ||]
 genAlgebra (ac :#$ acs) = [|| at $$ac :# $$(genAlgebra acs) ||]

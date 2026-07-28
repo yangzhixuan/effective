@@ -113,7 +113,7 @@ reader' mr = handler run (\_ -> readerAlg) where
 
 {-# INLINE readerAsk #-}
 readerAsk :: r -> Handler '[Ask r] '[] '[R.ReaderT r] a a
-readerAsk r = handler' (flip R.runReaderT r) (askAlg :# endAlg)
+readerAsk r = handler' (flip R.runReaderT r) (askAlg :# emptyAlg)
 
 {-# INLINE asker #-}
 asker :: r -> Handler '[Ask r] '[] '[] a a

@@ -40,8 +40,8 @@ module Control.Effect
   , Case, Case_
   , singAlgIso, singAlg
   , (#)
-  , nilAlg, endAlg, pattern (:#), pattern (:#.)
-  , nilCase, endCase, pattern (:%), pattern (:%.)
+  , emptyAlg, pattern (:#), pattern (:#.)
+  , emptyCase, pattern (:%), pattern (:%.)
   , Forward (..)
   , Forwards (..)
   , ForwardsM (..)

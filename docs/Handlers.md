@@ -35,7 +35,7 @@ echo = do str <- getLine
 teletypeIO :: Handler '[GetLine, PutStrLn] '[Alg IO] '[] a a
 teletypeIO = interpret $
   (\(GetLine k)     -> do x <- io Prelude.getLine; return (k x)) :%
-  (\(PutStrLn xs k) -> do io (Prelude.putStrLn xs); return k)    :% endCase
+  (\(PutStrLn xs k) -> do io (Prelude.putStrLn xs); return k)    :% emptyCase
 ```
 -->
 
