@@ -24,7 +24,7 @@ module Control.Effect.Nondet.List
 import Prelude hiding (or)
 
 import Control.Effect.Nondet.Type
-import Control.Effect
+import Control.Effect hiding (emptyAlg)
 import Control.Effect.Alternative
 import Control.Monad.Trans.List
 

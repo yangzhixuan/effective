@@ -20,7 +20,7 @@ module Control.Effect.Nondet.Logic
   , LogicT (..)
   ) where
 
-import Control.Effect
+import Control.Effect hiding (emptyAlg)
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 import Control.Effect.Alternative

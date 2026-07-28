@@ -42,7 +42,7 @@ module Control.Effect.Alternative (
   alternativeAT,
 ) where
 
-import Control.Effect
+import Control.Effect hiding (emptyAlg)
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 

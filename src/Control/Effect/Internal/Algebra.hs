@@ -31,7 +31,6 @@ module Control.Effect.Internal.Algebra (
   , unsafeAlgebra
   , algebraFromCase
   , emptyAlg
-  , emptyAlg
   , tailAlg
   , viewAlg
   , toAlgebraArray
@@ -39,7 +38,6 @@ module Control.Effect.Internal.Algebra (
   , pattern (:#.)
 
   -- * Basic interface of cases
-  , nilCase
   , emptyCase
   , consCase
   , tailCase
