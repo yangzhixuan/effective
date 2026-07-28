@@ -78,20 +78,26 @@ parGenIO (Par p q) = GenM $ \k ->
 -- monad, but `CResUpT` can't be pattern matched. Therefore here we simply
 -- `down` the two processes and perform `par` at the object level. As a result,
 -- the two processes have to return an CodeQ-type.
-parResUp :: forall n m a x. (n $~> m, Monad n, Monad m, Action a)
-         => Algebra '[UpOp m, CodeGen] n
-         -> CResUpT (CodeQ a) n (CodeQ x) -> CResUpT (CodeQ a) n (CodeQ x) -> CResUpT (CodeQ a) n (CodeQ x)
+parResUp
+  :: forall n m a x.
+     ( n $~> m, Monad n, Monad m, Action a )
+  => Algebra '[UpOp m, CodeGen] n
+  -> CResUpT (CodeQ a) n (CodeQ x)
+  -> CResUpT (CodeQ a) n (CodeQ x)
+  -> CResUpT (CodeQ a) n (CodeQ x)
 parResUp oalg p q =
   do lhs <- lift (genLetM oalg (down @_ @(CResT a m) p))
      rhs <- lift (genLetM oalg (down @_ @(CResT a m) q))
      upResAlg oalg ([|| $$lhs `par` $$rhs ||])
 
 -- | Algebra transformer for the resumption monad transformer for concurrency.
-cResUpAT :: forall m a . (Action a, Monad m)
-         => AlgTrans '[UpOp (CResT a m), Empty, Choose, ParUp, Act (CodeQ a)]
-                     '[UpOp m, CodeGen]
-                     '[CResUpT (CodeQ a)]
-                      (MonadDown m)
+cResUpAT
+  :: forall m a.
+     ( Action a, Monad m )
+  => AlgTrans '[UpOp (CResT a m), Empty, Choose, ParUp, Act (CodeQ a)]
+              '[UpOp m, CodeGen]
+              '[CResUpT (CodeQ a)]
+              (MonadDown m)
 cResUpAT = AlgTrans $ \oalg ->
   (\(Alg (UpOp o k))         -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))) :#
   (\(Alg Empty_)             -> empty) :#
@@ -100,11 +106,13 @@ cResUpAT = AlgTrans $ \oalg ->
   (\(Act (a :: (CodeQ a)) p) -> RUp.prefix a (return p))
 
 -- | Algebra transformer for the resumption monad transformer for yielding.
-yResUpAT :: forall m a b . (Monad m)
-         => AlgTrans '[UpOp (YResT a b m), Yield (CodeQ a) (CodeQ b), MapYield (CodeQ a) (CodeQ b)]
-                     '[UpOp m, CodeGen]
-                     '[YResUpT (CodeQ a) (CodeQ b)]
-                      (MonadDown m)
+yResUpAT
+  :: forall m a b.
+     (Monad m)
+  => AlgTrans '[UpOp (YResT a b m), Yield (CodeQ a) (CodeQ b), MapYield (CodeQ a) (CodeQ b)]
+              '[UpOp m, CodeGen]
+              '[YResUpT (CodeQ a) (CodeQ b)]
+              (MonadDown m)
 yResUpAT = AlgTrans $ \oalg ->
   (\(Alg (UpOp o k))        -> bwd upIso (upResAlg oalg) (Alg (UpOp o k))) :#
   (\(Alg (Yield_ a p))      -> RUp.yield a (return . p)) :#.

@@ -29,12 +29,13 @@ Another way of how things can go wrong is when there is 'multiple-shot algebraic
 import qualified Control.Effect.State as St
 import Control.Effect.Nondet
 
-goWrong2 :: forall effs.
-            Members '[ New, Get, Put,
-                       Choose,
-                       St.Put (Maybe (Ref Int)), St.Get (Maybe (Ref Int))
-                     ] effs
-         => Prog effs Int
+goWrong2
+  :: forall effs.
+     Members '[ New, Get, Put,
+     Choose,
+     St.Put (Maybe (Ref Int)), St.Get (Maybe (Ref Int))
+     ] effs
+  => Prog effs Int
 goWrong2 = do iRef <- new @Int 0
               or (do iRef' <- new @Int 0; St.put (Just iRef'); return 0)
                  (do r <- St.get;

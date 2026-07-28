@@ -112,9 +112,10 @@ uncensors = handler' id ((\(Censor (_ :: w -> w) k) -> k) :# emptyAlg)
 
 censorAT :: AlgTrans '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] Monad
 censorAT = AlgTrans alg where
-  alg :: Monad m
-      => (Algebra '[Tell w] m)
-      -> (Algebra '[Tell w, Censor w] (ReaderT (w -> w) m))
+  alg
+    :: Monad m
+    => (Algebra '[Tell w] m)
+    -> (Algebra '[Tell w, Censor w] (ReaderT (w -> w) m))
   alg oalg =
     (\(Tell w k) -> do cipher <- ask; lift (callM oalg (Tell (cipher w) k)))
     :#.

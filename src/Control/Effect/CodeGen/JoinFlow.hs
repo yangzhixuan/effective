@@ -74,13 +74,21 @@ instance HFunctor JoinFlow where
 -- | If @x@ is a type isomorphic to @(CodeQ a11, ..., a1n1) + .. + (CodeQ an1, ... , CodeQ amn_m)@,
 -- @joinFlow p@ creates a join point for each of the summand (each receiving a value of
 -- the corresponding product type) and resumes the code generation from these join points.
-joinFlow :: forall x effs. (Member JoinFlow effs, IsSOP x)
-         => Prog effs x -> Prog effs x
+joinFlow
+  :: forall x effs.
+     ( Member JoinFlow effs, IsSOP x )
+  => Prog effs x
+  -> Prog effs x
 joinFlow p = call (JoinFlow p id)
 
 -- | @joinFlow@ on a monad @m@.
-joinFlowM :: forall x effs m. Member JoinFlow effs
-          => IsSOP x => Algebra effs m -> m x -> m x
+joinFlowM
+  :: forall x effs m.
+     Member JoinFlow effs
+  => IsSOP x
+  => Algebra effs m
+  -> m x
+  -> m x
 joinFlowM alg p = callM alg (JoinFlow p id)
 
 -- | Join operation on the monad t`Gen`.
@@ -114,8 +122,10 @@ joinPush = algTrans1 $ \oalg (JoinFlow (p :: PushT n y) kV) -> PushT $ \kC (kN :
       (upM oalg kn)
 
 -- | Algebra transformer for the join operation on t'ResUpT'.
-joinRes :: forall m s l. (Functor l, forall x. Split (s x) (l (CodeQ x)), l $~> s)
-        => AlgTrans '[JoinFlow] '[UpOp m, CodeGen] '[ResUpT l] (MonadDown m)
+joinRes
+  :: forall m s l.
+     ( Functor l, forall x. Split (s x) (l (CodeQ x)), l $~> s )
+  => AlgTrans '[JoinFlow] '[UpOp m, CodeGen] '[ResUpT l] (MonadDown m)
 joinRes = algTrans1 $ \oalg (JoinFlow (p :: ResUpT l n y) kV) ->
   ResUpT $ \(kD :: x -> n (CodeQ t)) (kM :: l (n (CodeQ t)) -> n (CodeQ t)) ->
     let sy = singRep @y

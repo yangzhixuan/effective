@@ -174,15 +174,19 @@ tailAlg :: forall eff effs f s. Sequence s => Algebra_ s (eff ': effs) f -> Alge
 tailAlg (Algebra cs) = Algebra $ tailCase cs
 
 {-# INLINE viewCase #-}
-viewCase :: forall eff effs m x y s. Sequence s
-         => Case_ s (eff : effs) m x y
-         -> (eff m x -> y, Case_ s effs m x y)
+viewCase
+  :: forall eff effs m x y s.
+     Sequence s
+  => Case_ s (eff : effs) m x y
+  -> (eff m x -> y, Case_ s effs m x y)
 viewCase cs = (headCase cs, tailCase cs)
 
 {-# INLINE viewAlg #-}
-viewAlg :: forall eff effs m s. Sequence s
-        => Algebra_ s (eff : effs) m
-        -> (forall x. eff m x -> m x, Algebra_ s effs m)
+viewAlg
+  :: forall eff effs m s.
+     Sequence s
+  => Algebra_ s (eff : effs) m
+  -> (forall x. eff m x -> m x, Algebra_ s effs m)
 viewAlg (Algebra aas) = (headCase aas, Algebra $ tailCase aas)
 
 {-# INLINE toAlgebraArray #-}
@@ -200,8 +204,11 @@ pattern a :# as <- (viewAlg -> (a,as)) where
 -- | @a :#. b@ is the same as @a :# b :# emptyAlg@
 infixr 5 :#.
 {-# INLINE (:#.) #-}
-pattern (:#.) :: Sequence s => (forall x. eff m x -> m x) -> (forall x. eff' m x -> m x)
-              -> Algebra_ s ([eff, eff']) m
+pattern (:#.)
+  :: Sequence s
+  => (forall x. eff m x -> m x)
+  -> (forall x. eff' m x -> m x)
+  -> Algebra_ s ([eff, eff']) m
 pattern a :#. b <- (viewAlg -> (a,viewAlg -> (b, _))) where
   a :#. b = a :# (b :# emptyAlg)
 
@@ -216,8 +223,11 @@ pattern a :% as <- (viewCase -> (a,as)) where
 -- | @a :%. b@ is the same as @a :% b :% emptyCase@
 infixr 5 :%.
 {-# INLINE (:%.) #-}
-pattern (:%.) :: Sequence s => (eff m x -> y) -> (eff' m x -> y)
-              -> Case_ s [eff, eff'] m x y
+pattern (:%.)
+  :: Sequence s
+  => (eff m x -> y)
+  -> (eff' m x -> y)
+  -> Case_ s [eff, eff'] m x y
 pattern a :%. b <- (viewCase -> (a,viewCase -> (b, _))) where
   a :%. b = a :% (b :% emptyCase)
 
@@ -246,13 +256,19 @@ class Member (eff :: Effect) (effs :: [Effect]) where
   -- folded.
 
 {-# INLINE dispatch #-}
-dispatch :: forall eff effs s m. (Member eff effs, Sequence s)
-         => Algebra_ s effs m -> (forall x. eff m x -> m x)
+dispatch
+  :: forall eff effs s m.
+     ( Member eff effs, Sequence s )
+  => Algebra_ s effs m
+  -> (forall x. eff m x -> m x)
 dispatch (Algebra cases) = dispatchCases cases
 
 {-# INLINE dispatchCases #-}
-dispatchCases :: forall eff effs s m x y. (Member eff effs, Sequence s)
-              => Case_ s effs m x y -> (eff m x -> y)
+dispatchCases
+  :: forall eff effs s m x y.
+     ( Member eff effs, Sequence s )
+  => Case_ s effs m x y
+  -> (eff m x -> y)
 dispatchCases (Case cs) = unsafeCoerce @Any (index cs (memberIndex @eff @effs))
 
 dispatchC :: forall eff effs f. Member eff effs => AlgebraC effs f -> CodeQ (eff f -.> f)
@@ -271,8 +287,10 @@ instance Member eff effs => Member eff (eff' : effs) where
 
 -- | An obvious isomorphism between two representations of an algebra for a single effect @eff@.
 {-# INLINE singAlgIso #-}
-singAlgIso :: forall eff m s. Sequence s =>
-  Iso  (Algebra_ s '[eff] m) (forall x. eff m x -> m x)
+singAlgIso
+  :: forall eff m s.
+     Sequence s
+  => Iso  (Algebra_ s '[eff] m) (forall x. eff m x -> m x)
 singAlgIso = Iso dispatch singAlg
 
 {-# INLINE singAlg #-}
@@ -287,25 +305,42 @@ callM :: forall eff effs a m s . (Member eff effs, Sequence s)
 callM oalg = dispatch oalg
 
 -- | A staged variant of `callM`.
-callMC :: forall eff effs a m x. (Member eff effs)
-       => AlgebraC effs m -> CodeQ (eff m x -> m x)
+callMC
+  :: forall eff effs a m x.
+     (Member eff effs)
+  => AlgebraC effs m
+  -> CodeQ (eff m x -> m x)
 callMC oalg = [|| at $$(dispatchC oalg) ||]
 
 -- | @unsafeCallM n oalg@ is the @n@-th component of @oalg@.
-unsafeCallM :: forall eff effs a m s . Sequence s
-            => Int -> Algebra_ s effs m -> eff m a -> m a
+unsafeCallM
+  :: forall eff effs a m s.
+     Sequence s
+  => Int
+  -> Algebra_ s effs m
+  -> eff m a
+  -> m a
 unsafeCallM n (Algebra (Case cs)) = unsafeCoerce @Any @(forall x. eff m x -> m x) (index cs n)
 
 -- | A variant of @callJ@ for which the effect is on a given monad rather than the @Prog@ monad.
 {-# INLINE callJM #-}
-callJM :: forall eff effs a m s . (Monad m, Member eff effs, Sequence s)
-       => Algebra_ s effs m -> eff m (m a) -> m a
+callJM
+  :: forall eff effs a m s.
+     ( Monad m, Member eff effs, Sequence s )
+  => Algebra_ s effs m
+  -> eff m (m a)
+  -> m a
 callJM oalg x = callM oalg x >>= id
 
 -- | A variant of @callK@ for which the effect is on a given monad rather than the @Prog@ monad.
 {-# INLINE callKM #-}
-callKM :: forall eff effs a b m s . (Monad m, Member eff effs, Sequence s)
-       => Algebra_ s effs m -> eff m a -> (a -> m b) -> m b
+callKM
+  :: forall eff effs a b m s.
+     ( Monad m, Member eff effs, Sequence s )
+  => Algebra_ s effs m
+  -> eff m a
+  -> (a -> m b)
+  -> m b
 callKM oalg x k = callM oalg x >>= k
 
 -- * Weakening and concatenating algebras
@@ -341,8 +376,11 @@ class KnownEffs (xeffs :: [Effect]) where
 
   -- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
   -- every effect in @xeffs@ is in @xyeffs@.
-  weakenAlg :: forall xyeffs s m . (Members_ xeffs xyeffs, Sequence s)
-            => Algebra_ s xyeffs m -> Algebra_ s xeffs m
+  weakenAlg
+    :: forall xyeffs s m.
+       ( Members_ xeffs xyeffs, Sequence s )
+    => Algebra_ s xyeffs m
+    -> Algebra_ s xeffs m
 
 instance KnownEffs '[] where
   {-# INLINE singEffs #-}
@@ -368,44 +406,58 @@ instance KnownEffs effs => KnownEffs (eff : effs) where
 -- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
 -- If an effect is in both @xeffs@ and @yeffs@, the algebra for @xeffs@ is used.
 {-# INLINE unionAlg #-}
-unionAlg :: forall xeffs yeffs m s.
-     (Members (yeffs :\\ xeffs) yeffs, Sequence s)
-  => Algebra_ s xeffs m -> Algebra_ s yeffs m
+unionAlg
+  :: forall xeffs yeffs m s.
+     ( Members (yeffs :\\ xeffs) yeffs, Sequence s )
+  => Algebra_ s xeffs m
+  -> Algebra_ s yeffs m
   -> Algebra_ s (xeffs `Union` yeffs) m
 unionAlg xalg yalg = appendAlg @xeffs @(yeffs :\\ xeffs) xalg (weakenAlg yalg)
 
 {-# INLINE appendCases #-}
-appendCases :: Sequence s => Case_ s xeffs m x y -> Case_ s yeffs m x y
-            -> Case_ s (xeffs :++ yeffs) m x y
+appendCases
+  :: Sequence s
+  => Case_ s xeffs m x y
+  -> Case_ s yeffs m x y
+  -> Case_ s (xeffs :++ yeffs) m x y
 appendCases (Case xs) (Case ys) = Case (append xs ys)
 
 {-# INLINE appendAlg #-}
-appendAlg :: forall xeffs yeffs m s. Sequence s
-          => Algebra_ s xeffs m -> Algebra_ s yeffs m
-          -> Algebra_ s (xeffs :++ yeffs) m
+appendAlg
+  :: forall xeffs yeffs m s.
+     Sequence s
+  => Algebra_ s xeffs m
+  -> Algebra_ s yeffs m
+  -> Algebra_ s (xeffs :++ yeffs) m
 appendAlg (Algebra as) (Algebra bs) = Algebra $ appendCases as bs
 
 infixr 6 #
 -- | @alg1 # alg2@ joins together algebras @alg1@ and @alg2@.
 {-# INLINE (#) #-}
-(#) :: forall eff1 eff2 m s . Sequence s
-    => Algebra_ s eff1 m
-    -> Algebra_ s eff2 m
-    -> Algebra_ s (eff1 :++ eff2) m
+(#)
+  :: forall eff1 eff2 m s.
+     Sequence s
+  => Algebra_ s eff1 m
+  -> Algebra_ s eff2 m
+  -> Algebra_ s (eff1 :++ eff2) m
 falg # galg = appendAlg falg galg
 
 
 {-# INLINE splitCase #-}
-splitCase :: forall xeffs yeffs f x y s. (Sequence s, KnownEffs xeffs)
-          => Case_ s (xeffs :++ yeffs) f x y
-          -> (Case_ s xeffs f x y, Case_ s yeffs f x y)
+splitCase
+  :: forall xeffs yeffs f x y s.
+     ( Sequence s, KnownEffs xeffs )
+  => Case_ s (xeffs :++ yeffs) f x y
+  -> (Case_ s xeffs f x y, Case_ s yeffs f x y)
 splitCase (Case s) = let (l, r) = split s (lengthEffs @xeffs)
                      in (Case l, Case r)
 
 {-# INLINE splitAlg #-}
-splitAlg :: forall xeffs yeffs m s. (Sequence s, KnownEffs xeffs)
-         => Algebra_ s (xeffs :++ yeffs) m
-         -> (Algebra_ s xeffs m, Algebra_ s yeffs m)
+splitAlg
+  :: forall xeffs yeffs m s.
+     ( Sequence s, KnownEffs xeffs )
+  => Algebra_ s (xeffs :++ yeffs) m
+  -> (Algebra_ s xeffs m, Algebra_ s yeffs m)
 splitAlg (Algebra (Case s))
   = let (l, r) = split s (lengthEffs @xeffs)
     in (Algebra (Case l), Algebra (Case r))
@@ -449,9 +501,11 @@ pattern (:#.$) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff,
 pattern a :#.$ b = (a :#$ (b :#$ EndAC))
 
 -- | Staged version of `unionAlg`.
-unionAlgC :: forall xeffs yeffs m a b
-  .  ( Members (yeffs :\\ xeffs) yeffs )
-  => AlgebraC xeffs m -> AlgebraC yeffs m
+unionAlgC
+  :: forall xeffs yeffs m a b.
+     (Members (yeffs :\\ xeffs) yeffs)
+  => AlgebraC xeffs m
+  -> AlgebraC yeffs m
   -> AlgebraC (xeffs `Union` yeffs) m
 unionAlgC xalg yalg = (#$) @xeffs @(yeffs :\\ xeffs) xalg (weakenAlgC yalg)
 

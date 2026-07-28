@@ -25,19 +25,21 @@ import Control.Monad.Trans.Push as P
 -- | Algebra  of the non-deterministic operations on t`PushT`.
 pushAT :: AlgTrans '[Empty, Choose, Once] '[] '[PushT] TruthC
 pushAT = AlgTrans $ pushAlg where
-  pushAlg :: forall n. Algebra '[] n
-          -> Algebra '[Empty, Choose, Once] (PushT n)
+  pushAlg
+    :: forall n. Algebra '[] n
+    -> Algebra '[Empty, Choose, Once] (PushT n)
   pushAlg oalg =
    (\Empty -> empty) :#
    (\(Choose x y) -> x <|> y) :#.
    (\(Once x) -> P.once x)
 
 -- | Algebra of the non-deterministic operations and the up-operation on t`PushT`.
-pushWithUpAT :: Monad m =>
-  AlgTrans '[UpOp (ListT m), UpOp [], Empty, Choose, Once]
-           '[UpOp m]
-           '[PushT]
-            (MonadDown m)
+pushWithUpAT
+  :: Monad m
+  => AlgTrans '[UpOp (ListT m), UpOp [], Empty, Choose, Once]
+              '[UpOp m]
+              '[PushT]
+              (MonadDown m)
 pushWithUpAT = weakenCS (appendAT upPush pushAT)
 
 -- | Algebra of the non-deterministic operations and the

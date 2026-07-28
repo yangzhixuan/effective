@@ -73,10 +73,11 @@ resOp' o = ResT $ return (Right (fmap return o))
 
 -- | The universal property of the monad @ResT s m x@ as the coproduct of the monad
 -- @m@ and the free monad over @s@.
-elimRes :: Monad n
-        => (forall x. m x -> n x)            -- ^ a monad morphism
-        -> (forall x. s x -> n x)            -- ^ a natural transformation
-        -> (forall x. ResT s m x -> n x)     -- ^ a monad morphism
+elimRes
+  :: Monad n
+  => (forall x. m x -> n x)           -- ^ a monad morphism
+  -> (forall x. s x -> n x)           -- ^ a natural transformation
+  -> (forall x. ResT s m x -> n x)    -- ^ a monad morphism
 elimRes l r res =
   do e <- l (unResT res)
      case e of
@@ -124,22 +125,27 @@ foldRes ret salg r =
 type SResT s m a = Either a (s (ResT s m a))
 
 -- | The initial algebra carried by @SResT@.
-sresAlg :: (Functor s, Monad m)
-        => Either a (s (m (SResT s m a))) -> m (SResT s m a)
+sresAlg
+  :: ( Functor s, Monad m )
+  => Either a (s (m (SResT s m a)))
+  -> m (SResT s m a)
 sresAlg (Left a)  = return (Left a)
 sresAlg (Right b) = return (Right (fmap ResT b))
 
 -- | The inverse of the initial algebra in the Kleisli category
-sresAlgInv :: (Functor s, Monad m)
-           => SResT s m a -> m (Either a (s (m (SResT s m a))))
+sresAlgInv
+  :: ( Functor s, Monad m )
+  => SResT s m a
+  -> m (Either a (s (m (SResT s m a))))
 sresAlgInv (Left a) = return (Left a)
 sresAlgInv (Right b) = return (Right (fmap unResT b))
 
 -- | The universal property of @sresAlg@ as the initial algebra of @F_m . (a + s -) . U_m@.
-foldSRes :: (Functor s, Monad m)
-         => (a -> m t)             -- ^ @ret@
-         -> (s (m t) -> m t)       -- ^ @salg@
-         -> (SResT s m a -> m t)   -- ^ An algebra homomorphism from @sresAlg@ to @either ret salg@.
+foldSRes
+  :: ( Functor s, Monad m )
+  => (a -> m t)                -- ^ @ret@
+  -> (s (m t) -> m t)          -- ^ @salg@
+  -> (SResT s m a -> m t)      -- ^ An algebra homomorphism from @sresAlg@ to @either ret salg@.
 foldSRes ret salg =
   sresAlgInv
   >=> (return . fmap (fmap (>>= foldSRes ret salg)))

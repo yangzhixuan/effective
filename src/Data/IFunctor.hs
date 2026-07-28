@@ -40,8 +40,11 @@ instance IFunctor IdentityT where
 instance (IFunctor h, IFunctor k) =>
   IFunctor (ComposeT h k) where
     {-# INLINE imap #-}
-    imap :: (IFunctor h, IFunctor k, Functor f, Functor g) =>
-      (forall x. f x -> g x) -> ComposeT h k f a -> ComposeT h k g a
+    imap
+      :: ( IFunctor h, IFunctor k, Functor f, Functor g )
+      => (forall x. f x -> g x)
+      -> ComposeT h k f a
+      -> ComposeT h k g a
     imap h (ComposeT x) = ComposeT (imap (imap h) x)
 
 instance IFunctor MaybeT where

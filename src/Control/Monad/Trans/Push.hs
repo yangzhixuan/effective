@@ -28,7 +28,7 @@ import Language.Haskell.TH ( CodeQ )
 newtype PushT n a = PushT
   { runPushT :: forall t.
                 (a -> n (CodeQ t) -> n (CodeQ t))  -- ^ The continuation for cons
-             -> n (CodeQ t)                     -- ^ The continuation for nil
+             -> n (CodeQ t)                        -- ^ The continuation for nil
              -> n (CodeQ t) }
 
 instance Functor (PushT m) where

@@ -40,8 +40,11 @@ instance HFunctor IdentityT where
 instance (HFunctor h, HFunctor k) =>
   HFunctor (ComposeT h k) where
     {-# INLINE hmap #-}
-    hmap :: (HFunctor h, HFunctor k, Functor f, Functor g) =>
-      (forall x. f x -> g x) -> ComposeT h k f a -> ComposeT h k g a
+    hmap
+      :: ( HFunctor h, HFunctor k, Functor f, Functor g )
+      => (forall x. f x -> g x)
+      -> ComposeT h k f a
+      -> ComposeT h k g a
     hmap h (ComposeT x) = ComposeT (hmap (hmap h) x)
 
 instance HFunctor MaybeT where

@@ -114,8 +114,12 @@ up' :: Member (UpOp m) effs => CodeQ (m a) -> (CodeQ a -> x) -> Prog effs x
 up' u k = call (Alg (UpOp u k))
 
 -- | Up-operations on a monad @n@.
-upM :: forall m effs n a. (Member (UpOp m) effs, Functor n)
-    => Algebra effs n -> CodeQ (m a) -> n (CodeQ a)
+upM
+  :: forall m effs n a.
+     ( Member (UpOp m) effs, Functor n )
+  => Algebra effs n
+  -> CodeQ (m a)
+  -> n (CodeQ a)
 upM alg = Iso.fwd upIso (callM alg)
 
 -- | Up-operations on a monad @n@ with an additional continuation argument.
@@ -148,8 +152,9 @@ upExcept = interpretAT1 $ \(Alg (UpOp la k)) ->
        Right a  -> return (k a)
 
 -- | To up @State s l@, we need to be able to up @l@, mutate @CodeQ s@, and generate case splits.
-upStateLazy :: forall s l.
-  AlgTrans '[UpOp (LS.StateT s l)] '[UpOp l, LS.Put (CodeQ s), LS.Get (CodeQ s), CodeGen] '[] Monad
+upStateLazy
+  :: forall s l.
+     AlgTrans '[UpOp (LS.StateT s l)] '[UpOp l, LS.Put (CodeQ s), LS.Get (CodeQ s), CodeGen] '[] Monad
 upStateLazy = interpretAT1 $ \(Alg (UpOp la k)) ->
   do cs <- LS.get @(CodeQ s)
      as <- up [|| LS.runStateT $$la $$cs ||]
@@ -158,8 +163,9 @@ upStateLazy = interpretAT1 $ \(Alg (UpOp la k)) ->
      return (k a)
 
 -- | To up @State s l@, we need to be able to up @l@, mutate @CodeQ s@, and generate case splits.
-upState :: forall s l.
-  AlgTrans '[UpOp (SS.StateT s l)] '[UpOp l, SS.Put (CodeQ s), SS.Get (CodeQ s), CodeGen] '[] Monad
+upState
+  :: forall s l.
+     AlgTrans '[UpOp (SS.StateT s l)] '[UpOp l, SS.Put (CodeQ s), SS.Get (CodeQ s), CodeGen] '[] Monad
 upState = interpretAT1 $ \(Alg (UpOp la k)) ->
   do cs <- SS.get @(CodeQ s)
      as <- up [|| SS.runStateT $$la $$cs ||]
@@ -211,9 +217,12 @@ upReader = interpretAT1 $ \(Alg (UpOp la k)) ->
 -- by generating a fold of the given @ListT@ and using the two continuation arguments of
 -- the t`PushT` in the corresponding two arguments for the fold.
 
-upPushAlg :: forall m n a. (Monad m, Functor n, n $~> m)
-          => Algebra '[UpOp m] n
-          -> CodeQ (ListT m a) -> PushT n (CodeQ a)
+upPushAlg
+  :: forall m n a.
+     ( Monad m, Functor n, n $~> m )
+  => Algebra '[UpOp m] n
+  -> CodeQ (ListT m a)
+  -> PushT n (CodeQ a)
 upPushAlg oalg cl = PushT $ \c n -> upMN [||
   let cons a ms = $$(down (c [||a||] (upMN [|| ms ||])))
       nil       = $$(down n)
@@ -224,9 +233,12 @@ upPushAlg oalg cl = PushT $ \c n -> upMN [||
 
 -- | A special case of `upPushAlg` for upping lists and avoiding generating
 -- the conversions between @[a]@ and @ListT Identity a@.
-upListPushAlg :: forall m n a. (Monad m, Functor n, n $~> m)
-              => Algebra '[UpOp m] n
-              -> CodeQ [a] -> PushT n (CodeQ a)
+upListPushAlg
+  :: forall m n a.
+     ( Monad m, Functor n, n $~> m )
+  => Algebra '[UpOp m] n
+  -> CodeQ [a]
+  -> PushT n (CodeQ a)
 upListPushAlg oalg cl = PushT $ \c n -> upMN
   [|| foldr (\a ms -> $$(down (c [||a||] (upMN [|| ms ||]) ))) $$(down n) $$cl ||]
   where
@@ -254,11 +266,13 @@ upPush = AlgTrans $ \oalg ->
 -- that of t`ListT` and t`PushT`. The meta-level correspondent of the resumption monad t`ResT`
 -- has to be t`ResUpT` a restricted Church-encoded version of the resumption monad.
 -- Moreover, we also need a meta-level version @l@ of the object-level step functor @s@.
-upResAlg :: forall m n s l a.
-            ( Monad n, Monad m, n $~> m,
-              Functor s, Functor l, forall x. Split (s x) (l (CodeQ x)) )
-         => Algebra '[UpOp m, CodeGen] n
-         -> CodeQ (ResT s m a) -> ResUpT l n (CodeQ a)
+upResAlg
+  :: forall m n s l a.
+     ( Monad n, Monad m, n $~> m,
+     Functor s, Functor l, forall x. Split (s x) (l (CodeQ x)) )
+  => Algebra '[UpOp m, CodeGen] n
+  -> CodeQ (ResT s m a)
+  -> ResUpT l n (CodeQ a)
 upResAlg oalg cr = ResUpT $ \k1 k2 -> upMN
   [|| foldRes (\a -> $$(down (k1 [||a||])))
               (\sm -> $$(down @n @m ((fmap k2 (fmap (fmap upMN) (upSL [||sm||]))) >>= id)))
@@ -271,8 +285,10 @@ upResAlg oalg cr = ResUpT $ \k1 k2 -> upMN
     upSL = liftGenA oalg . genSplit
 
 -- | Algebra transformer for upping @ResT s m a@.
-upRes :: forall m s l. (Monad m, Functor s, Functor l, forall x. Split (s x) (l (CodeQ x)))
-      => AlgTrans '[UpOp (ResT s m)] '[UpOp m, CodeGen] '[ResUpT l] (MonadDown m)
+upRes
+  :: forall m s l.
+     ( Monad m, Functor s, Functor l, forall x. Split (s x) (l (CodeQ x)) )
+  => AlgTrans '[UpOp (ResT s m)] '[UpOp m, CodeGen] '[ResUpT l] (MonadDown m)
 upRes = algTrans1 (\oalg -> bwd upIso (upResAlg oalg))
 
 -- * Resetting code generation
@@ -296,8 +312,11 @@ instance HFunctor Reset where
   hmap f (Reset o k) = Reset (f o) k
 
 -- | Reset code generation.
-reset :: forall x effs. Member Reset effs
-      => Prog effs (CodeQ x) -> Prog effs (CodeQ x)
+reset
+  :: forall x effs.
+     Member Reset effs
+  => Prog effs (CodeQ x)
+  -> Prog effs (CodeQ x)
 reset p = call (Reset p id)
 
 -- | Resetting is interpreted as @up@ followed by @down@.
@@ -358,19 +377,21 @@ upFree :: forall m. AlgTrans '[UpOp m] '[] '[FreeUpT m] Monad
 upFree = algTrans1 $ \_ -> Iso.bwd upIso upFreeAlg
 
 -- | Operations on @FreeUpT m n@ obtained from object-level operations on @m@.
-freeUpOpAlg :: forall m n meff oeff.
-               (Monad n, meff (FreeUpT m n) $~> oeff m)
-            => (forall x. CodeQ (oeff m x -> m x))
-            -> (forall x. meff (FreeUpT m n) (CodeQ x) -> FreeUpT m n (CodeQ x))
+freeUpOpAlg
+  :: forall m n meff oeff.
+     ( Monad n, meff (FreeUpT m n) $~> oeff m )
+  => (forall x. CodeQ (oeff m x -> m x))
+  -> (forall x. meff (FreeUpT m n) (CodeQ x) -> FreeUpT m n (CodeQ x))
 freeUpOpAlg objalg op =
   let objop = down @(meff (FreeUpT m n)) @(oeff m) op
   in upFreeAlg [|| $$objalg $$objop ||]
 
 -- | `freeUpOpAlg` specialised for scoped operations.
-freeUpScpAlg :: forall m n metasig objsig.
-                (Monad n, FreeUpT m n $~> m, Functor metasig, metasig $~> objsig)
-             => (forall x. CodeQ (Scp objsig m x -> m x))
-             -> (forall x. Scp metasig (FreeUpT m n) (CodeQ x) -> FreeUpT m n (CodeQ x))
+freeUpScpAlg
+  :: forall m n metasig objsig.
+     ( Monad n, FreeUpT m n $~> m, Functor metasig, metasig $~> objsig )
+  => (forall x. CodeQ (Scp objsig m x -> m x))
+  -> (forall x. Scp metasig (FreeUpT m n) (CodeQ x) -> FreeUpT m n (CodeQ x))
 freeUpScpAlg objalg op = freeUpOpAlg objalg op
 
 -- * Caching the last CodeQ-operations at tail positions

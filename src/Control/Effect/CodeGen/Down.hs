@@ -127,8 +127,11 @@ instance (Monad n, Monad m, n $~> m) => PushT n $~> ListT m where
   down :: forall x. PushT n (CodeQ x) -> CodeQ (ListT m x)
   down p = [|| ListT $$(down (pushMatch p)) ||]
 
-resUpMatch :: forall n m s l x. (Monad n, Functor l, n $~> m, l $~> s)
-           => ResUpT l n (CodeQ x) -> n (CodeQ (Either x (s (ResT s m x))))
+resUpMatch
+  :: forall n m s l x.
+     ( Monad n, Functor l, n $~> m, l $~> s )
+  => ResUpT l n (CodeQ x)
+  -> n (CodeQ (Either x (s (ResT s m x))))
 resUpMatch p = runResUpT p
                  (\cx -> return [|| Left $$cx ||])
                  (\ln -> return [|| Right $$(down @l @s

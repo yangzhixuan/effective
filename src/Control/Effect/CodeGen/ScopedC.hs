@@ -29,8 +29,10 @@ instance Functor sig => HFunctor (ScpC sig) where
   hmap tau (ScpC op k) = ScpC (fmap tau op) k
 
 -- | The isomorphism characterising t`ScpC`.
-scpCIso :: Functor m => Iso (forall x. ScpC sig m x -> m x)
-                            (forall x. Scp sig m (CodeQ x) -> m (CodeQ x))
+scpCIso
+  :: Functor m
+  => Iso (forall x. ScpC sig m x -> m x)
+     (forall x. Scp sig m (CodeQ x) -> m (CodeQ x))
 scpCIso = Iso fwd bwd where
   fwd :: (forall x. ScpC sig m x -> m x) -> (forall x. Scp sig m (CodeQ x) -> m (CodeQ x))
   fwd f (Scp op) = f (ScpC op id)
@@ -39,14 +41,21 @@ scpCIso = Iso fwd bwd where
   bwd g (ScpC op k) = fmap k $ g (Scp op)
 
 -- | Obtaining a staged scoped operation from the code of a scoped operation.
-scpC :: forall sig sig' m x. (sig' $~> sig, Functor sig, Functor sig', Monad m)
-     => CodeQ (Scp sig m -.> m) -> sig' (GenM m (CodeQ x)) -> GenM m (CodeQ x)
+scpC
+  :: forall sig sig' m x.
+     ( sig' $~> sig, Functor sig, Functor sig', Monad m )
+  => CodeQ (Scp sig m -.> m)
+  -> sig' (GenM m (CodeQ x))
+  -> GenM m (CodeQ x)
 scpC algC = scpC' (\opc -> [|| at $$algC (Scp $$opc) ||])
 
 -- | A more flexible form of `scpC` that allows binding-time improvement.
-scpC' :: forall sig sig' m x. (sig' $~> sig, Functor sig, Functor sig', Monad m)
-      => (forall x. CodeQ (sig (m x)) -> CodeQ (m x))
-      -> sig' (GenM m (CodeQ x)) -> GenM m (CodeQ x)
+scpC'
+  :: forall sig sig' m x.
+     ( sig' $~> sig, Functor sig, Functor sig', Monad m )
+  => (forall x. CodeQ (sig (m x)) -> CodeQ (m x))
+  -> sig' (GenM m (CodeQ x))
+  -> GenM m (CodeQ x)
 scpC' algC op =
  let op' = down @sig' @sig $ fmap runGenM op
  in GenM $ \k -> [|| do x <- $$(algC op'); $$(k [||x||]) ||]

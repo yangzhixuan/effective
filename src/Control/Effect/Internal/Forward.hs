@@ -47,16 +47,20 @@ class Forward (eff :: Effect) (t :: (Type -> Type) -> (Type -> Type)) where
 
   -- | @fwd@ constructs an @eff@-algebra on @t m@ given an @eff@-algebra on @m@, for every
   -- @m :: Type -> Type@ satisfying the constraint @FwdConstraint eff t@.
-  fwd :: forall m . FwdConstraint eff t m
-      => (forall x . eff m x     -> m x)
-      -> (forall x . eff (t m) x -> t m x)
+  fwd
+    :: forall m.
+       FwdConstraint eff t m
+    => (forall x. eff m x     -> m x)
+    -> (forall x. eff (t m) x -> t m x)
 
   -- | @fwdC@ is the staged version of `fwd` that works on code of algebras. It has a default
   -- implementation in terms of `fwd` but it is possible more efficient implementations exist
   -- for some @t@.
-  fwdC :: forall m . FwdConstraint eff t m
-       => CodeQ (eff m -.> m)
-       -> CodeQ (eff (t m) -.> t m)
+  fwdC
+    :: forall m.
+       FwdConstraint eff t m
+    => CodeQ (eff m -.> m)
+    -> CodeQ (eff (t m) -.> t m)
   fwdC c = [|| NT $ fwd (at $$c) ||]
 
 {-

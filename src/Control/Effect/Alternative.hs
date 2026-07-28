@@ -84,16 +84,17 @@ instance (Member Empty effs, Member Choose effs)
 -- for any monad @m@ to provide semantics.
 {-# INLINE alternative #-}
 alternative
-  :: forall t f a
-  .  (forall m . Monad m => Alternative (t m))
-  => (forall m . Monad m => (forall a . t m a -> m (f a)))
+  :: forall t f a.
+     (forall m. Monad m => Alternative (t m))
+  => (forall m. Monad m => (forall a. t m a -> m (f a)))
   -> Handler '[Empty, Choose] '[] '[t] a (f a)
 alternative run = Handler (runner' run) alternativeAT
 
 -- | The algebra transformer underlying the 'alternative' handler. This uses an
 -- underlying 'Alternative' instance for @t m@ given by a transformer @t@.
 alternativeAT
-  :: forall t. (forall m . Monad m => Alternative (t m))
+  :: forall t.
+     (forall m. Monad m => Alternative (t m))
   => AlgTrans '[Empty, Choose] '[] '[t] Monad
 alternativeAT = algTrans' (emptyAlg :#. chooseAlg)
 

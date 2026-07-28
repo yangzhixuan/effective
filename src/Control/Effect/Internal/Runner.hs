@@ -76,8 +76,8 @@ compR
   -> Runner oeffs1 ts1 a1 a2 cs1
   -> Runner oeffs2 ts2 a2 a3 cs2
   -> Runner oeffs2 (ts1 :++ ts2)
-                  a1 a3
-                  (CompC ts2 cs1 cs2)
+                   a1 a3
+                   (CompC ts2 cs1 cs2)
 compR at r1 r2 = Runner \(oalg :: Algebra _ m) ->
     getR r2 oalg .  getR r1 (getAT at @m oalg)
 
@@ -118,7 +118,7 @@ fuseAppR
   :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
      ( ForwardsC cs2 oeffs1 ts2
      , KnownEffs oeffs1
-     , forall m. Assoc ts1 ts2 m)
+     , forall m. Assoc ts1 ts2 m )
   => AlgTrans effs2 oeffs2 ts2 cs2
   -> Runner oeffs1 ts1 a1 a2 cs1
   -> Runner oeffs2 ts2 a2 a3 cs2
@@ -170,14 +170,15 @@ circCode (Code qG) (Code qF) = Code $
              else fmap TExp [| $(pure g) . $(pure f)|]
 
 -- | Staged version of `fuseAppR`.
-fuseAppRC :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
-          ( ForwardsC cs2 oeffs1 ts2, forall m. Assoc ts1 ts2 m, KnownEffs oeffs1)
-       => RunnerC oeffs1 ts1 a1 a2 cs1
-       -> RunnerC oeffs2 ts2 a2 a3 cs2
-       -> RunnerC (oeffs1  :++ oeffs2)
-                  (ts1 :++ ts2)
-                  a1 a3
-                  (CompC ts2 cs1 cs2)
+fuseAppRC
+  :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
+     ( ForwardsC cs2 oeffs1 ts2, forall m. Assoc ts1 ts2 m, KnownEffs oeffs1 )
+  => RunnerC oeffs1 ts1 a1 a2 cs1
+  -> RunnerC oeffs2 ts2 a2 a3 cs2
+  -> RunnerC (oeffs1  :++ oeffs2)
+             (ts1 :++ ts2)
+             a1 a3
+             (CompC ts2 cs1 cs2)
 fuseAppRC r1 r2 = RunnerC \(oalg :: AlgebraC (oeffs1 :++ oeffs2) m)  ->
   let (oalg1, oalg2) = splitAlgC @oeffs1 @oeffs2 oalg
   in [|| $$(getRC r2 oalg2) ||]
@@ -194,8 +195,8 @@ type PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 =
 {-# INLINE passR #-}
 passR
   :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
-  ( ForwardsC cs2 oeffs1 ts2
-  , PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3)
+     ( ForwardsC cs2 oeffs1 ts2
+     , PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 )
   => Runner oeffs1 ts1 a1 a2 cs1
   -> Runner oeffs2 ts2 a2 a3 cs2
   -> Runner (oeffs1 `Union` oeffs2)
@@ -210,7 +211,7 @@ passR r1 r2 = Runner \(oalg :: Algebra _ m)  ->
 {-# INLINE weakenR #-}
 weakenR
   :: forall cs' effs' cs effs ts a b.
-     (forall m. cs' m => cs m, Members effs effs')
+     ( forall m. cs' m => cs m, Members effs effs' )
   => Runner effs  ts a b cs
   -> Runner effs' ts a b cs'
 weakenR r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
@@ -245,8 +246,8 @@ weakenRCS r1 = Runner \oalg -> getR r1 oalg
 -- non-injective family 'Apply'. This wrapper narrows the context to the
 -- single relevant quantified given, making the choice unambiguous.
 weakenRCSMonad
-  :: forall ts2 effs ts a b
-   . (forall m. Monad m => MonadApply ts2 m)
+  :: forall ts2 effs ts a b.
+     (forall m. Monad m => MonadApply ts2 m)
   => Runner effs ts a b (CompC ts2 Monad Monad)
   -> Runner effs ts a b Monad
 weakenRCSMonad = weakenRCS

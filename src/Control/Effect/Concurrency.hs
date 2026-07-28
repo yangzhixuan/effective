@@ -96,9 +96,11 @@ resumpWith choices = handler' (runWith choices) resumpAlg
 
 -- | Resumption-based handler of concurrency. Non-deterministic choices are resolved
 -- with the given program (of effect @eff@).
-resumpWithM :: forall eff a b .
-               ( Action a )
-            => Prog eff Bool -> Handler '[Act a, Par, Res a] eff '[C.CResT a] b (ActsMb a b)
+resumpWithM
+  :: forall eff a b.
+     (Action a)
+  => Prog eff Bool
+  -> Handler '[Act a, Par, Res a] eff '[C.CResT a] b (ActsMb a b)
 resumpWithM pb = handler (\oalg -> runWithM (eval oalg pb))  (\_ -> resumpAlg)
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
@@ -114,9 +116,11 @@ jresumpWith choices = handler' (runWith choices) jresumpAlg
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
 -- Non-deterministic choices are resolved with the given program (of effect @eff@).
-jresumpWithM :: forall eff a b.
-                ( Action a )
-             => Prog eff Bool -> Handler '[Act a, JPar, Res a] eff '[C.CResT a] b (ActsMb a b)
+jresumpWithM
+  :: forall eff a b.
+     (Action a)
+  => Prog eff Bool
+  -> Handler '[Act a, JPar, Res a] eff '[C.CResT a] b (ActsMb a b)
 jresumpWithM pb = handler (\oalg -> runWithM (eval oalg pb)) (\_ -> jresumpAlg)
 
 type QSemMap a = M.Map a (QSem, QSem)
@@ -126,15 +130,20 @@ type QSemMap a = M.Map a (QSem, QSem)
 -- to operations on semaphores.
 -- Note that operations t`Par` and t`JPar` are part of the IO-effects in "Control.Effect.IO",
 -- so they don't need to be handled here.
-ccsByQSem :: forall n a . Ord n
-          => Handler '[Act (CCSAction n), Res (CCSAction n)]
-                     '[Alg IO]
-                     '[R.ReaderT (QSemMap n), E.ExceptT String]
-                     a
-                     (Either String a)
+ccsByQSem
+  :: forall n a.
+     Ord n
+  => Handler '[Act (CCSAction n), Res (CCSAction n)]
+             '[Alg IO]
+             '[R.ReaderT (QSemMap n), E.ExceptT String]
+             a
+             (Either String a)
 ccsByQSem = (interpretM (\o -> actionAlg o :#. resAlg o) \\ R.reader M.empty) \\ E.except where
-  actionAlg :: Monad m => Algebra '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO ] m
-            -> forall x. Act (CCSAction n) m x -> m x
+  actionAlg
+    :: Monad m
+    => Algebra '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO ] m
+    -> forall x. Act (CCSAction n) m x
+    -> m x
   actionAlg oalg (Act (Action n) p) = eval oalg $ do
     m <- R.ask @(QSemMap n)
     case M.lookup n m of
@@ -148,8 +157,11 @@ ccsByQSem = (interpretM (\o -> actionAlg o :#. resAlg o) \\ R.reader M.empty) \\
       Nothing  -> E.throw "Channel used before creation!"
     return p
 
-  resAlg :: Monad m => Algebra '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO] m
-         -> forall x. Res (CCSAction n) m x -> m x
+  resAlg
+    :: Monad m
+    => Algebra '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO] m
+    -> forall x. Res (CCSAction n) m x
+    -> m x
   resAlg oalg (Res a p) = do
     (m, s1, s2) <- eval oalg $ do
        m <- R.ask @(QSemMap n)
@@ -160,15 +172,19 @@ ccsByQSem = (interpretM (\o -> actionAlg o :#. resAlg o) \\ R.reader M.empty) \\
     R.localM oalg (const m') p
 
 
-ccsByQSemC :: forall n a . Ord n
-          => HandlerC '[Act (CCSAction n), Res (CCSAction n)]
-                     '[Alg IO]
-                     '[R.ReaderT (QSemMap n), E.ExceptT String]
-                     a
-                     (Either String a)
+ccsByQSemC
+  :: forall n a.
+     Ord n
+  => HandlerC '[Act (CCSAction n), Res (CCSAction n)]
+              '[Alg IO]
+              '[R.ReaderT (QSemMap n), E.ExceptT String]
+              a
+              (Either String a)
 ccsByQSemC = (interpretMC (\o -> actionAlg o :#.$ resAlg o) \\$ R.readerC [||M.empty||]) \\$ E.exceptC where
-  actionAlg :: Monad m => AlgebraC '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO ] m
-            -> CodeQ (Act (CCSAction n) m -.> m)
+  actionAlg
+    :: Monad m
+    => AlgebraC '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO ] m
+    -> CodeQ (Act (CCSAction n) m -.> m)
   actionAlg oalg = [|| NT $ \(Act a p) ->
     case a of
       (Action n) ->
@@ -185,8 +201,10 @@ ccsByQSemC = (interpretMC (\o -> actionAlg o :#.$ resAlg o) \\$ R.readerC [||M.e
            return p
      ||]
 
-  resAlg :: Monad m => AlgebraC '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO] m
-         -> CodeQ (Res (CCSAction n) m -.> m)
+  resAlg
+    :: Monad m
+    => AlgebraC '[ R.Ask (QSemMap n), R.Local (QSemMap n), E.Throw String, Alg IO] m
+    -> CodeQ (Res (CCSAction n) m -.> m)
   resAlg oalg = [|| NT $ \(Res a p) -> do
       m <- $$(callMC @(R.Ask (QSemMap n)) oalg) (R.Ask id)
       s1 <- $$(callMC oalg) (Alg (QSem.newQSem 0))

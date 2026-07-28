@@ -141,17 +141,22 @@ handleHS = runHS
 
 -- | Running a program with higher-order store and other effects @effs@ on @m@,
 -- resulting in an @m@ program.
-handleHSM :: forall effs a m.
-          ( forall s. ForwardsM effs '[St.StateT s]
-          , Monad m )
-          => Algebra effs m -> (forall w. Prog (HSEffs w :++ effs) a) -> m a
+handleHSM
+  :: forall effs a m.
+     ( forall s. ForwardsM effs '[St.StateT s]
+     , Monad m )
+  => Algebra effs m
+  -> (forall w. Prog (HSEffs w :++ effs) a)
+  -> m a
 handleHSM alg p = handleMApp alg hstore p
 
 -- | Running a program with higher-order store and other effects @effs@, resulting
 -- in a program with effects @effs@.
-handleHSP :: forall effs a.
-             ( forall s. ForwardsM effs '[St.StateT s], ProgAlg# effs )
-          => (forall w. Prog (HSEffs w :++ effs) a) -> Prog effs a
+handleHSP
+  :: forall effs a.
+     ( forall s. ForwardsM effs '[St.StateT s], ProgAlg# effs )
+  => (forall w. Prog (HSEffs w :++ effs) a)
+  -> Prog effs a
 handleHSP p = handleMApp progAlg hstore p
 
 instance (MonadTrans t) => Forward (New w) t where

@@ -73,14 +73,23 @@ catchM alg p q = dispatch alg (Scp (Catch_ p q))
 
 -- | A pattern synonym for a catch operation in an effect row.
 {-# INLINE catchP #-}
-catchP :: forall n e effs a . Member (n :@ Catch e) effs
-       => Proxy n -> Prog effs a -> (e -> Prog effs a) -> Prog effs a
+catchP
+  :: forall n e effs a.
+     Member (n :@ Catch e) effs
+  => Proxy n
+  -> Prog effs a
+  -> (e -> Prog effs a)
+  -> Prog effs a
 catchP n p q = callP n (Catch p q)
 
 #if MIN_VERSION_GLASGOW_HASKELL(9,10,1,0)
 {-# INLINE catchN #-}
-catchN :: forall n -> forall e effs a . Member (n :@ Catch e) effs
-       => Prog effs a -> (e -> Prog effs a) -> Prog effs a
+catchN
+  :: forall n -> forall e effs a.
+     Member (n :@ Catch e) effs
+  => Prog effs a
+  -> (e -> Prog effs a)
+  -> Prog effs a
 catchN n p q = callN n (Catch p q)
 #endif
 

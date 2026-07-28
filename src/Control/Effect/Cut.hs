@@ -76,7 +76,8 @@ onceCutAT :: AlgTrans '[Once] '[CutCall, CutFail, Empty, Choose] '[] Monad
 onceCutAT = AlgTrans onceCutAlg
 
 -- | The algebra for handling the @Once@ effect with @CutCall@ and @CutFail@.
-onceCutAlg :: forall m .
+onceCutAlg
+  :: forall m.
      Monad m
   => Algebra [CutCall, CutFail, Empty, Choose] m
   -> Algebra '[Once] m

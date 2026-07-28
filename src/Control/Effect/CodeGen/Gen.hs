@@ -129,13 +129,21 @@ liftGenA :: Member CodeGen effs => Algebra effs m -> Gen a -> m a
 liftGenA alg o = callM alg (Alg o)
 
 -- | Generate a let-binding on a monad @m@.
-genLetM :: forall effs m a . Member CodeGen effs
-        => Algebra effs m -> CodeQ a -> m (CodeQ a)
+genLetM
+  :: forall effs m a.
+     Member CodeGen effs
+  => Algebra effs m
+  -> CodeQ a
+  -> m (CodeQ a)
 genLetM alg = callM alg . Alg .  genLet_
 
 -- | Generate a recursive let-binding on a monad @m@.
-genLetRecM :: forall effs n a . Member CodeGen effs
-           => Algebra effs n -> (CodeQ a -> CodeQ a) -> n (CodeQ a)
+genLetRecM
+  :: forall effs n a.
+     Member CodeGen effs
+  => Algebra effs n
+  -> (CodeQ a -> CodeQ a)
+  -> n (CodeQ a)
 genLetRecM alg = callM alg . Alg .  genLetRec_
 
 -- | The effect of generating code of type @m a@.

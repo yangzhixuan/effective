@@ -74,15 +74,22 @@ unsafeCall n x = Prog $ \(alg :: AlgebraArray effs m) ->
 -- | A variant of `call` with an continuation argument given as return values.
 -- Semantically, @callJ = join . `call`@.
 {-# INLINE callJ #-}
-callJ :: forall eff effs a . (Member eff effs, HFunctor eff)
-     => eff (Prog effs) (Prog effs a) -> Prog effs a
+callJ
+  :: forall eff effs a.
+     ( Member eff effs, HFunctor eff )
+  => eff (Prog effs) (Prog effs a)
+  -> Prog effs a
 callJ = join . call
 
 -- | A variant of `call` with an continuation argument given as a function.
 -- Semantically, @callK x k = `call` x >>= k@.
 {-# INLINE callK #-}
-callK :: forall eff effs a b . (Member eff effs, HFunctor eff)
-      => eff (Prog effs) a -> (a -> Prog effs b) -> Prog effs b
+callK
+  :: forall eff effs a b.
+     ( Member eff effs, HFunctor eff )
+  => eff (Prog effs) a
+  -> (a -> Prog effs b)
+  -> Prog effs b
 callK x k = call x >>= k
 
 {-
@@ -142,8 +149,11 @@ instance Monad (Prog effs) where
 -- | Weaken a program of type @Prog effs a@ so that it can be used in place of a
 -- program of type @Prog effs a@, when every @effs@ is a member of @effs'@.
 {-# INLINE weakenProg #-}
-weakenProg :: forall effs effs' a. (Members effs effs')
-  => Prog effs a -> Prog effs' a
+weakenProg
+  :: forall effs effs' a.
+     (Members effs effs')
+  => Prog effs a
+  -> Prog effs' a
 weakenProg p = Prog $ \alg -> runProg p (weakenAlg alg)
 
 -- | Evaluate a program using the supplied algebra. This is the universal
@@ -151,16 +161,20 @@ weakenProg p = Prog $ \alg -> runProg p (weakenAlg alg)
 -- m -> m@.
 {-# INLINE eval #-}
 eval
-  :: forall effs m a s . (Monad m, Sequence s)
+  :: forall effs m a s.
+     ( Monad m, Sequence s )
   => Algebra_ s effs m
-  -> Prog effs a -> m a
+  -> Prog effs a
+  -> m a
 eval alg p = runProg p (toAlgebraArray alg)
 
 -- | A specialised version of @eval@, which can be used for helping
 -- the type checker to infer the sequence parameter @s@.
 {-# INLINE eval' #-}
 eval'
-  :: forall effs m a . (Monad m)
+  :: forall effs m a.
+     (Monad m)
   => Algebra effs m
-  -> Prog effs a -> m a
+  -> Prog effs a
+  -> m a
 eval' alg p = runProg p (toAlgebraArray alg)
