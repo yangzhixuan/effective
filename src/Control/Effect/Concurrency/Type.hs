@@ -23,9 +23,9 @@ only synchronise with its dual actions, producing some silent action together.
 This is exactly how /calculus of communication systems/ works.
 
 Currently this module doesn't have an operation for passing values between
-processes. This may change in the future, but for now you can use a shared
-mutable state between processes for sending/receiving values and use the
-operations of this module to structure their synchronisation.
+processes. This may change in the future, but for now you can use an @IORef@ for
+sending/receiving values between processes and use the operations of this module
+to structure their synchronisation.
 -}
 
 {-# LANGUAGE TemplateHaskell #-}

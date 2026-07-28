@@ -16,6 +16,7 @@ of handlers:
      process efficiently (using the native concurrency API from
      "Control.Concurrent" of GHC).
 -}
+
 {-# LANGUAGE LambdaCase #-}
 module Control.Effect.Concurrency (
   -- * Syntax
@@ -33,8 +34,8 @@ module Control.Effect.Concurrency (
   jresump,
   jresumpWith,
 
-
   -- ** IO-based handlers
+  -- $ioBasedHandler
   ccsByQSem, ccsByQSemC,
   parIOAlg, parIOAlgC,
   jparIOAlg, jparIOAlgC,
@@ -61,6 +62,8 @@ import qualified Control.Concurrent.MVar as MVar
 import qualified Control.Concurrent.QSem as QSem
 import Control.Monad.Trans.CRes
 import qualified Data.Map as M
+
+-- * Resumption-based Handlers
 
 -- | Algebra for the resumption-based handler of t`Par`, t`Act`, and t`Res`.
 resumpAlg :: (Action a, Monad m) => Algebra '[Act a, Par, Res a] (C.CResT a m)
@@ -123,6 +126,18 @@ jresumpWithM
   -> Handler '[Act a, JPar, Res a] eff '[C.CResT a] b (ActsMb a b)
 jresumpWithM pb = handler (\oalg -> runWithM (eval oalg pb)) (\_ -> jresumpAlg)
 
+
+-- * IO-based Handlers
+
+-- $ioBasedHandler
+--
+-- For the actions of type `CCSAction n`, we can implement concurrency using the
+-- built-in concurrency API of Haskell from "Control.Concurrent". The idea is
+-- that every action @a@ is implemented as a pair of semaphores @s1@ and @s2@,
+-- performing this action @a@ is implemented as @do waitQSem s1; signalQSem s2@,
+-- while performing the dual of @a@ is implemented as @do signalSem s1; waitQSem
+-- s2@. In this way, performing @a@ and the dual of @a@ are always synchronised.
+
 type QSemMap a = M.Map a (QSem, QSem)
 
 -- | IO-based handler of concurrency. The effect of restriction is translated
@@ -171,7 +186,7 @@ ccsByQSem = (interpretM (\o -> actionAlg o :#. resAlg o) \\ R.reader M.empty) \\
     let m' = M.insert (getActionName a) (s1, s2) m
     R.localM oalg (const m') p
 
-
+-- | Staged version of `ccsByQSemC`.
 ccsByQSemC
   :: forall n a.
      Ord n
@@ -228,6 +243,7 @@ parIOAlgC = [|| NT $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r)
 jparIOAlg :: Algebra '[JPar] IO
 jparIOAlg = singAlg $ \(JPar l r c) -> jparIOImp l r c
 
+-- | Staged version of `jparIOAlg`
 jparIOAlgC :: AlgebraC '[JPar] IO
 jparIOAlgC = [|| NT $ \(JPar l r c) -> jparIOImp l r c ||] :#$ emptyAlgC
 
