@@ -41,7 +41,7 @@ module Control.Effect.CodeGen.JoinFlow where
 
 import Control.Effect
 import Control.Effect.Internal.AlgTrans.Type
-import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.Operations
 import Control.Effect.CodeGen.Split
 import Control.Effect.CodeGen.Down
 import Control.Effect.CodeGen.Up

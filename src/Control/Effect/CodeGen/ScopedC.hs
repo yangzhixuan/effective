@@ -2,7 +2,7 @@
 module Control.Effect.CodeGen.ScopedC where
 
 import Control.Effect
-import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.Operations
 import Control.Effect.CodeGen.SoPU
 import Control.Effect.CodeGen.Down
 import Control.Effect.CodeGen.Split

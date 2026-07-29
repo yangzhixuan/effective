@@ -1,5 +1,5 @@
 {-|
-Module      : Control.Effect.State.Type
+Module      : Control.Effect.State.Operations
 Description : Types for state effect
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
@@ -80,7 +80,7 @@ getN p = callN p (Alg (Get_ id))
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Control.Effect.State.Type where
+module Control.Effect.State.Operations where
 
 import Control.Effect
 

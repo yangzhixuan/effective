@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 module Control.Effect.CodeGen.SoPU where
 
 import Data.Kind
-import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.Operations
 import Control.Effect.CodeGen.Gen
 
 -- Singletons

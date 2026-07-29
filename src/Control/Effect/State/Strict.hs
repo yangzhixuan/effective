@@ -10,7 +10,7 @@ Stability   : experimental
 
 module Control.Effect.State.Strict
   ( -- * Syntax
-    module Control.Effect.State.Type
+    module Control.Effect.State.Operations
 
     -- * Semantics
     -- ** Handlers
@@ -25,7 +25,7 @@ module Control.Effect.State.Strict
   ) where
 
 import Control.Effect
-import Control.Effect.State.Type
+import Control.Effect.State.Operations
 import Data.Tuple (swap)
 
 import qualified Control.Monad.Trans.State.Strict as Strict

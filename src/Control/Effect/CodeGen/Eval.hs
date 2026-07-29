@@ -17,7 +17,7 @@ module Control.Effect.CodeGen.Eval where
 
 import Control.Effect.CodeGen.Up
 import Control.Effect.CodeGen.Gen
-import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.Operations
 import Control.Effect.CodeGen.Down
 
 import Control.Effect

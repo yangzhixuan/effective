@@ -31,13 +31,13 @@ import Control.Effect
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 
-import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.Operations
 import Control.Effect.CodeGen.ScopedC
 import Control.Effect.CodeGen.Gen
 import Control.Effect.CodeGen.Up
 import Control.Effect.CodeGen.Down
 import Control.Effect.Yield
-import Control.Effect.Concurrency.Type hiding (par)
+import Control.Effect.Concurrency.Operations hiding (par)
 import Control.Effect.Nondet
 
 import Control.Monad.Trans.Class

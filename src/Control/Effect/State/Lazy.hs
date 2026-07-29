@@ -10,7 +10,7 @@ Stability   : experimental
 
 module Control.Effect.State.Lazy
   ( -- * Syntax
-    module Control.Effect.State.Type,
+    module Control.Effect.State.Operations,
 
     -- * Semantics
     -- ** Handlers
@@ -25,7 +25,7 @@ module Control.Effect.State.Lazy
   ) where
 
 import Control.Effect
-import Control.Effect.State.Type
+import Control.Effect.State.Operations
 import Control.Effect.Family.Algebraic
 
 import qualified Control.Monad.Trans.State.Lazy as Lazy

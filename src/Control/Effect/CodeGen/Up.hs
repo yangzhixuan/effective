@@ -29,7 +29,7 @@ import Control.Effect
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 import Control.Effect.Family.Distributive
-import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.Operations
 import Control.Effect.CodeGen.Split
 import Control.Effect.CodeGen.Gen
 import Control.Effect.CodeGen.Down

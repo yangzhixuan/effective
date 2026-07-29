@@ -14,7 +14,7 @@ module Control.Effect.Nondet.Cut where
 import Prelude hiding (or)
 
 import Control.Effect
-import Control.Effect.Nondet.Type
+import Control.Effect.Nondet.Operations
 import Control.Monad.Trans.CutList
 {-
 Idea:

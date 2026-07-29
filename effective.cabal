@@ -54,17 +54,17 @@ library
     Control.Effect.IO
     Control.Effect.Maybe
     Control.Effect.Concurrency
-    Control.Effect.Concurrency.Type
+    Control.Effect.Concurrency.Operations
     Control.Effect.Yield
     Control.Effect.Nondet
-    Control.Effect.Nondet.Type
+    Control.Effect.Nondet.Operations
     Control.Effect.Nondet.Alternative
     Control.Effect.Nondet.List
     Control.Effect.Nondet.Logic
     Control.Effect.Nondet.Cut
     Control.Effect.Reader
     Control.Effect.State
-    Control.Effect.State.Type
+    Control.Effect.State.Operations
     Control.Effect.State.Lazy
     Control.Effect.State.Strict
     Control.Effect.Writer
@@ -72,7 +72,7 @@ library
     Control.Effect.HStore.Safe
 
     Control.Effect.CodeGen
-    Control.Effect.CodeGen.Type
+    Control.Effect.CodeGen.Operations
     Control.Effect.CodeGen.Up
     Control.Effect.CodeGen.Down
     Control.Effect.CodeGen.Split

@@ -1,5 +1,5 @@
 {-|
-Module      : Control.Effect.Nondet.Type
+Module      : Control.Effect.Nondet.Operations
 Description : Operations for the effects of nondeterministic computations
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
@@ -16,7 +16,7 @@ including choice and failure.
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Control.Effect.Nondet.Type (
+module Control.Effect.Nondet.Operations (
             emptyM, emptyP, pattern Empty, Empty (..), Empty_ (..),
     choose, chooseM, chooseP, pattern Choose, Choose (..), Choose_ (..),
     nondetOr, nondetOrM, nondetOrP, pattern NondetOr, NondetOr (..), NondetOr_ (..),

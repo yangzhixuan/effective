@@ -1,5 +1,5 @@
 {-|
-Module      : Control.Effect.CodeGen.Type
+Module      : Control.Effect.CodeGen.Operations
 Description : Types for the code-generation effect
 License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
@@ -8,8 +8,8 @@ Stability   : experimental
 This module contains some basic definitions for type `CodeQ` of code.
 -}
 {-# LANGUAGE TemplateHaskell #-}
-module Control.Effect.CodeGen.Type
-  ( module Control.Effect.CodeGen.Type
+module Control.Effect.CodeGen.Operations
+  ( module Control.Effect.CodeGen.Operations
   , CodeQ (..)
   ) where
 

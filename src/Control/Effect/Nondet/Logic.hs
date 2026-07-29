@@ -14,14 +14,14 @@ including choice and failure.
 {-# LANGUAGE UndecidableInstances #-}
 
 module Control.Effect.Nondet.Logic
-  ( module Control.Effect.Nondet.Type
+  ( module Control.Effect.Nondet.Operations
   , module Control.Effect.Nondet.Logic
   , LogicT (..)
   ) where
 
 import Control.Effect hiding (emptyAlg)
 import Control.Effect.Nondet.Alternative
-import Control.Effect.Nondet.Type
+import Control.Effect.Nondet.Operations
 import Control.Monad.Logic hiding (once)
 import qualified Control.Monad.Logic as L
 

@@ -15,7 +15,7 @@ module Control.Effect.CodeGen.Split where
 
 import Control.Monad.Trans.YRes (YStep(..))
 import Control.Monad.Trans.CRes (CStep(..))
-import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.Operations
 import Control.Effect.CodeGen.Gen
 import Control.Effect
 

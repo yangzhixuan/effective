@@ -36,7 +36,7 @@ and `nondetByChoose` to convert between `NondetOr` and t`Choose`.
 -}
 
 module Control.Effect.Nondet
-  ( module Control.Effect.Nondet.Type
+  ( module Control.Effect.Nondet.Operations
   , ListT (..)
   , nondet, nondetC
   , nondet'
@@ -53,7 +53,7 @@ import Prelude hiding (or)
 
 import Control.Applicative
 import Control.Effect
-import Control.Effect.Nondet.Type
+import Control.Effect.Nondet.Operations
 import Control.Effect.Nondet.Alternative
 import Control.Effect.Nondet.List
 

@@ -55,7 +55,7 @@ module Control.Effect.Nondet.Alternative (
 ) where
 
 import Control.Effect hiding (emptyAlg)
-import Control.Effect.Nondet.Type
+import Control.Effect.Nondet.Operations
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 

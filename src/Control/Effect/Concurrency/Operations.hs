@@ -1,5 +1,5 @@
 {-|
-Module      : Control.Effect.Concurrency.Types
+Module      : Control.Effect.Concurrency.Operations
 Description : The operations the concurrency effect
 License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
@@ -30,7 +30,7 @@ to structure their synchronisation.
 
 {-# LANGUAGE TemplateHaskell #-}
 
-module Control.Effect.Concurrency.Type where
+module Control.Effect.Concurrency.Operations where
 
 import Data.Functor.Unary
 import Control.Effect.Family.Distributive

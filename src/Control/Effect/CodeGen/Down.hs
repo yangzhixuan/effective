@@ -17,7 +17,7 @@ module Control.Effect.CodeGen.Down where
 import Control.Effect
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
-import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.Operations
 import Control.Effect.CodeGen.Gen
 
 import Data.Functor.Identity

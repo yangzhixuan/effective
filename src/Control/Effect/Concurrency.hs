@@ -21,7 +21,7 @@ of handlers:
 module Control.Effect.Concurrency (
   -- * Syntax
   -- | Signatures and operations are in this module.
-  module Control.Effect.Concurrency.Type,
+  module Control.Effect.Concurrency.Operations,
 
   -- * Semantics
 
@@ -51,7 +51,7 @@ import Control.Effect
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 import Control.Effect.Family.Distributive
-import Control.Effect.Concurrency.Type
+import Control.Effect.Concurrency.Operations
 import Control.Effect.IO (io)
 import qualified Control.Effect.Reader as R
 import qualified Control.Effect.Except as E

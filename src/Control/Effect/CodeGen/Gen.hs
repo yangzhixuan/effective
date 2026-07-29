@@ -12,11 +12,11 @@ for code generation, such as generating let-bindings.
 {-# LANGUAGE TemplateHaskell #-}
 module Control.Effect.CodeGen.Gen where
 
-import Control.Effect.CodeGen.Type
+import Control.Effect.CodeGen.Operations
 import Control.Monad (ap)
 import Control.Effect
 import Control.Effect.Family.Algebraic
-import Control.Effect.State.Type
+import Control.Effect.State.Operations
 
 -- * The code-generation monads and their operations
 
