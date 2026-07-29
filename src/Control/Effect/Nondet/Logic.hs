@@ -13,11 +13,24 @@ including choice and failure.
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Effect.Nondet.Logic
-  ( module Control.Effect.Nondet.Operations
-  , module Control.Effect.Nondet.Logic
-  , LogicT (..)
-  ) where
+module Control.Effect.Nondet.Logic (
+  -- * Syntax
+  -- | Signatures and operations are in this module.
+  module Control.Effect.Nondet.Operations,
+
+  -- * Semantics
+  -- ** Handlers
+  nondet, nondetC,
+  backtrack,
+  nondet',
+  backtrack',
+
+  -- ** Algebras
+  nondetAT,
+
+  -- ** Re-exported carriers
+  LogicT (..)
+) where
 
 import Control.Effect hiding (emptyAlg)
 import Control.Effect.Nondet.Alternative

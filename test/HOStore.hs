@@ -6,7 +6,7 @@ import Control.Effect
 import Control.Effect.HStore.Unsafe
 import qualified Control.Effect.HStore.Safe as Safe
 import qualified Control.Effect.State as St
-import Control.Effect.Nondet.List hiding (emptyAlg)
+import Control.Effect.Nondet.List
 import Data.List.Kind
 import Data.Functor.Identity
 

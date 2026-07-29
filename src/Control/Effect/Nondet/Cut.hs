@@ -34,19 +34,20 @@ which can then be interpreted using a `CutList`.
 -- | The `cutListAlg` function defines the algebra for handling the t`CutListT` monad transformer.
 -- It clears the `cut` at the boundary of a `cutCall`.
 cutListAlg
-  :: Monad m => Algebra [Empty, Choose, CutFail, CutCall] (CutListT m)
+  :: Monad m => Algebra [Empty, Choose, NondetOr, CutFail, CutCall] (CutListT m)
 cutListAlg =
   (\Empty -> empty) :#
   (\(Choose xs ys) -> xs <|> ys) :#
+  (\(NondetOr xs ys) -> return xs <|> return ys) :#
   (\CutFail -> CutListT (\cons nil zero -> zero)) :#.
   (\(CutCall xs) -> CutListT (\cons nil zero -> runCutListT xs cons nil nil))
 
 -- | An Algebra transformer based on t`CutListT`
-cutListAT :: AlgTrans [Empty, Choose, CutFail, CutCall] '[] '[CutListT] Monad
+cutListAT :: AlgTrans [Empty, Choose, NondetOr, CutFail, CutCall] '[] '[CutListT] Monad
 cutListAT = algTrans' cutListAlg
 
 -- | A handler for the t`CutListT` monad transformer.
-cutList :: Handler [Empty, Choose, CutFail, CutCall] '[] '[CutListT] a [a]
+cutList :: Handler [Empty, Choose, NondetOr, CutFail, CutCall] '[] '[CutListT] a [a]
 cutList = handler' fromCutListT cutListAlg
 
 -- | A handler for the @Once@ effect using @CutCall@ and @CutFail@.
@@ -69,5 +70,5 @@ onceCutAlg oalg = singAlg $ \(Once p) -> cutCallM oalg $
      return x
 
 -- | A combined handler for @Once@, @Empty@, @Choose@, @CutFail@, and @CutCall@ effects.
-onceNondet :: Handler '[Once, Empty, Choose, CutFail, CutCall] '[] '[CutListT] a [a]
+onceNondet :: Handler '[Once, Empty, Choose, NondetOr, CutFail, CutCall] '[] '[CutListT] a [a]
 onceNondet = onceCut |> cutList

@@ -13,11 +13,24 @@ including choice and failure.
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Effect.Nondet.List
-  ( module Control.Effect.Nondet.Operations
-  , module Control.Effect.Nondet.List
-  , ListT (..)
-  ) where
+module Control.Effect.Nondet.List (
+  -- * Syntax
+  -- | Signatures and operations are in this module.
+  module Control.Effect.Nondet.Operations,
+
+  -- * Semantics
+  -- ** Handlers
+  nondet, nondetC,
+  backtrack,
+  nondet',
+  backtrack',
+
+  -- ** Algebras
+  nondetAT,
+
+  -- ** Re-exported carriers
+  ListT (..)
+) where
 
 import Prelude hiding (or)
 

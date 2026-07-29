@@ -96,7 +96,7 @@ term' = do i <- fact'
 fact' = int <|> (do symbol '(' ; i <- expr' ; symbol ')' ; return i)
 --
 -- A different parser!
-parse' :: text -> Prog [Put text, Get text, Once, Empty, Choose, CutFail, CutCall] a -> [(a, text)]
+parse' :: text -> Prog [Put text, Get text, Once, Empty, Choose, NondetOr, CutFail, CutCall] a -> [(a, text)]
 parse' cs p  = handle (state cs `fuse` onceNondet) p
 
 example_Parse2 :: Property

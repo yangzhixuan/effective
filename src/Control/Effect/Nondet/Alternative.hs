@@ -58,8 +58,6 @@ module Control.Effect.Nondet.Alternative (
 
 import Control.Effect hiding (emptyAlg)
 import Control.Effect.Nondet.Operations
-import Control.Effect.Family.Algebraic
-import Control.Effect.Family.Scoped
 
 import Control.Applicative ((<|>), Alternative)
 import Control.Applicative qualified as Ap
