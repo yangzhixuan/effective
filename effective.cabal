@@ -50,18 +50,18 @@ library
     Control.Effect.Family.Scoped
     Control.Effect.Family.Distributive
 --
-    Control.Effect.Alternative
-    Control.Effect.Cut
     Control.Effect.Except
     Control.Effect.IO
     Control.Effect.Maybe
-    Control.Effect.Nondet
     Control.Effect.Concurrency
     Control.Effect.Concurrency.Type
     Control.Effect.Yield
+    Control.Effect.Nondet
     Control.Effect.Nondet.Type
+    Control.Effect.Nondet.Alternative
     Control.Effect.Nondet.List
     Control.Effect.Nondet.Logic
+    Control.Effect.Nondet.Cut
     Control.Effect.Reader
     Control.Effect.State
     Control.Effect.State.Type

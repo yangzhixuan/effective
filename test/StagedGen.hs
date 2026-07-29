@@ -10,7 +10,7 @@ import Control.Effect.Reader
 import Control.Effect.Except
 import qualified Control.Effect.Maybe as Mb
 import Control.Effect.Maybe (MaybeT(..))
-import Control.Effect.Alternative
+import Control.Effect.Nondet.Alternative
 import Control.Monad.Trans.Push
 import Control.Effect.Yield
 import Data.Functor.Identity

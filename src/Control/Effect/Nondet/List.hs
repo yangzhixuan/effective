@@ -16,8 +16,6 @@ including choice and failure.
 module Control.Effect.Nondet.List
   ( module Control.Effect.Nondet.Type
   , module Control.Effect.Nondet.List
-  , Choose
-  , Empty
   , ListT (..)
   ) where
 
@@ -25,7 +23,6 @@ import Prelude hiding (or)
 
 import Control.Effect.Nondet.Type
 import Control.Effect hiding (emptyAlg)
-import Control.Effect.Alternative
 import Control.Monad.Trans.List
 
 {-# INLINE emptyAlg #-}
@@ -47,22 +44,21 @@ onceAlg (Once xs) = ListT $ do
   case mx of Nothing       -> return Nothing
              Just (x, mxs) -> return (Just (x, empty))
 
-list :: Handler [Empty, Choose] '[] '[ListT] a [a]
-list = alternative runListT'
-
 -- | The `nondet` handler transforms nondeterminism effects t`Empty` and t`Choose`
 -- into the t`ListT` monad transformer, which collects all possible results.
 nondet :: Handler [Empty, NondetOr] '[] '[ListT] a [a]
 nondet = handler' runListT' (emptyAlg :#. nondetOrAlg)
 
-nondet' :: Handler [Empty, Choose, NondetOr] '[] '[ListT] a [a]
-nondet' = handler' runListT' (emptyAlg :# chooseAlg :#. nondetOrAlg)
-
+-- | This handler additionally handles t`Once` and the scoped operation `Choose` (the
+-- the `Alternative` instance on t`Prog` uses `Choose`).
 backtrack :: Handler [Empty, Choose, NondetOr, Once] '[] '[ListT] a [a]
 backtrack = handler' runListT' (emptyAlg :# chooseAlg :# nondetOrAlg :#. onceAlg)
 
--- | `backtrack'` is a handler that transforms nondeterministic effects
--- t`Empty`, t`Choose`, and t`Once` into the t`ListT` monad transformer,
+-- | A variant of `nondet` that additionally handles t`Choose`.
+nondet' :: Handler [Empty, Choose, NondetOr] '[] '[ListT] a [a]
+nondet' = handler' runListT' (emptyAlg :# chooseAlg :#. nondetOrAlg)
+
+-- | A variant of `backtrack` that does not handle t`Choose`.
 -- supporting backtracking.
 backtrack' :: Handler [Empty, NondetOr, Once] '[] '[ListT] a [a]
 backtrack' = handler' runListT' (emptyAlg :# nondetOrAlg :#. onceAlg)
@@ -75,12 +71,8 @@ nondetAT = algTrans' (emptyAlg :#. nondetOrAlg)
 
 -- Handlers for lightweight staging
 
+-- | Staged version of `nondet`
 nondetC :: HandlerC [Empty, NondetOr] '[] '[ListT] a [a]
 nondetC = HandlerC
   (RunnerC $ \_ -> [|| runListT' ||])
   (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT nondetOrAlg ||] :#$ emptyAlgC)
-
-listC :: HandlerC [Empty, Choose] '[] '[ListT] a [a]
-listC = HandlerC
-  (RunnerC $ \_ -> [|| runListT' ||])
-  (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT $ \(Choose a b) -> (a <|> b) ||] :#$ emptyAlgC)

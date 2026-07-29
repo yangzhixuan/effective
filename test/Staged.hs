@@ -4,7 +4,7 @@ module Main where
 import Control.Effect
 import Control.Effect.CodeGen
 import Control.Effect.State.Strict
-import Control.Effect.Nondet
+import Control.Effect.Nondet hiding (choose)
 import qualified Control.Effect.Maybe as Mb
 import Control.Effect.Yield
 import Data.Functor.Identity

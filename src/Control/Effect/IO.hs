@@ -4,15 +4,23 @@ Description : Effects for input/output
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
+
+This module provides effects from Haskell's native `IO` monad.
+To invoke an IO-action in an effectful program, use the function `io`.
+To handle programs with IO, there are currently two ways:
+
+  1. Use the function `handleIO` or `handleIO'` (both are specialisations
+     of `handleMFwds`).
+
+  2. Use the funciton `handle` but have the handler `constIO` at the bottom
+     of the handler stack.
+
+These two ways have no difference in terms of expressivity or performance, and
+which one to use is only a matter of taste.
 -}
 
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE DerivingVia  #-}
 
 module Control.Effect.IO (
   -- * Syntax
@@ -42,12 +50,12 @@ import Control.Effect
 import Control.Effect.Internal.Handler
 import Control.Effect.Family.Algebraic
 import Data.List.Kind
-import Data.HFunctor
 
 -- | Interprets IO operations using their standard semantics in `IO`.
 ioAlg :: Algebra '[Alg IO] IO
 ioAlg = nativeAlg
 
+-- | Staged version of `ioAlgC`.
 ioAlgC :: AlgebraC '[Alg IO] IO
 ioAlgC = nativeAlgC
 
@@ -59,29 +67,16 @@ io op = call (Alg op)
 ioM :: (Alg IO `Member` effs) => Algebra effs m -> IO a -> m a
 ioM alg op = callM alg (Alg op)
 
--- | A carrier that stores an `IO` action and ignores the lower monad.
+-- | A constant carrier transformer. This is useful as the final carrier in a
+-- handler stack when all remaining operations are to be implemented on the
+-- native IO-monad.
 --
--- This is useful as the final carrier in a handler stack when all remaining
--- operations have been translated to `Alg IO`. It is not a monad transformer:
--- there is no general way to lift an arbitrary lower-monad action into `IO`.
+-- It is not a monad transformer: there is no general way to lift an arbitrary
+-- lower-monad action into `IO`.
 newtype ConstIO m a = ConstIO { runConstIO :: IO a }
+  deriving (Functor, Applicative, Monad) via IO
 
-instance Functor (ConstIO m) where
-  {-# INLINE fmap #-}
-  fmap f (ConstIO iox) = ConstIO (fmap f iox)
-
-instance Applicative (ConstIO m) where
-  {-# INLINE pure #-}
-  pure = ConstIO . pure
-
-  {-# INLINE (<*>) #-}
-  ConstIO iof <*> ConstIO iox = ConstIO (iof <*> iox)
-
-instance Monad (ConstIO m) where
-  {-# INLINE (>>=) #-}
-  ConstIO iox >>= f = ConstIO (iox >>= runConstIO . f)
-
--- | Collect `Alg IO` operations into a final `IO` action.
+-- | Handling @Alg IO@ on the `IO` monad.
 --
 -- This handler is intended to be used as the final handler of a stack, for example
 -- @handle (h |> constIO) p@. Any effects handled after this handler are ignored.

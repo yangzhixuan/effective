@@ -33,7 +33,7 @@ import Control.Monad.Trans.ResumpUp
 import Control.Monad.Trans.CRes
 import Control.Monad.Trans.YRes
 import Control.Monad.Trans.Push
-import Control.Effect.Alternative ( (<|>) )
+import Control.Applicative ( (<|>) )
 
 -- | @n $~> m@ iff the type constructor @n@ at compile time lowers to the type
 -- constructor @m@ at runtime. For example, the functor (CodeQ a ->) lowers to (a ->).

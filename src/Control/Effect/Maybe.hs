@@ -4,6 +4,10 @@ Description : Exception throwing without a value
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
+
+This module contains the effects @Throw@ for throwing an exception and @Catch@
+for catching the effect. If you need to throw an exception of some type, you may
+want to use the interface provided by the module "Control.Effect.Except".
 -}
 
 {-# LANGUAGE LambdaCase #-}
@@ -42,9 +46,6 @@ module Control.Effect.Maybe (
 ) where
 
 import Control.Effect
-import Control.Effect.Family.Algebraic
-import Control.Effect.Family.Scoped
-
 import Control.Monad.Trans.Maybe
 
 $(makeAlg [e| throw :: 0 |])
@@ -98,7 +99,14 @@ retryAT = algTrans' $ throwAlg :#. retryAlg
 
 -- Handlers for lightweight staging
 
+-- | Staged version of `except`
 exceptC :: HandlerC '[Throw, Catch] '[] '[MaybeT] a (Maybe a)
 exceptC = HandlerC
   (RunnerC $ \_ -> [|| runMaybeT ||])
   (AlgTransC $ \_ -> [|| NT throwAlg ||] :#$ [|| NT catchAlg ||] :#$ emptyAlgC)
+
+-- | Staged version of `retry`
+retryC :: HandlerC '[Throw, Catch] '[] '[MaybeT] a (Maybe a)
+retryC = HandlerC
+  (RunnerC $ \_ -> [|| runMaybeT ||])
+  (AlgTransC $ \_ -> [|| NT throwAlg ||] :#$ [|| NT retryAlg ||] :#$ emptyAlgC)

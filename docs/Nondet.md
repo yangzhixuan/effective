@@ -8,10 +8,10 @@ module Nondet where
 import Prelude hiding (or)
 
 import Control.Effect
-import Control.Effect.Alternative
+import Control.Effect.Nondet.Alternative
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
-import Control.Effect.Cut
+import Control.Effect.Nondet.Cut
 import Control.Effect.Nondet
 
 import Control.Monad (guard)

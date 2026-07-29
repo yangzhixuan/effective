@@ -4,14 +4,20 @@ Description : Effects for alternatives with choose and empty
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
+
+This module provides operations corresponding to the `Alternative` typeclass of
+Haskell. Two operations t`Empty` and t`Choose` are defined, corresponding to
+`Ap.empty` and `Ap.<|>` of `Alternative` respectively. The monad `Prog effs`
+also instantiate `Alternative`.
+
+In this library there is another module "Control.Effect.Nondet" that provides
+some additional operations for nondeterminism. See the documentation in
+"Control.Effect.Nondet" for more explanation.
 -}
 
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE MonoLocalBinds #-}
 
-module Control.Effect.Alternative (
+module Control.Effect.Nondet.Alternative (
   -- * Syntax
   -- ** Operations
 
@@ -37,47 +43,27 @@ module Control.Effect.Alternative (
   -- * Semantics
   -- ** Handlers
   alternative,
+  list, listC,
+  logic, logicC,
 
   -- ** Algebras
   alternativeAT,
+
+  -- ** Re-exported carriers
+  Li.ListT (..),
+  Lo.LogicT (..)
 ) where
 
 import Control.Effect hiding (emptyAlg)
+import Control.Effect.Nondet.Type
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
 
 import Control.Applicative ((<|>), Alternative)
 import Control.Applicative qualified as Ap
 
-$(makeAlg [e| empty :: 0 |])
-
-$(makeScp [e| choose :: 2 |])
-
--- | `select` nondeterministically selects an element from a list.
--- If the list is empty, the computation fails.
-select :: [a] -> a ! [Choose, Empty]
-select xs = foldr ((<|>) . return) empty xs
-
--- | `selects` generates all permutations of a list, returning each element
--- along with the remaining elements of the list.
-selects :: [a] -> (a, [a]) ! [Choose, Empty]
-selects []      =  empty
-selects (x:xs)  =  return (x, xs)  <|> do  (y, ys) <- selects xs
-                                           return (y, x:ys)
-
-
--- | Instance for 'Alternative' that uses @Empty@ and @Choose@.
-instance (Member Empty effs, Member Choose effs)
-  => Alternative (Prog effs) where
-  {-# INLINE empty #-}
--- | Syntax for an empty alternative. This is an algebraic operation.
-  empty :: Member Empty effs => Prog effs a
-  empty = call (Alg Empty_)
-
-  {-# INLINE (<|>) #-}
--- | Syntax for a choice of alternatives. This is a scoped operation.
-  (<|>) :: (Member Choose effs) => Prog effs a -> Prog effs a -> Prog effs a
-  xs <|> ys = call (Scp (Choose_ xs ys))
+import qualified Control.Monad.Logic as Lo
+import qualified Control.Monad.Trans.List as Li
 
 -- | The 'alternative' handler makes use of an 'Alternative' functor @f@
 -- as well as a transformer @t@ that produces an 'Alternative' functor @t m@.
@@ -105,3 +91,23 @@ emptyAlg Empty = Ap.empty
 {-# INLINE chooseAlg #-}
 chooseAlg :: Alternative (t m) => Choose (t m) x -> t m x
 chooseAlg (Choose xs ys) = xs <|> ys
+
+-- | A specialisation of `alternative` to @ListT@
+list :: Handler [Empty, Choose] '[] '[Li.ListT] a [a]
+list = alternative Li.runListT'
+
+-- | A specialisation of `alternative` to @LogicT@.
+logic :: Handler [Empty, Choose] '[] '[Lo.LogicT] a [a]
+logic = alternative Lo.observeAllT
+
+-- | Staged version of `list`
+listC :: HandlerC [Empty, Choose] '[] '[Li.ListT] a [a]
+listC = HandlerC
+  (RunnerC $ \_ -> [|| Li.runListT' ||])
+  (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT chooseAlg ||] :#$ emptyAlgC)
+
+-- | Staged version of `logic`
+logicC :: HandlerC [Empty, Choose] '[] '[Lo.LogicT] a [a]
+logicC = HandlerC
+  (RunnerC $ \_ -> [|| Lo.observeAllT ||])
+  (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT $ \(Choose a b) -> (a <|> b) ||] :#$ emptyAlgC)

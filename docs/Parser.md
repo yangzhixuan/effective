@@ -5,7 +5,7 @@
 module Parser where
 
 import Control.Effect
-import Control.Effect.Cut
+import Control.Effect.Nondet.Cut
 import Control.Effect.Nondet
 import Control.Effect.State
 

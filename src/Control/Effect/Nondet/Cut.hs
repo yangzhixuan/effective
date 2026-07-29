@@ -9,17 +9,13 @@ This module provides an effect for nondeterminism with a cut operation.
 The cut operation allows for pruning the search space in nondeterministic computations.
 -}
 
-module Control.Effect.Cut where
+module Control.Effect.Nondet.Cut where
 
 import Prelude hiding (or)
 
 import Control.Effect
-import Control.Effect.Family.Algebraic
-import Control.Effect.Family.Scoped
-import Control.Effect.Alternative
-import Control.Effect.Nondet
+import Control.Effect.Nondet.Type
 import Control.Monad.Trans.CutList
-
 {-
 Idea:
 
@@ -35,21 +31,6 @@ An alternative is to interpet `once` into `cutFail` and `cutCall`,
 which can then be interpreted using a `CutList`.
 -}
 
--- | Signature for @CutFail@, which fails and cuts all following nondeterministic
--- siblings.
-$(makeAlg [e| cutFail :: 0 |])
-
--- | The @CutCall@ effect represents a scoped computation with a cut boundary.
-$(makeScp [e| cutCall :: 1 |])
-
--- | Perform a cut operation, pruning the search space.
-cut :: (Members [Empty, Choose, CutFail] effs) => Prog effs ()
-cut = skip <|> cutFail
-
--- | A no-op computation that does nothing.
-skip :: Monad m => m ()
-skip = return ()
-
 -- | The `cutListAlg` function defines the algebra for handling the t`CutListT` monad transformer.
 -- It clears the `cut` at the boundary of a `cutCall`.
 cutListAlg
@@ -60,6 +41,7 @@ cutListAlg =
   (\CutFail -> CutListT (\cons nil zero -> zero)) :#.
   (\(CutCall xs) -> CutListT (\cons nil zero -> runCutListT xs cons nil nil))
 
+-- | An Algebra transformer based on t`CutListT`
 cutListAT :: AlgTrans [Empty, Choose, CutFail, CutCall] '[] '[CutListT] Monad
 cutListAT = algTrans' cutListAlg
 

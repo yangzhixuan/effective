@@ -16,14 +16,11 @@ including choice and failure.
 module Control.Effect.Nondet.Logic
   ( module Control.Effect.Nondet.Type
   , module Control.Effect.Nondet.Logic
-  , Empty, Choose
   , LogicT (..)
   ) where
 
 import Control.Effect hiding (emptyAlg)
-import Control.Effect.Family.Algebraic
-import Control.Effect.Family.Scoped
-import Control.Effect.Alternative
+import Control.Effect.Nondet.Alternative
 import Control.Effect.Nondet.Type
 import Control.Monad.Logic hiding (once)
 import qualified Control.Monad.Logic as L
@@ -44,22 +41,21 @@ nondetOrAlg (NondetOr xs ys) = pure xs <|> pure ys
 onceAlg :: Monad m => Once (LogicT m) a -> LogicT m a
 onceAlg (Once p) = L.once p
 
-list :: Handler [Empty, Choose] '[] '[LogicT] a [a]
-list = alternative observeAllT
-
 -- | The `nondet` handler transforms nondeterministic effects t`Empty` and t`Choose`
 -- into the t`LogicT` monad transformer, which collects all possible results.
 nondet :: Handler [Empty, NondetOr] '[] '[LogicT] a [a]
 nondet = handler' observeAllT (emptyAlg :#. nondetOrAlg)
 
-nondet' :: Handler [Empty, Choose, NondetOr] '[] '[LogicT] a [a]
-nondet' = handler' observeAllT (emptyAlg :# chooseAlg :#. nondetOrAlg)
-
+-- | This handler additionally handles t`Once` and the scoped operation `Choose` (the
+-- the `Alternative` instance on t`Prog` uses `Choose`).
 backtrack :: Handler [Empty, Choose, NondetOr, Once] '[] '[LogicT] a [a]
 backtrack = handler' observeAllT (emptyAlg :# chooseAlg :# nondetOrAlg :#. onceAlg)
 
--- | `backtrack'` is a handler that transforms nondeterministic effects
--- t`Empty`, t`Choose`, and t`Once` into the t`LogicT` monad transformer,
+-- | A variant of `nondet` that additionally handles t`Choose`.
+nondet' :: Handler [Empty, Choose, NondetOr] '[] '[LogicT] a [a]
+nondet' = handler' observeAllT (emptyAlg :# chooseAlg :#. nondetOrAlg)
+
+-- | A variant of `backtrack` that does not handle t`Choose`.
 -- supporting backtracking.
 backtrack' :: Handler [Empty, NondetOr, Once] '[] '[LogicT] a [a]
 backtrack' = handler' observeAllT (emptyAlg :# nondetOrAlg :#. onceAlg)
@@ -76,8 +72,3 @@ nondetC :: HandlerC [Empty, NondetOr] '[] '[LogicT] a [a]
 nondetC = HandlerC
   (RunnerC $ \_ -> [|| observeAllT ||])
   (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT nondetOrAlg ||] :#$ emptyAlgC)
-
-listC :: HandlerC [Empty, Choose] '[] '[LogicT] a [a]
-listC = HandlerC
-  (RunnerC $ \_ -> [|| observeAllT ||])
-  (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT $ \(Choose a b) -> (a <|> b) ||] :#$ emptyAlgC)

@@ -138,6 +138,7 @@ jresumpWithM pb = handler (\oalg -> runWithM (eval oalg pb)) (\_ -> jresumpAlg)
 -- while performing the dual of @a@ is implemented as @do signalSem s1; waitQSem
 -- s2@. In this way, performing @a@ and the dual of @a@ are always synchronised.
 
+-- | Mapping an action to two semaphores.
 type QSemMap a = M.Map a (QSem, QSem)
 
 -- | IO-based handler of concurrency. The effect of restriction is translated
@@ -234,6 +235,7 @@ ccsByQSemC = (interpretMC (\o -> actionAlg o :#.$ resAlg o) \\$ R.readerC [||M.e
 parIOAlg :: Algebra '[Par] IO
 parIOAlg = singAlg $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l
 
+-- | Staged version of `parIOAlg`
 parIOAlgC :: AlgebraC '[Par] IO
 parIOAlgC = [|| NT $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l ||] :#$ emptyAlgC
 

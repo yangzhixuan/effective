@@ -4,6 +4,11 @@ Description : Exception throwing with a value
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
+
+This module contains the effects @Throw e@ for throwing an exception of
+type @e@ and @Catch e@ for catching the effect of type @e@. If you only have
+one exception, you may want to use the simpler interface provided by
+the module "Control.Effect.Maybe".
 -}
 
 module Control.Effect.Except (
@@ -30,9 +35,8 @@ module Control.Effect.Except (
 
   -- * Semantics
   -- ** Handlers
-  except,
-  retry,
-  exceptC,
+  except, exceptC,
+  retry, retryC,
 
   -- ** Algebras
   exceptAT,
@@ -50,9 +54,12 @@ import Control.Monad.Trans.Except (ExceptT(..), runExceptT)
 
 $(makeAlg [e| throw :: forall e. e ~> 0 |])
 
--- | Internal Signature for catching exceptions of type @e@.
+-- | Higher-order signature for catching exceptions of type @e@. The type of
+-- the catch operation `catch` is currently not supported by the Template
+-- Haskell helper `makeScp`, so we need to define it ourselves.
 type Catch e = Scp (Catch_ e)
--- | Underlying Signature for catching exceptions of type @e@.
+
+-- | Underlying first-order signature for catching exceptions of type @e@.
 data Catch_ e k where
   Catch_ :: k -> (e -> k) -> Catch_ e k
   deriving Functor
@@ -61,8 +68,6 @@ data Catch_ e k where
 {-# INLINE catch #-}
 catch :: forall e effs a . Member (Catch e) effs => Prog effs a -> (e -> Prog effs a) -> Prog effs a
 catch p q = call @(Catch e) (Scp (Catch_ p q))
--- Unfortunately `makeScp` currently doesn't support operations like `catch` here, which
--- binds a new variable @e -> @ in its second argument.
 
 pattern Catch :: f k -> (e -> f k) -> Catch e f k
 pattern Catch p q = Scp (Catch_ p q)
@@ -93,10 +98,12 @@ catchN
 catchN n p q = callN n (Catch p q)
 #endif
 
+-- | Underlying implementation of throwing on 'ExceptT'.
 {-# INLINE throwAlg #-}
 throwAlg :: Monad m => Throw e f k -> ExceptT e m a
 throwAlg (Throw e) = ExceptT (return (Left e))
 
+-- | Underlying implementation of catching on 'ExceptT'.
 {-# INLINE catchAlg #-}
 catchAlg :: Monad m => Catch e (ExceptT e m) a -> ExceptT e m a
 catchAlg (Catch p q) = ExceptT $ do
@@ -105,6 +112,8 @@ catchAlg (Catch p q) = ExceptT $ do
     Left e  -> runExceptT (q e)
     Right x -> return (Right x)
 
+-- | An implementation of catching on 'ExceptT' that after an exception
+-- is caught, the program gets retried.
 {-# INLINE retryAlg #-}
 retryAlg :: Monad m => Catch e (ExceptT e m) a -> ExceptT e m a
 retryAlg (Catch p q) = ExceptT $ loop p q where
@@ -137,9 +146,14 @@ retry = handler' runExceptT (throwAlg :#. retryAlg)
 retryAT :: AlgTrans '[Throw e, Catch e] '[] '[ExceptT e] Monad
 retryAT = algTrans' (throwAlg :#. retryAlg)
 
--- Handlers for lightweight staging
-
+-- | Staged version of 'except'
 exceptC :: HandlerC '[Throw e, Catch e] '[] '[ExceptT e] a (Either e a)
 exceptC = HandlerC
   (RunnerC $ \_ -> [|| runExceptT ||] )
   (AlgTransC $ \_ -> [|| NT throwAlg ||] :#$ [|| NT catchAlg ||] :#$ emptyAlgC)
+
+-- | Staged version of 'retry'
+retryC :: HandlerC '[Throw e, Catch e] '[] '[ExceptT e] a (Either e a)
+retryC = HandlerC
+  (RunnerC $ \_ -> [|| runExceptT ||] )
+  (AlgTransC $ \_ -> [|| NT throwAlg ||] :#$ [|| NT retryAlg ||] :#$ emptyAlgC)

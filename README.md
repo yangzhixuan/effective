@@ -163,7 +163,7 @@ examplePure = handle (teletypePure ["Hello world!"]) echo
 ```
 -->
 ```console
-ghci> handle (teletypePure ["Hello world!"]) echo 
+ghci> handle (teletypePure ["Hello world!"]) echo
 (["Hello world!"],())
 ```
 Effect handlers have allowed us to interpret the `echo` program in two different
