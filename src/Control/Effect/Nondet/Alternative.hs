@@ -42,14 +42,14 @@ module Control.Effect.Nondet.Alternative (
 
   -- * Semantics
   -- ** Handlers
-  alternative,
+  alternative, alternativeC,
   list, listC,
   logic, logicC,
   chooseByNondet,
   nondetByChoose,
 
   -- ** Algebras
-  alternativeAT,
+  alternativeAT, alternativeATC,
 
   -- ** Re-exported carriers
   Li.ListT (..),
@@ -84,6 +84,14 @@ alternativeAT
   => AlgTrans '[Empty, Choose] '[] '[t] Monad
 alternativeAT = algTrans' (emptyAlg :#. chooseAlg)
 
+-- | Staged version of `alternativeAT`.
+alternativeATC
+  :: forall t.
+     (forall m. Monad m => Alternative (t m))
+  => AlgTransC '[Empty, Choose] '[] '[t] Monad
+alternativeATC = AlgTransC $ \_ ->
+  [|| NT emptyAlg ||] :#$ [|| NT chooseAlg ||] :#$ emptyAlgC
+
 {-# INLINE emptyAlg #-}
 emptyAlg :: Alternative (t m) => Empty (t m) x -> t m x
 emptyAlg Empty = Ap.empty
@@ -100,17 +108,23 @@ list = alternative Li.runListT'
 logic :: Handler [Empty, Choose] '[] '[Lo.LogicT] a [a]
 logic = alternative Lo.observeAllT
 
+-- | Staged version of `alternative`.
+alternativeC
+  :: forall t f a.
+     (forall m. Monad m => Alternative (t m))
+  => (forall m x. Monad m => CodeQ (t m x -> m (f x)))
+  -> HandlerC '[Empty, Choose] '[] '[t] a (f a)
+alternativeC run = HandlerC
+  (RunnerC $ \_ -> run)
+  alternativeATC
+
 -- | Staged version of `list`
 listC :: HandlerC [Empty, Choose] '[] '[Li.ListT] a [a]
-listC = HandlerC
-  (RunnerC $ \_ -> [|| Li.runListT' ||])
-  (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT chooseAlg ||] :#$ emptyAlgC)
+listC = alternativeC [|| Li.runListT' ||]
 
 -- | Staged version of `logic`
 logicC :: HandlerC [Empty, Choose] '[] '[Lo.LogicT] a [a]
-logicC = HandlerC
-  (RunnerC $ \_ -> [|| Lo.observeAllT ||])
-  (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT $ \(Choose a b) -> (a <|> b) ||] :#$ emptyAlgC)
+logicC = alternativeC [|| Lo.observeAllT ||]
 
 
 -- | Translate (scoped) `Choose` operations to (algebraic) `Nondet` operations.

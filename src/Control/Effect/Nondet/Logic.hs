@@ -21,12 +21,12 @@ module Control.Effect.Nondet.Logic (
   -- * Semantics
   -- ** Handlers
   nondet, nondetC,
-  backtrack,
-  nondet',
-  backtrack',
+  backtrack, backtrackC,
+  nondet', nondetC',
+  backtrack', backtrackC',
 
   -- ** Algebras
-  nondetAT,
+  nondetAT, nondetATC,
 
   -- ** Re-exported carriers
   LogicT (..)
@@ -81,7 +81,45 @@ nondetAT = algTrans' (emptyAlg :#. nondetOrAlg)
 
 -- Handlers for lightweight staging
 
+{-# INLINE nondetATC #-}
+-- | Staged version of `nondetAT`.
+nondetATC :: AlgTransC '[Empty, NondetOr] '[] '[LogicT] Monad
+nondetATC = AlgTransC $ \_ ->
+  [|| NT emptyAlg ||] :#$ [|| NT nondetOrAlg ||] :#$ emptyAlgC
+
+-- | Staged version of `nondet`.
 nondetC :: HandlerC [Empty, NondetOr] '[] '[LogicT] a [a]
 nondetC = HandlerC
   (RunnerC $ \_ -> [|| observeAllT ||])
-  (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT nondetOrAlg ||] :#$ emptyAlgC)
+  nondetATC
+
+-- | Staged version of `backtrack`.
+backtrackC :: HandlerC [Empty, Choose, NondetOr, Once] '[] '[LogicT] a [a]
+backtrackC = HandlerC
+  (RunnerC $ \_ -> [|| observeAllT ||])
+  (AlgTransC $ \_ ->
+    [|| NT emptyAlg ||] :#$
+    [|| NT chooseAlg ||] :#$
+    [|| NT nondetOrAlg ||] :#$
+    [|| NT onceAlg ||] :#$
+    emptyAlgC)
+
+-- | Staged version of `nondet'`.
+nondetC' :: HandlerC [Empty, Choose, NondetOr] '[] '[LogicT] a [a]
+nondetC' = HandlerC
+  (RunnerC $ \_ -> [|| observeAllT ||])
+  (AlgTransC $ \_ ->
+    [|| NT emptyAlg ||] :#$
+    [|| NT chooseAlg ||] :#$
+    [|| NT nondetOrAlg ||] :#$
+    emptyAlgC)
+
+-- | Staged version of `backtrack'`.
+backtrackC' :: HandlerC [Empty, NondetOr, Once] '[] '[LogicT] a [a]
+backtrackC' = HandlerC
+  (RunnerC $ \_ -> [|| observeAllT ||])
+  (AlgTransC $ \_ ->
+    [|| NT emptyAlg ||] :#$
+    [|| NT nondetOrAlg ||] :#$
+    [|| NT onceAlg ||] :#$
+    emptyAlgC)
