@@ -19,8 +19,9 @@ import Control.Effect.Family.Scoped
 import Control.Effect.CodeGen.Gen
 import Control.Effect.CodeGen.Up
 import Control.Effect.CodeGen.Down
-import Control.Effect.Nondet
+import Control.Effect.Nondet.Operations
 import Control.Monad.Trans.Push as P
+import Control.Monad.Trans.List
 
 -- | Algebra  of the non-deterministic operations on t`PushT`.
 pushAT :: AlgTrans '[Empty, Choose, Once] '[] '[PushT] TruthC

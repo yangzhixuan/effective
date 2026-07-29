@@ -2,20 +2,14 @@
 Module      : Control.Effect.Nondet
 Description : Effects for nondeterminism
 License     : BSD-3-Clause
-Maintainer  : Nicolas Wu
+Maintainer  : Nicolas Wu, Zhixuan Yang
 Stability   : experimental
 
-This module provides access to nondeterministic operations and handlers.  The
-implementation uses @ListT@ by default, offered by "Control.Effect.Nondet.List".
-For an implementation based on @LogicT@, import "Control.Effect.Nondet.Logic"
-instead.
+This module provides nondeterministic operations and handlers. The interface
+of nondeterminism of @effective@ is a bit subtle. We have the following operations:
 
-In this library there are two different modules providing operations for nondeterminism,
-this one and "Control.Effect.Alternative".
-
-  1. "Control.Effect.Alternative" provides two operations t`Choose` and t`Empty`. These
-     two operations are supposed to directly correspond to the good old `Alternative`
-     typeclass of GHC, and there is an instance
+  1. t`Choose` and t`Empty` directly correspond to the `Alternative` typeclass
+     of GHC, and there is an instance
 
      @
        instance (Member Empty effs, Member Choose effs) => Alternative (Prog effs) where ...
@@ -24,44 +18,33 @@ this one and "Control.Effect.Alternative".
      Moreover, t`Choose` is binary scoped operation because `Alternative` does not require
      distributivity of @>>=@ over t`Choose`.
 
-     There is a handler "Control.Effect.Alternative.alternative" that implements t`Choose` and t`Empty`
-     using carriries that implement the `Alternative` typeclass.
+  2. t`NondetOr` is also nondeterministic choice but it is an /algebraic/ operation.
+     t`Once` is a unary scoped operation, which keeps only the first result of a computaiton.
 
-  2. This module ("Control.Effect.Nondet") provides some additional operations: an algebraic
-     nondeterministic choice operation `NondetOr` and a scoped operation `Once`.
+  3. t`CutFail` fails the computation and also stops exploring more nondeterministic branches.
+     t`CutCall` is a unary scoped operation that delimits the scope that t`CutFail` affects.
+     Using these two operation, a `cut` operation in the style of Prolog can be implemented.
 
-The rule of thumb is to use `Control.Effect.Alternative` unless you know that you need t`Once`
-or t`NondetOr`. Even if you change your mind later, you can use the handlers `chooseByNondet`
-and `nondetByChoose` to convert between `NondetOr` and t`Choose`.
+These operations have the following handlers:
+
+  1. t`Choose` and t`Empty` are handled using `Control.Effect.Nondet.Alternative.alternative`
+     or its specialisation such as `list` and `Control.Effect.Nondet.Alternative.logic`.
+
+  2. t`NondetOr` and t`Once`, together with the operations above, are handled
+     using handlers from "Control.Effect.Nondet.List" or
+     "Control.Effect.Nondet.LogicT". These two modules implement the same interface
+     and the only difference is that one of them is based on `ListT` while the
+     other is based on `Control.Effect.Nondet.Logic.LogicT`.
+
+  3. t`CutFail` and t`CutCall`, together with the operations above, are handled using handlers
+     from the module "Control.Effect.Nondet.Cut" based on a variation of @LogicT@
+     defined in "Control.Monad.Trans.CutList".
+
+The current module re-exports only the handlers from "Control.Effect.Nondet.Alternative". If you
+need handlers of other operations, you can import the modules in @Control/Effect/Nondet/@.
 -}
 
 module Control.Effect.Nondet
-  ( module Control.Effect.Nondet.Operations
-  , ListT (..)
-  , nondet, nondetC
-  , nondet'
-  , list, listC
-  , backtrack
-  , backtrack'
-  , nondetAT
-  , chooseByNondet
-  , nondetByChoose
-  , Control.Applicative.Alternative(..)
-  ) where
+  ( module Control.Effect.Nondet.Alternative) where
 
-import Prelude hiding (or)
-
-import Control.Applicative
-import Control.Effect
-import Control.Effect.Nondet.Operations
 import Control.Effect.Nondet.Alternative
-import Control.Effect.Nondet.List
-
--- | Translate (scoped) `Choose` operations to (algebraic) `Nondet` operations.
--- The scopes delimited by `Choose` is ignored.
-chooseByNondet :: Handler '[Choose] '[NondetOr] '[] a a
-chooseByNondet = interpretM1 (\oalg (Choose p q) -> nondetOrM oalg p q)
-
--- | Translate (algebraic) `Nondet` operations to (scoped) `Choose` operations.
-nondetByChoose :: Handler '[NondetOr] '[Choose] '[] a a
-nondetByChoose = interpretM1 (\oalg (NondetOr p q) -> chooseM oalg (return p) (return q))

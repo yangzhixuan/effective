@@ -9,9 +9,10 @@ import Prelude hiding (or)
 
 import Control.Effect
 import Control.Effect.Nondet.Alternative
+import Control.Effect.Nondet.Cut
 import Control.Effect.Family.Algebraic
 import Control.Effect.Family.Scoped
-import Control.Effect.Nondet.Cut
+import Control.Effect.Nondet.List
 import Control.Effect.Nondet
 
 import Control.Monad (guard)
@@ -38,8 +39,8 @@ list' :: Prog [Empty, Choose, Once] a -> [a]
 list' = eval halg where
   halg :: Algebra [Empty, Choose, Once] []
   halg = (\Empty -> []) :#
-         (\(Choose xs ys) -> xs ++ ys) :#
-         (\(Once xs) -> case xs of [] -> []; (x:xs) -> [x]) :# emptyAlg
+         (\(Choose xs ys) -> xs ++ ys) :#.
+         (\(Once xs) -> case xs of [] -> []; (x:xs) -> [x])
 
 -- `list'` is not a modular handler and uses `eval` directly
 example_Nondet1' :: Property

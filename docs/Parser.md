@@ -6,7 +6,8 @@ module Parser where
 
 import Control.Effect
 import Control.Effect.Nondet.Cut
-import Control.Effect.Nondet
+import Control.Effect.Nondet.List
+import Control.Effect.Nondet.Alternative (chooseByNondet, list)
 import Control.Effect.State
 
 import Hedgehog

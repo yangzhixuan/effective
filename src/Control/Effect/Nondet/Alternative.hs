@@ -45,6 +45,8 @@ module Control.Effect.Nondet.Alternative (
   alternative,
   list, listC,
   logic, logicC,
+  chooseByNondet,
+  nondetByChoose,
 
   -- ** Algebras
   alternativeAT,
@@ -111,3 +113,13 @@ logicC :: HandlerC [Empty, Choose] '[] '[Lo.LogicT] a [a]
 logicC = HandlerC
   (RunnerC $ \_ -> [|| Lo.observeAllT ||])
   (AlgTransC $ \_ -> [|| NT emptyAlg ||] :#$ [|| NT $ \(Choose a b) -> (a <|> b) ||] :#$ emptyAlgC)
+
+
+-- | Translate (scoped) `Choose` operations to (algebraic) `Nondet` operations.
+-- The scopes delimited by `Choose` is ignored.
+chooseByNondet :: Handler '[Choose] '[NondetOr] '[] a a
+chooseByNondet = interpretM1 (\oalg (Choose p q) -> nondetOrM oalg p q)
+
+-- | Translate (algebraic) `Nondet` operations to (scoped) `Choose` operations.
+nondetByChoose :: Handler '[NondetOr] '[Choose] '[] a a
+nondetByChoose = interpretM1 (\oalg (NondetOr p q) -> chooseM oalg (return p) (return q))
