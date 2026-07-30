@@ -1,13 +1,42 @@
 {-|
 Module      : Control.Effect.Plugin
-Description : Type-checking plugin 
+Description : Type-checking plugin
 License     : BSD-3-Clause
 Author      : Zhixuan Yang
 Stability   : experimental
 
 The code in this file was adapted from Andrzej Rybczak's plugin for the
 @effectful@ library, released under the license below. Andrzej's code
-in turn was based on Xy Ren's code of the plugin for the @cleff@ library. 
+in turn was based on Xy Ren's code of the plugin for the @cleff@ library.
+
+This type-checking plugin currently does the following things to reduce the
+number of explicit type annotations that the user needs to insert:
+
+  1. Eager resolution of effect constraints: when an effect constraint @Member
+  eff effs@ matches only one given constraint in the context, we commit to this
+  constraint eagerly. For example, suppose that we have a constraint @Member
+  (Put s) eff@ to resolve and we may have a given constraint @Member (Put Int)
+  eff@ in the current context, if @Member (Put Int) eff@ is the unique one to
+  unify with @Member (Put s) eff@, we commit to this choice (and thus unifying
+  @s@ with @Int@).
+
+  2. Eager resolution of the typeclasses `Control.Effect.CodeGen.Down.($~>)`
+  and `Control.Effect.CodeGen.Down.($~>>)`: if there is only one instance
+  that unifies with a wanted constraint, commit to it eagerly. For example,
+  when we need to resolve @StateT s' Gen $~> StateT s Identity@, the only
+  unifiable instance is @StateT (Up s) n $~> StateT s m@. We commit to this
+  instance (and thus unifying @s'@ and @Up s@).
+
+  3. Eager rewriting of the @Delete@ type family: if a type family @Delete x (y:ys)@
+  gets stuck, it means that @x@ and @y@ are not exactly the same but are unifiable.
+  In @effective@, @Delete@ is used for implementing unions of effect sets, so
+  it makes sense to guess that @x@ and @y@ should be equal.
+
+Apart from reducing explicit type annotations, this plugin is planned to be
+extended to avoid the [quadratic-sized-core problem of
+Haskell](https://gitlab.haskell.org/ghc/ghc/-/work_items/8095), by computing
+type families such as @:++@ and @Delete@ and inductively resolved typeclasses
+such as @Member@ inside the problem.
 
 --------------------------------------------------------------------------------
 Copyright (c) 2021-2022, Andrzej Rybczak
@@ -109,7 +138,6 @@ import GHC.Types.Var.Set
 import GHC.Unit.Finder
 import GHC.Unit.Module
 import GHC.Utils.Outputable qualified as O
-import GHC.Clock
 import Data.List.NonEmpty (NonEmpty(..))
 
 #if __GLASGOW_HASKELL__ <= 912 && __GLASGOW_HASKELL__ > 902
@@ -215,7 +243,7 @@ type TcPluginSolveResult = TcPluginResult
 TcPluginOk ys zs |> TcPluginOk ys' zs' = TcPluginOk (ys ++ ys') (zs ++ zs')
 r1 |> r2 = r1
 
-mkSolveResult :: [Ct] -> TcPluginSolveResult 
+mkSolveResult :: [Ct] -> TcPluginSolveResult
 mkSolveResult xs = TcPluginOk [] xs
 
 #else
@@ -224,7 +252,7 @@ mkSolveResult xs = TcPluginOk [] xs
 (TcPluginSolveResult xs ys zs) |> (TcPluginSolveResult xs' ys' zs') =
     TcPluginSolveResult (xs ++ xs') (ys ++ ys') (zs ++ zs')
 
-mkSolveResult :: [Ct] -> TcPluginSolveResult 
+mkSolveResult :: [Ct] -> TcPluginSolveResult
 mkSolveResult xs = TcPluginSolveResult [] [] xs
 
 #endif
@@ -258,10 +286,10 @@ disambiguateAll pd _ allGivens allWanteds = timed pd $ do
 -- that can be unified with the wanted constraint, we commit to this instance eagerly.
 --
 -- For exmaple, the wanted constraint may be @StateT s Gen $~> StateT s' Identity@
--- for some unification variables @s@ and @s'@, and it doesn't match the instance 
--- @StateT (Up s) n $~> StateT s m@, but this instance is likely to be the only 
--- instance that can be unified with the wanted constraint. In this case we commit 
--- to this instance by generating equality constraints that @s@ and @s'@  
+-- for some unification variables @s@ and @s'@, and it doesn't match the instance
+-- @StateT (Up s) n $~> StateT s m@, but this instance is likely to be the only
+-- instance that can be unified with the wanted constraint. In this case we commit
+-- to this instance by generating equality constraints that @s@ and @s'@
 -- must be @Up t@ and @t'@ for some fresh unification variable t and t'.
 resolveEagerly
   :: PluginData
@@ -298,7 +326,7 @@ resolveEagerly pd cls allGivens allWanteds = timed pd $ do
                cs = zipWith mkNomEqPred (snd wanted) tys'
 #endif
            sigs <- forM cs (newWanted (fst wanted))
-           return (map mkNonCanonical sigs) 
+           return (map mkNonCanonical sigs)
       _ -> pure []
   pure (mkSolveResult (concat cts))
 
@@ -618,26 +646,6 @@ findCandidates wanted = loop []
             | otherwise -> loop ((given, subst) : acc) rest
           Nothing -> loop acc rest
         else loop acc rest
-
-{-
-findDownCandidates :: EffWanted -> [EffGiven] -> Either EffGiven [(EffGiven, Subst)]
-findDownCandidates wanted = loop []
-  where
-    loop acc = \case
-      [] -> Right acc
-      given : rest ->
-        case case tcUnifyTyNoSkolems wanted.sig given.sig
-
-
-
-        if wanted.effCon `eqType` given.effCon && wanted.sigs `eqType` given.sigs
-        then case tcUnifyTyNoSkolems wanted.sig given.sig of
-          Just subst
-            | isEmptySubst subst -> Left given
-            | otherwise -> loop ((given, subst) : acc) rest
-          Nothing -> loop acc rest
-        else loop acc rest
--}
 
 nubType :: [Type] -> [Type]
 nubType = coerce . S.toList . S.fromList @OrdType . coerce
