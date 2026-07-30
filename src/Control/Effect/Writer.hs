@@ -1,9 +1,13 @@
 {-|
 Module      : Control.Effect.Writer
-Description : Effects for the writer monad
+Description : Effects for writing values
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
+
+This module provides the effect of writing values. There are two operations:
+an algebraic operation `tell` for writing a value and a scoped operation
+`censor` for transforming the values being written in a scope.
 -}
 
 module Control.Effect.Writer (
@@ -75,6 +79,7 @@ writerAT = algTrans1 (\_ -> tellAlg)
 writer :: Monoid w => Handler '[Tell w] '[] '[W.WriterT w] a (w, a)
 writer = handler' (fmap swap . W.runWriterT) (tellAlg :# emptyAlg)
 
+-- | Staged version of `writer`.
 writerC :: Monoid w => HandlerC '[Tell w] '[] '[W.WriterT w] a (w, a)
 writerC = HandlerC
   (RunnerC $ \_ -> [|| fmap swap . W.runWriterT ||])
@@ -85,6 +90,7 @@ writerC = HandlerC
 writer_ :: Monoid w => Handler '[Tell w] '[] '[W.WriterT w] a a
 writer_ = handler' (fmap fst . W.runWriterT) (tellAlg :# emptyAlg)
 
+-- | Staged version of `writer_`.
 writerC_ :: Monoid w => HandlerC '[Tell w] '[] '[W.WriterT w] a a
 writerC_ = HandlerC
   (RunnerC $ \_ -> [|| fmap fst . W.runWriterT ||])
@@ -97,29 +103,18 @@ writerIO = interpret1 $
   \(Tell w k) -> do io (putStr w)
                     return k
 
+-- | Staged version of `writerIO`.
 writerIOC :: HandlerC '[Tell String] '[Alg IO] '[] a a
 writerIOC = interpretM1C $ \oalgc ->
   [|| NT $ \(Tell w k) -> do $$(callMC oalgc) (Alg (putStr w)); return k ||]
 
 $(makeScp [e| censor :: forall w. (w -> w) ~> 1 |])
-
 instance U.Unary (Censor_ w) where
   get (Censor_ c x) = x
 
 -- | The `uncensors` handler removes any occurrences of `censor`.
 uncensors :: forall w a . Handler '[Censor w] '[] '[] a a
 uncensors = handler' id ((\(Censor (_ :: w -> w) k) -> k) :# emptyAlg)
-
-censorAT :: AlgTrans '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] Monad
-censorAT = AlgTrans alg where
-  alg
-    :: Monad m
-    => (Algebra '[Tell w] m)
-    -> (Algebra '[Tell w, Censor w] (ReaderT (w -> w) m))
-  alg oalg =
-    (\(Tell w k) -> do cipher <- ask; lift (callM oalg (Tell (cipher w) k)))
-    :#.
-    (\(Censor (cipher' :: w -> w) k) -> do cipher <- ask; lift (runReaderT k (cipher . cipher')))
 
 -- | The @`censors` f@ handler applies an initial function @f@ to the
 -- any output produced by `tell`. If a @`censor` f' p@ operation is encountered,
@@ -129,3 +124,9 @@ censors :: forall w a . (w -> w) -> Handler '[Tell w, Censor w] '[Tell w] '[Read
 censors cipher = handler (\_ -> run) (getAT censorAT) where
   run :: Monad m => (forall x. ReaderT (w -> w) m x -> m x)
   run (ReaderT mx) = mx cipher
+
+-- | The algebra transformer underlying `censors`.
+censorAT :: AlgTrans '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] Monad
+censorAT = AlgTrans $ \oalg ->
+  (\(Tell w k) -> do cipher <- ask; lift (callM oalg (Tell (cipher w) k))) :#.
+  (\(Censor (cipher' :: w -> w) k) -> do cipher <- ask; lift (runReaderT k (cipher . cipher')))

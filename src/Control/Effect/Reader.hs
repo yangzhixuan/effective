@@ -4,13 +4,12 @@ Description : Effects for the reader monad
 License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
--}
 
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE TemplateHaskell #-}
+This module provides the effect of reading an environment variable (i.e. the
+effect implemented by the reader monad). There are two operations: an algebraic
+operation `ask` for reading the environment and a scoped operation `local` for
+binding a new value locally.
+-}
 
 module Control.Effect.Reader (
   -- * Syntax
@@ -37,14 +36,13 @@ module Control.Effect.Reader (
   -- ** Handlers
   reader,
   reader',
-  readerAsk,
   asker,
   readerC,
   askerC,
 
   -- ** Algebras
   readerAT,
-  readerAskAT,
+  askerAT,
 
   -- ** Underlying monad transformers
   R.ReaderT(..),
@@ -85,13 +83,16 @@ localAlg (Local f p) = R.local f p
 readerAlg :: Monad m => Algebra [Ask r, Local r] (R.ReaderT r m)
 readerAlg = askAlg :#. localAlg
 
+-- | An algebra transformer based on t`R.ReaderT`.
 {-# INLINE readerAT #-}
 readerAT :: AlgTrans '[Ask r, Local r] '[] '[R.ReaderT r] Monad
 readerAT = algTrans' readerAlg
 
-{-# INLINE readerAskAT #-}
-readerAskAT :: AlgTrans '[Ask r] '[] '[R.ReaderT r] Monad
-readerAskAT = algTrans1 (\_ -> askAlg)
+-- | An algebra transformer for t`Ask` with a fixed value. This is faster
+-- than `readerAT` but it doesn't support t`Local`.
+{-# INLINE askerAT #-}
+askerAT :: r -> AlgTrans '[Ask r] '[] '[] Monad
+askerAT r = interpretAT1 (\(Ask k) -> return (k r))
 
 -- | The `reader` handler supplies a static environment @r@ to the program
 -- that can be accessed with `ask`, and locally transformed with `local`.
@@ -117,10 +118,8 @@ reader' mr = handler run (\_ -> readerAlg) where
                     x <- R.runReaderT rmx r
                     return x
 
-{-# INLINE readerAsk #-}
-readerAsk :: r -> Handler '[Ask r] '[] '[R.ReaderT r] a a
-readerAsk r = handler' (flip R.runReaderT r) (askAlg :# emptyAlg)
-
+-- | A handler of t`Ask` by supplying a fixed value. This is faster than `reader`
+-- but it does not support t`Local`.
 {-# INLINE asker #-}
 asker :: r -> Handler '[Ask r] '[] '[] a a
 asker r = interpret1 $ \(Ask k) -> return (k r)
@@ -128,11 +127,13 @@ asker r = interpret1 $ \(Ask k) -> return (k r)
 -- * Handlers for lightweight staging
 --------------------------------------------------------------------------------
 
+-- | Staged version of `reader`.
 readerC :: CodeQ r -> HandlerC [Ask r, Local r] '[] '[R.ReaderT r] a a
 readerC r = HandlerC
   (RunnerC $ \_ -> [|| flip R.runReaderT $$r ||])
   (AlgTransC $ \_ -> [|| NT askAlg ||] :#.$ ([|| NT localAlg ||]))
 
+-- | Staged version of `asker`.
 askerC :: CodeQ r -> HandlerC '[Ask r] '[] '[] a a
 askerC r = HandlerC (RunnerC $ \_ -> [|| id ||])
   (AlgTransC $ \_ -> ([|| NT $ \(Ask p) -> return (p $$r) ||] :#$ emptyAlgC))
