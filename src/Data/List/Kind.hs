@@ -73,7 +73,7 @@ type family All (c :: k -> Constraint) (xs :: [k]) :: Constraint where
   All c '[]       = ()
   All c (x ': xs) = (c x, All c xs)
 
--- | @`ElemIndex x xs@ finds the index of an element @x@ in the type
+-- | @`ElemIndex` x xs@ finds the index of an element @x@ in the type
 -- level list @xs@. Indexing starts at @0@ at the head of the list.
 type family ElemIndex (x :: a) (xs :: [a]) :: Nat where
   ElemIndex x (x ': xs) = 0
@@ -96,29 +96,29 @@ type family Lookup (n :: Nat) (xs :: [a]) :: a where
   Lookup 0 (x ': xs) = x
   Lookup n (x ': xs) = Lookup (n - 1) xs
 
--- | @`Foldr f k xs` peforms a type-level @foldr@ on the list of types @xs@.
+-- | @`Foldr` f k xs@ peforms a type-level @foldr@ on the list of types @xs@.
 type family Foldr (f :: a -> b -> b) (k :: b) (xs :: [a]) :: b where
   Foldr f k '[]       = k
   Foldr f k (x ': xs) = f x (Foldr f k xs)
 
--- | @`Foldr0 f k xs` returns @k@ when the list is empty, and peforms
+-- | @`Foldr0` f k xs@ returns @k@ when the list is empty, and peforms
 -- @Foldr1 f xs@ otherwise.
 type family Foldr0 (f :: a -> a -> a) (k :: a) (xs :: [a]) :: a where
   Foldr0 f k '[] = k
   Foldr0 f k xs  = Foldr1 f xs
 
--- | @`Foldr1 f xs` peforms a type-level @foldr1@ on the list of types @xs@,
+-- | @`Foldr1` f xs@ peforms a type-level @foldr1@ on the list of types @xs@,
 -- which assumes that @xs@ is non-empty.
 type family Foldr1 (f :: a -> a -> a) (xs :: [a]) :: a where
   Foldr1 f '[x]      = x
   Foldr1 f (x ': xs) = f x (Foldr1 f xs)
 
--- | @`Map f xs` peforms a type-level @map@ on the list of types @xs@.
+-- | @`Map` f xs@ peforms a type-level @map@ on the list of types @xs@.
 type family Map (f :: a -> b) (xs :: [a]) :: [b] where
   Map f '[]       = '[]
   Map f (x ': xs) = f x ': Map f xs
 
--- | @`Apply fs a`@ applies a list @fs@ of type-level functions to the given @a@.
+-- | @`Apply` fs a@ applies a list @fs@ of type-level functions to the given @a@.
 type family Apply (fs :: [k -> k]) (a :: k) where
   Apply '[] a     = a
   Apply (f:fs) a  = f (Apply fs a)
@@ -127,6 +127,5 @@ type family Apply (fs :: [k -> k]) (a :: k) where
 -- and @@Apply (fs1 :++ fs2) a@ will be exactly the same, but GHC doesn't know this, so
 -- whenever we need this, we will need to manually assume this as a constraint @Assoc a1 a2 a3 a@,
 -- which is going to be automatically discharged when @fs1@ and @fs2@ are substituted by closed lists.
-
-class (Apply fs1 (Apply fs2 a) ~ Apply (fs1 :++ fs2) a) => Assoc fs1 fs2 a where
-instance (Apply fs1 (Apply fs2 a) ~ Apply (fs1 :++ fs2) a) => Assoc fs1 fs2 a where
+class (Apply fs1 (Apply fs2 a) ~ Apply (fs1 :++ fs2) a) => Assoc fs1 fs2 a
+instance (Apply fs1 (Apply fs2 a) ~ Apply (fs1 :++ fs2) a) => Assoc fs1 fs2 a

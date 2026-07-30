@@ -31,10 +31,8 @@ import Control.Effect.Nondet
 
 goWrong2
   :: forall effs.
-     Members '[ New, Get, Put,
-     Choose,
-     St.Put (Maybe (Ref Int)), St.Get (Maybe (Ref Int))
-     ] effs
+     Members '[ New, Get, Put, Choose, St.Put (Maybe (Ref Int)), St.Get (Maybe (Ref Int)) ]
+             effs
   => Prog effs Int
 goWrong2 = do iRef <- new @Int 0
               or (do iRef' <- new @Int 0; St.put (Just iRef'); return 0)

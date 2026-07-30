@@ -1,3 +1,15 @@
+{-|
+Module      : Data.Sequence.Class
+Description : An interface for sequence-like data structures
+License     : BSD-3-Clause
+Maintainer  : Zhixuan Yang
+Stability   : experimental
+
+This module defines a typeclass `Sequence` for data structures that store
+sequences of elements, such as lists, finger trees, arrays. In this library,
+we store the handling code of effectful operations as a sequence, but we do
+ not need to commit to a fixed data structure, so `Sequence` is defined.
+-}
 module Data.Sequence.Class where
 
 import Data.Kind (Type)
@@ -7,23 +19,42 @@ import qualified Data.Primitive.SmallArray as A
 import qualified Data.Array as A
 import Data.Foldable
 
+-- | @Sequence l@ expresses that @l@ is a data structure for sequences of elements.
 class Functor l => Sequence (l :: Type -> Type) where
+  -- | Empty sequence.
   nil :: l a
+
+  -- | Add one element to the head of a sequence.
   cons :: a -> l a -> l a
+
+  -- | Concatenate two sequences.
   append :: l a -> l a -> l a
+
+  -- | Look up in the sequence.
   index :: l a -> Int -> a
+
+  -- | Pattern match the sequence: @Nothing@ means it is empty, and @Just (a, as)@
+  -- means that the sequence is @cons a as@.
   view :: l a -> Maybe (a, l a)
 
-  -- | @fst (split l n)@ is the first @n@-elements of @l@. When @l@ doesn't have @n@-elements,
-  --   @fst (split l n)@ should be equal to @l@. @snd (split l n)@ should be the rest of the elements
-  --   in @l@ after @fst (split l n)@.
+  -- | @fst (split l n)@ is the first @n@-elements of @l@. When @l@ doesn't have
+  -- @n@-elements, @fst (split l n)@ should be equal to @l@. @snd (split l n)@
+  -- should be the rest of the elements in @l@ after @fst (split l n)@.
   split :: l a -> Int -> (l a, l a)
+
+  -- | Convert the sequence to an array.
   seqToArray :: l a -> A.SmallArray a
+
+  -- | Convert from an array.
   seqFromArray :: A.SmallArray a -> l a
+
+  -- | Convert the squence to a list.
   seqToList :: l a -> [a]
+
+  -- | Convert from a list.
   seqFromList :: [a] -> l a
 
--- Lists are fast for accessing the head.
+-- | Lists are fast for accessing the head.
 instance Sequence [] where
   {-# INLINE nil#-}
   nil = []
@@ -48,7 +79,7 @@ instance Sequence [] where
   seqFromList = id
 
 
--- Finger trees are reasonably fast for all operations.
+-- | Finger trees are reasonably fast for all operations.
 instance Sequence S.Seq where
   {-# INLINE nil#-}
   nil = S.empty
@@ -73,7 +104,7 @@ instance Sequence S.Seq where
   {-# INLINE seqFromList #-}
   seqFromList = S.fromList
 
--- Arrays are very fast for indexing and destruction but very slow for construction.
+-- | Arrays are very fast for indexing and destruction but very slow for construction.
 instance Sequence A.SmallArray where
   {-# INLINE nil#-}
   nil = A.emptySmallArray
