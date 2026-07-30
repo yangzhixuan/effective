@@ -93,7 +93,6 @@ library
     Control.Monad.Trans.Compose
     Control.Monad.Trans.Push
 
-    Data.CutList
     Data.Iso
     Data.HFunctor
     Data.List.Kind

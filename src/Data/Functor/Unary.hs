@@ -1,5 +1,12 @@
-module Data.Functor.Unary where
+{-|
+Module      : Data.Functor.Unary
+Description : Functors for unary effectful operations with parameters.
+License     : BSD-3-Clause
+Maintainer  : Zhixuan Yang
+Stability   : experimental
+-}
 
+module Data.Functor.Unary where
 import Data.Functor.Identity
 
 -- | `Unary f` says that the functor `f` is the signature for a unary operation
