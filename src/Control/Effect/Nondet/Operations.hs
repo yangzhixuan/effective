@@ -67,12 +67,12 @@ instance (Member Empty effs, Member Choose effs)
   => Alternative (Prog effs) where
   {-# INLINE empty #-}
 -- | Syntax for an empty alternative. This is an algebraic operation.
-  empty :: Member Empty effs => Prog effs a
+  empty :: Prog effs a
   empty = call Empty
 
   {-# INLINE (<|>) #-}
 -- | Syntax for a choice of alternatives. This is a scoped operation.
-  (<|>) :: (Member Choose effs) => Prog effs a -> Prog effs a -> Prog effs a
+  (<|>) :: Prog effs a -> Prog effs a -> Prog effs a
   xs <|> ys = choose xs ys
 
 -- | `select` nondeterministically selects an element from a list.

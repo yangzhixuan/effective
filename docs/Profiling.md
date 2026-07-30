@@ -43,7 +43,7 @@ logger str = do time <- io getCPUTime
 However, this is a case where a reinterpretation might be better where all
 instances of `tell` are augmented with the appropriate timestamp.
 ```haskell
-telltime :: forall w a . Monoid w => Handler '[Tell w] '[Tell [(Integer, w)], Alg IO] '[] a a
+telltime :: forall w a . Handler '[Tell w] '[Tell [(Integer, w)], Alg IO] '[] a a
 telltime = interpret1 $ \(Tell (w :: w) k) ->
   do time <- io getCPUTime
      tell [(time, w)]

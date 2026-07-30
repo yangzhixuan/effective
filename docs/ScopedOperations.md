@@ -35,8 +35,8 @@ with handlers. An example of this is to apply a transformation to all the
 interpreting handler called `retell` can be defined, which takes in a function used
 to modify output:
 ```haskell
-retell :: forall w w' a . (Monoid w, Monoid w')
-       => (w -> w')
+retell :: forall w w' a .
+          (w -> w')
        -> Handler '[Tell w] '[Tell w'] '[] a a
 retell f = interpret1 $ \(Tell w k) ->
   do tell (f w)

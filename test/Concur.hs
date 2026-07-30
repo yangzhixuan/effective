@@ -70,7 +70,7 @@ prog2 =
 test4 :: IO ()
 test4 = handleIO' (Proxy @IOPar) ioPar (identity @'[]) prog2
 
-tell' :: forall w effs. (Member ("t2" :@ (Tell w)) effs, Monoid w) => w -> Prog effs ()
+tell' :: forall w effs. (Member ("t2" :@ (Tell w)) effs) => w -> Prog effs ()
 tell' w = callPAlg (Proxy @"t2") (Tell_ w ())
 
 prog3 :: Members '[Par, Act HR, Res HR, Tell String, "t2" :@ (Tell String)] effs => Prog effs ()

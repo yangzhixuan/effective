@@ -32,7 +32,7 @@ common common
   if impl(ghc >=9.10.1)
     default-extensions: RequiredTypeArguments
 
-  ghc-options: -Wno-partial-type-signatures
+  ghc-options: -Wno-partial-type-signatures -Wredundant-constraints
 
 flag dump
   description: Make some test cases dump splices and/or ghc-core

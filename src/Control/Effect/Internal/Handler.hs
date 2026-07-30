@@ -177,8 +177,7 @@ type Comp# effs1 ts1 ts2 = (CompR# ts1 ts2 , CompAT# ts1 ts2)
 -- | Compose two handlers.
 {-# INLINE comp #-}
 comp
-  :: ( forall m. Monad m => MonadApply ts1 m
-     , forall m. Monad m => MonadApply ts2 m
+  :: ( forall m. Monad m => MonadApply ts2 m
      , Comp# effs1 ts1 ts2 )
   => Handler effs1 effs2 ts1 a1 a2
      -- ^ The first handler
@@ -255,8 +254,7 @@ interpret = fromAT . interpretAT
 {-# INLINE interpret1 #-}
 interpret1
   :: forall eff oeffs a.
-     (HFunctor eff)
-  => (forall m x. eff m x -> Prog oeffs x)   -- ^ Effect rephrasing function
+     (forall m x. eff m x -> Prog oeffs x)   -- ^ Effect rephrasing function
   -> Handler '[eff] oeffs '[] a a
 interpret1 rephrase = interpret (rephrase :% emptyCase)
 
@@ -373,8 +371,7 @@ infixr 9 `fuse`, |>
 {-# INLINE (|>) #-}
 fuse, (|>)
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
-     ( forall m. Monad m => MonadApply ts1 m
-     , forall m. Monad m => MonadApply ts2 m
+     ( forall m. Monad m => MonadApply ts2 m
      , ForwardsM effs2 ts1
      , ForwardsM (oeffs1 :\\ effs2) ts2
      , FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
@@ -395,8 +392,7 @@ fuse (Handler run1 malg1) (Handler run2 malg2)
 infixr 9 `fuseC`, |>$
 fuseC, (|>$)
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
-     ( forall m. Monad m => MonadApply ts1 m
-     , forall m. Monad m => MonadApply ts2 m
+     ( forall m. Monad m => MonadApply ts2 m
      , ForwardsM effs2 ts1
      , ForwardsM (oeffs1 :\\ effs2) ts2
      , FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
@@ -417,8 +413,7 @@ infixr 9 `fuseApp`, ++>
 {-# INLINE fuseApp #-}
 fuseApp, (++>)
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
-     ( forall m. Monad m => MonadApply ts1 m
-     , forall m. Monad m => MonadApply ts2 m
+     ( forall m. Monad m => MonadApply ts2 m
      , CompAT# ts1 ts2, KnownEffs oeffs1
      , ForwardsM effs2 ts1, ForwardsM oeffs1 ts2 )
   => Handler effs1 oeffs1 ts1 a1 a2   -- ^ @h1@
@@ -436,8 +431,7 @@ fuseApp (Handler run1 malg1) (Handler run2 malg2)
 infixr 9 `fuseAppC`, ++>$
 fuseAppC, (++>$)
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
-     ( forall m. Monad m => MonadApply ts1 m
-     , forall m. Monad m => MonadApply ts2 m
+     ( forall m. Monad m => MonadApply ts2 m
      , CompAT# ts1 ts2
      , ForwardsM effs2 ts1, ForwardsM oeffs1 ts2
      , KnownEffs oeffs1 )
@@ -460,8 +454,7 @@ infixl 9 `pipe`
 {-# INLINE (\\) #-}
 pipe, (\\)
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
-     ( forall m. Monad m => MonadApply ts1 m
-     , forall m. Monad m => MonadApply ts2 m
+     ( forall m. Monad m => MonadApply ts2 m
      , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2
      , FuseR# effs2 oeffs1 oeffs2 ts1 ts2
      , ForwardsM (oeffs1 :\\ effs2) ts2 )
@@ -480,8 +473,7 @@ pipe (Handler run1 malg1)  (Handler run2 malg2)
 -- | Static version of `pipe`.
 pipeC, (\\$)
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
-     ( forall m. Monad m => MonadApply ts1 m
-     , forall m. Monad m => MonadApply ts2 m
+     ( forall m. Monad m => MonadApply ts2 m
      , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2
      , FuseR# effs2 oeffs1 oeffs2 ts1 ts2
      , ForwardsM (oeffs1 :\\ effs2) ts2 )
@@ -536,14 +528,12 @@ pass (Handler r1 a1) (Handler r2 a2)
 {-# INLINE generalFuse #-}
 generalFuse
   :: forall feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3.
-     ( forall m. Monad m => MonadApply ts1 m
-     , forall m. Monad m => MonadApply ts2 m
+     ( forall m. Monad m => MonadApply ts2 m
      , Members feffs effs2
      , Members ieffs effs2
      , ForwardsM feffs ts1
      , ForwardsM (oeffs1 :\\ ieffs) ts2
-     , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2
-     , FuseR# effs2 oeffs1 oeffs2 ts1 ts2 )
+     , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 )
   => Proxy feffs
      -- ^ Effects to be forwarded
   -> Proxy ieffs
@@ -655,8 +645,7 @@ handleMC'
   :: forall effs oeffs xeffs m ts a b.
      ( Monad m
      , Monad (Apply ts m)
-     , Members oeffs xeffs
-     , HandleM# effs xeffs )
+     , Members oeffs xeffs )
   => AlgebraC xeffs m
      -- ^ Staged algebra for external effects
   -> HandlerC effs oeffs ts a b
@@ -760,7 +749,6 @@ handleP = handleM progAlg
 handleP'
   :: forall effs oeffs xeffs ts a b.
      ( Monad (Apply ts (Prog xeffs))
-     , Forwards xeffs ts
      , Members oeffs xeffs
      , ProgAlg# xeffs )
   => Handler effs oeffs ts a b       -- ^ Handler @h@

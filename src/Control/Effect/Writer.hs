@@ -122,7 +122,7 @@ uncensors = handler' id ((\(Censor (_ :: w -> w) k) -> k) :# emptyAlg)
 -- will be consumed.
 censors :: forall w a . (w -> w) -> Handler '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] a a
 censors cipher = handler (\_ -> run) (getAT censorAT) where
-  run :: Monad m => (forall x. ReaderT (w -> w) m x -> m x)
+  run :: (forall x. ReaderT (w -> w) m x -> m x)
   run (ReaderT mx) = mx cipher
 
 -- | The algebra transformer underlying `censors`.
