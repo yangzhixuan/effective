@@ -129,7 +129,9 @@ data HandlerC effs oeffs ts a b =
 handler
   :: forall effs oeffs ts a b.
      (forall m. Monad m => Algebra oeffs m -> Apply ts m a -> m b)
+     -- ^
   -> (forall m. Monad m => Algebra oeffs m -> Algebra effs (Apply ts m))
+     -- ^
   -> Handler effs oeffs ts a b
 handler run alg = Handler (Runner run) (AlgTrans alg)
 
@@ -139,7 +141,9 @@ handler run alg = Handler (Runner run) (AlgTrans alg)
 {-# INLINE handler' #-}
 handler'
   :: (forall m. Monad m => Apply ts m a -> m b)
+     -- ^
   -> (forall m. Monad m => Algebra effs (Apply ts m))
+     -- ^
   -> Handler effs oeffs ts a b
 handler' run alg = Handler (Runner (\_ -> run)) (AlgTrans (\(_ :: Algebra oeffs m) -> alg @m))
 
@@ -147,7 +151,7 @@ handler' run alg = Handler (Runner (\_ -> run)) (AlgTrans (\(_ :: Algebra oeffs 
 -- @a1 <: a2 <: a3 <: ... <: fromRunner r@.
 {-# INLINE fromRunner #-}
 fromRunner
-  :: forall ts a b. (forall m. Monad m => Apply ts m a -> m b)
+  :: forall ts a b. (forall m. Monad m => Apply ts m a -> m b) -- ^
   -> Handler '[] '[] ts a b
 fromRunner run = Handler (Runner (\_ -> run)) (AlgTrans (const emptyAlg))
 
@@ -158,8 +162,8 @@ infixr <:
 (<:)
   :: forall effs oeffs effs' oeffs' ts a b.
      UnionAT# effs effs' oeffs oeffs'
-  => AlgTrans effs oeffs ts Monad
-  -> Handler effs' oeffs' ts a b
+  => AlgTrans effs oeffs ts Monad               -- ^
+  -> Handler effs' oeffs' ts a b                -- ^
   -> Handler (effs `Union` effs') (oeffs `Union` oeffs') ts a b
 algs <: Handler hrun halg = Handler (weakenREffs hrun) (weakenCS (algs `unionAT` halg))
 
@@ -177,7 +181,9 @@ comp
      , forall m. Monad m => MonadApply ts2 m
      , Comp# effs1 ts1 ts2 )
   => Handler effs1 effs2 ts1 a1 a2
+     -- ^
   -> Handler effs2 effs3 ts2 a2 a3
+     -- ^
   -> Handler effs1 effs3 (ts1 :++ ts2) a1 a3
 comp (Handler r1 a1) (Handler r2 a2) =
   Handler (weakenRCSMonad (compR a2 r1 r2)) (weakenCSMonad (compAT a1 a2))
@@ -188,7 +194,7 @@ comp (Handler r1 a1) (Handler r2 a2) =
 weaken
   :: forall effs effs' oeffs oeffs' ts a b.
      ( Members effs' effs , Members oeffs oeffs' )
-  => Handler effs  oeffs  ts a b
+  => Handler effs  oeffs  ts a b     -- ^
   -> Handler effs' oeffs' ts a b
 weaken (Handler run halg)
   = Handler (weakenR @_ @oeffs' run) (weakenEffs halg)
@@ -202,8 +208,8 @@ type Hide# heffs effs oeffs = (Members (effs :\\ heffs) effs, Members oeffs oeff
 hide
   :: forall heffs effs oeffs ts a b.
      Hide# heffs effs oeffs
-  => Proxy heffs
-  -> Handler effs oeffs ts a b
+  => Proxy heffs                    -- ^
+  -> Handler effs oeffs ts a b      -- ^
   -> Handler (effs :\\ heffs) oeffs ts a b
 hide _ h = weaken h
 
@@ -221,8 +227,8 @@ withFwds
   :: forall beffs effs oeffs ts a b.
      ( ForwardsM beffs ts
      , Bypass# beffs effs oeffs )
-  => Proxy beffs
-  -> Handler effs oeffs ts a b
+  => Proxy beffs                                      -- ^
+  -> Handler effs oeffs ts a b                        -- ^
   -> Handler (effs `Union` beffs) (oeffs `Union` beffs) ts a b
 withFwds _ (Handler run alg) = Handler (weakenR run) (withFwdsAT (Proxy @beffs) alg)
 
@@ -250,7 +256,7 @@ interpret = fromAT . interpretAT
 interpret1
   :: forall eff oeffs a.
      (HFunctor eff)
-  => (forall m x. eff m x -> Prog oeffs x)
+  => (forall m x. eff m x -> Prog oeffs x)   -- ^
   -> Handler '[eff] oeffs '[] a a
 interpret1 rephrase = interpret (rephrase :% emptyCase)
 
@@ -305,7 +311,9 @@ caseHdl
   :: forall effs1 effs2 oeffs ts a1 a2 a3 a4.
      CaseTrans# effs1 effs2
   => Handler effs1 oeffs ts a1 a2
+     -- ^
   -> Handler effs2 oeffs ts a3 a4
+     -- ^
   -> Handler (effs1 `Union` effs2) oeffs ts a1 a2
 caseHdl (Handler r1 a1) (Handler _ a2) = Handler r1 (caseATsameCS a1 a2)
 
@@ -316,7 +324,9 @@ unionHdl
   :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
      UnionAT# effs1 effs2 oeffs1 oeffs2
   => Handler effs1 oeffs1 ts a1 a2
+     -- ^
   -> Handler effs2 oeffs2 ts a3 a4
+     -- ^
   -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
 unionHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenCS (unionAT a1 a2))
 
@@ -327,7 +337,9 @@ unionHdlAT
   :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
      UnionAT# effs1 effs2 oeffs1 oeffs2
   => Handler  effs1 oeffs1 ts a1 a2
+     -- ^
   -> AlgTrans effs2 oeffs2 ts Monad
+     -- ^
   -> Handler (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts a1 a2
 unionHdlAT (Handler r1 a1) a2 = Handler (weakenR r1) (weakenCS (unionAT a1 a2))
 
@@ -338,11 +350,13 @@ appendHdl
   :: forall effs1 effs2 oeffs1 oeffs2 ts a1 a2 a3 a4.
      AppendAT# effs1 effs2 oeffs1 oeffs2
   => Handler effs1 oeffs1 ts a1 a2
+     -- ^
   -> Handler effs2 oeffs2 ts a3 a4
+     -- ^
   -> Handler (effs1 :++ effs2) (oeffs1 :++ oeffs2) ts a1 a2
 appendHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenCS (appendAT a1 a2))
 
--- | The combinator `h1 |> h2` is an archetype of handler fusion. Its property is that
+-- | The combinator @h1 |> h2@ is an archetype of handler fusion. Its property is that
 -- @
 --    handleP h2 (handleP h1 prog) = handleP (h1 |> h2) prog
 -- @
@@ -451,8 +465,8 @@ pipe, (\\)
      , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2
      , FuseR# effs2 oeffs1 oeffs2 ts1 ts2
      , ForwardsM (oeffs1 :\\ effs2) ts2 )
-  => Handler effs1 oeffs1 ts1 a1 a2    -- ^ Handler @h1@
-  -> Handler effs2 oeffs2 ts2 a2 a3    -- ^ Handler @h2@
+  => Handler effs1 oeffs1 ts1 a1 a2    -- ^ @h1@
+  -> Handler effs2 oeffs2 ts2 a2 a3    -- ^ @h2@
   -> Handler effs1
              ((oeffs1 :\\ effs2) `Union` oeffs2)
              (ts1 :++ ts2)
@@ -471,8 +485,8 @@ pipeC, (\\$)
      , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2
      , FuseR# effs2 oeffs1 oeffs2 ts1 ts2
      , ForwardsM (oeffs1 :\\ effs2) ts2 )
-  => HandlerC effs1 oeffs1 ts1 a1 a2   -- ^ Handler @h1@
-  -> HandlerC effs2 oeffs2 ts2 a2 a3   -- ^ Handler @h2@
+  => HandlerC effs1 oeffs1 ts1 a1 a2   -- ^ @h1@
+  -> HandlerC effs2 oeffs2 ts2 a2 a3   -- ^ @h2@
   -> HandlerC effs1
               ((oeffs1 :\\ effs2) `Union` oeffs2)
               (ts1 :++ ts2)
@@ -497,8 +511,8 @@ pass
      , ForwardsM  effs2 ts1
      , ForwardsM oeffs1 ts2
      , Pass# effs1 effs2 oeffs1 oeffs2 ts1 ts2 )
-  => Handler effs1 oeffs1 ts1 a1 a2         -- ^ Handler @h1@
-  -> Handler effs2 oeffs2 ts2 a2 a3         -- ^ Handler @h2@
+  => Handler effs1 oeffs1 ts1 a1 a2         -- ^ @h1@
+  -> Handler effs2 oeffs2 ts2 a2 a3         -- ^ @h2@
   -> Handler (effs1 `Union` effs2)
              (oeffs1 `Union` oeffs2)
              (ts1 :++ ts2)
@@ -531,9 +545,13 @@ generalFuse
      , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2
      , FuseR# effs2 oeffs1 oeffs2 ts1 ts2 )
   => Proxy feffs
+     -- ^
   -> Proxy ieffs
+     -- ^
   -> Handler effs1 oeffs1 ts1 a1 a2
+     -- ^
   -> Handler effs2 oeffs2 ts2 a2 a3
+     -- ^
   -> Handler (effs1 `Union` feffs)
              ((oeffs1 :\\ ieffs) `Union` oeffs2)
              (ts1 :++ ts2)
@@ -562,8 +580,8 @@ handle (Handler run halg)
 handleC
   :: forall effs ts a b.
      (Monad (Apply ts Identity))
-  => HandlerC effs '[] ts a b
-  -> CodeQ (Prog effs a)
+  => HandlerC effs '[] ts a b     -- ^
+  -> CodeQ (Prog effs a)          -- ^
   -> CodeQ b
 handleC (HandlerC (RunnerC r) (AlgTransC a)) p =
   [||
@@ -604,8 +622,11 @@ handleMC
      , Members oeffs xeffs
      , HandleM# effs xeffs )
   => AlgebraC xeffs m
+     -- ^
   -> HandlerC effs oeffs ts a b
+     -- ^
   -> CodeQ (Prog (effs `Union` xeffs) a)
+     -- ^
   -> CodeQ (m b)
 handleMC xalgC (HandlerC (RunnerC r) (AlgTransC a)) p =
   [||
@@ -624,7 +645,7 @@ handleM'
      , Members oeffs xeffs )
   => Algebra xeffs m                 -- ^ Algebra @xalg@ for external effects @xeffs@
   -> Handler effs oeffs ts a b       -- ^ Handler @h@
-  -> Prog effs a
+  -> Prog effs a                     -- ^
   -> m b
 handleM' xalg (Handler run halg)
   = getR run @m (weakenAlg xalg) . eval (getAT halg (weakenAlg xalg))
@@ -637,8 +658,11 @@ handleMC'
      , Members oeffs xeffs
      , HandleM# effs xeffs )
   => AlgebraC xeffs m
+     -- ^
   -> HandlerC effs oeffs ts a b
+     -- ^
   -> CodeQ (Prog effs a)
+     -- ^
   -> CodeQ (m b)
 handleMC' xalgC (HandlerC (RunnerC r) (AlgTransC a)) p =
   [||
@@ -660,7 +684,7 @@ handleMFwds
   => Proxy yeffs                    -- ^ @yeffs@ can't be inferred, so it must be given explicitly
   -> Algebra xeffs m                -- ^ Algebra @xalg@ for external effects @xeffs@
   -> Handler effs oeffs ts a b      -- ^ Handler @h@
-  -> Prog (effs `Union` yeffs) a
+  -> Prog (effs `Union` yeffs) a    -- ^
   -> m b
 handleMFwds _ xalg (Handler run halg)
   = getR run @m (weakenAlg xalg)
@@ -677,9 +701,13 @@ handleMFwdsC
      , ForwardsM yeffs ts
      , HandleM# effs yeffs )
   => Proxy yeffs
+     -- ^
   -> AlgebraC xeffs m
+     -- ^
   -> HandlerC effs oeffs ts a b
+     -- ^
   -> CodeQ (Prog (effs `Union` yeffs) a)
+     -- ^
   -> CodeQ (m b)
 handleMFwdsC _ yalg (HandlerC (RunnerC r) (AlgTransC a)) p =
   [||

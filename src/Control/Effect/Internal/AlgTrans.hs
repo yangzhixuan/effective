@@ -32,9 +32,9 @@ evalAT
      ( cs m
      , Members oeffs xeffs
      , Monad (Apply ts m) )
-  => Algebra xeffs m
-  -> AlgTrans effs oeffs ts cs
-  -> Prog effs a
+  => Algebra xeffs m               -- ^ External effects on @m@
+  -> AlgTrans effs oeffs ts cs     -- ^ Algebra transformer
+  -> Prog effs a                   -- ^ Program to be handled
   -> Apply ts m a
 evalAT oalg alg = eval (getAT alg (weakenAlg oalg))
 
@@ -44,8 +44,8 @@ evalAT'
   :: forall m effs ts cs a.
      ( cs m
      , Monad (Apply ts m) )
-  => AlgTrans effs '[] ts cs
-  -> Prog effs a
+  => AlgTrans effs '[] ts cs       -- ^ Algebra transformer producing no effects
+  -> Prog effs a                   -- ^ Program to be handled
   -> Apply ts m a
 evalAT' alg = eval (getAT alg (emptyAlg @m))
 
@@ -74,8 +74,8 @@ type CompAT# ts1 ts2 = ( forall m . Assoc ts1 ts2 m )
 compAT
   :: forall effs1 effs2 effs3 ts1 ts2 cs1 cs2.
      (CompAT# ts1 ts2)
-  => AlgTrans effs1 effs2 ts1 cs1
-  -> AlgTrans effs2 effs3 ts2 cs2
+  => AlgTrans effs1 effs2 ts1 cs1   -- ^
+  -> AlgTrans effs2 effs3 ts2 cs2   -- ^
   -> AlgTrans effs1 effs3 (ts1 :++ ts2) (CompC ts2 cs1 cs2)
 compAT alg1 alg2 = AlgTrans \(oalg :: Algebra effs3 m) -> getAT alg1 (getAT alg2 oalg)
 
@@ -85,7 +85,7 @@ compAT alg1 alg2 = AlgTrans \(oalg :: Algebra effs3 m) -> getAT alg1 (getAT alg2
 weakenAT
   :: forall effs' oeffs' cs' effs oeffs cs ts.
      ( Members effs' effs, Members oeffs oeffs', forall m. cs' m => cs m )
-  => AlgTrans effs  oeffs  ts cs
+  => AlgTrans effs  oeffs  ts cs    -- ^
   -> AlgTrans effs' oeffs' ts cs'
 weakenAT at = AlgTrans \oalg -> weakenAlg (getAT at (weakenAlg oalg))
 
@@ -99,8 +99,8 @@ type CaseTrans# effs1 effs2 =
 caseAT
   :: forall effs1 effs2 cs1 cs2 oeffs ts.
      CaseTrans# effs1 effs2
-  => AlgTrans effs1 oeffs ts cs1
-  -> AlgTrans effs2 oeffs ts cs2
+  => AlgTrans effs1 oeffs ts cs1   -- ^
+  -> AlgTrans effs2 oeffs ts cs2   -- ^
   -> AlgTrans (effs1 `Union` effs2) oeffs ts (AndC cs1 cs2)
 caseAT at1 at2 = AlgTrans \oalg -> unionAlg (getAT at1 oalg) (getAT at2 oalg)
 
@@ -108,8 +108,8 @@ caseAT at1 at2 = AlgTrans \oalg -> unionAlg (getAT at1 oalg) (getAT at2 oalg)
 {-# INLINE caseAT' #-}
 caseAT'
   :: forall effs1 effs2 cs1 cs2 oeffs ts.
-     AlgTrans effs1 oeffs ts cs1
-  -> AlgTrans effs2 oeffs ts cs2
+     AlgTrans effs1 oeffs ts cs1   -- ^
+  -> AlgTrans effs2 oeffs ts cs2   -- ^
   -> AlgTrans (effs1 :++ effs2) oeffs ts (AndC cs1 cs2)
 caseAT' at1 at2 = AlgTrans \oalg -> appendAlg (getAT at1 oalg) (getAT at2 oalg)
 
@@ -119,7 +119,7 @@ caseAT' at1 at2 = AlgTrans \oalg -> appendAlg (getAT at1 oalg) (getAT at2 oalg)
 {-# INLINE algTrans1 #-}
 algTrans1
   :: forall eff oeffs ts cs.
-     (forall m. cs m => Algebra oeffs m -> forall x. eff (Apply ts m) x -> Apply ts m x)
+     (forall m. cs m => Algebra oeffs m -> forall x. eff (Apply ts m) x -> Apply ts m x) -- ^
   -> AlgTrans '[eff] oeffs ts cs
 algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) -> at oalg :# emptyAlg
 
@@ -127,7 +127,7 @@ algTrans1 at = AlgTrans \(oalg :: Algebra oeffs m) -> at oalg :# emptyAlg
 {-# INLINE algTrans' #-}
 algTrans'
   :: forall effs oeffs ts cs.
-     (forall m. cs m => Algebra effs (Apply ts m))
+     (forall m. cs m => Algebra effs (Apply ts m)) -- ^
   -> AlgTrans effs oeffs ts cs
 algTrans' alg = AlgTrans (\(_ :: Algebra oeffs m) -> alg @m)
 
@@ -136,7 +136,7 @@ algTrans' alg = AlgTrans (\(_ :: Algebra oeffs m) -> alg @m)
 weakenCS
   :: forall cs' cs effs oeffs ts.
      (forall m. cs' m => cs m)
-  => AlgTrans effs oeffs ts cs
+  => AlgTrans effs oeffs ts cs     -- ^
   -> AlgTrans effs oeffs ts cs'
 weakenCS at = AlgTrans $ getAT at
 
@@ -149,7 +149,7 @@ weakenCS at = AlgTrans $ getAT at
 weakenCSMonad
   :: forall ts2 effs oeffs ts.
      (forall m. Monad m => MonadApply ts2 m)
-  => AlgTrans effs oeffs ts (CompC ts2 Monad Monad)
+  => AlgTrans effs oeffs ts (CompC ts2 Monad Monad) -- ^
   -> AlgTrans effs oeffs ts Monad
 weakenCSMonad = weakenCS
 
@@ -158,7 +158,7 @@ weakenCSMonad = weakenCS
 {-# INLINE weakenCSAnd #-}
 weakenCSAnd
   :: forall cs' cs effs oeffs ts.
-     AlgTrans effs oeffs ts cs
+     AlgTrans effs oeffs ts cs     -- ^
   -> AlgTrans effs oeffs ts (AndC cs cs')
 weakenCSAnd at = AlgTrans $ getAT at
 
@@ -166,7 +166,7 @@ weakenCSAnd at = AlgTrans $ getAT at
 {-# INLINE weakenEffs #-}
 weakenEffs
   :: ( Members effs' effs, Members oeffs oeffs' )
-  => AlgTrans effs  oeffs  ts cs
+  => AlgTrans effs  oeffs  ts cs   -- ^
   -> AlgTrans effs' oeffs' ts cs
 weakenEffs = weakenAT
 
@@ -175,7 +175,7 @@ weakenEffs = weakenAT
 weakenOEffs
   :: forall oeffs' oeffs effs ts cs.
      Members oeffs oeffs'
-  => AlgTrans effs oeffs  ts cs
+  => AlgTrans effs oeffs  ts cs    -- ^
   -> AlgTrans effs oeffs' ts cs
 weakenOEffs at = AlgTrans \ oalg -> getAT at (weakenAlg oalg)
 
@@ -184,7 +184,7 @@ weakenOEffs at = AlgTrans \ oalg -> getAT at (weakenAlg oalg)
 weakenIEffs
   :: forall effs' effs oeffs ts cs.
      Members effs' effs
-  => AlgTrans effs  oeffs ts cs
+  => AlgTrans effs  oeffs ts cs    -- ^
   -> AlgTrans effs' oeffs ts cs
 weakenIEffs at = AlgTrans \ oalg -> weakenAlg (getAT at oalg)
 
@@ -204,7 +204,7 @@ interpretAT rephrase = AlgTrans (\oalg -> algebraFromCase (fmap (eval oalg) reph
 interpretAT1
   :: forall eff oeffs.
      HFunctor eff
-  => (forall m x. eff m x -> Prog oeffs x)
+  => (forall m x. eff m x -> Prog oeffs x) -- ^
   -> AlgTrans '[eff] oeffs '[] Monad
 interpretAT1 rephrase = AlgTrans (\oalg -> singAlg (eval oalg . rephrase))
 
@@ -215,7 +215,7 @@ type HideAT# effs effs' = (Members (effs :\\ effs') effs)
 hideAT
   :: forall effs' effs oeffs ts cs.
      HideAT# effs effs'
-  => AlgTrans effs  oeffs ts cs
+  => AlgTrans effs  oeffs ts cs    -- ^
   -> AlgTrans (effs :\\ effs') oeffs ts cs
 hideAT at = AlgTrans \ oalg -> weakenAlg (getAT at oalg)
 
@@ -224,8 +224,8 @@ hideAT at = AlgTrans \ oalg -> weakenAlg (getAT at oalg)
 caseATsameCS
   :: forall effs1 effs2 cs oeffs ts.
      CaseTrans# effs1 effs2
-  => AlgTrans effs1 oeffs ts cs
-  -> AlgTrans effs2 oeffs ts cs
+  => AlgTrans effs1 oeffs ts cs                    -- ^
+  -> AlgTrans effs2 oeffs ts cs                    -- ^
   -> AlgTrans (effs1 `Union` effs2) oeffs ts cs
 caseATsameCS at1 at2 = weakenCS (caseAT at1 at2)
 
@@ -233,8 +233,8 @@ caseATsameCS at1 at2 = weakenCS (caseAT at1 at2)
 {-# INLINE caseATsameCS' #-}
 caseATsameCS'
   :: forall effs1 effs2 cs oeffs ts.
-     AlgTrans effs1 oeffs ts cs
-  -> AlgTrans effs2 oeffs ts cs
+     AlgTrans effs1 oeffs ts cs                    -- ^
+  -> AlgTrans effs2 oeffs ts cs                    -- ^
   -> AlgTrans (effs1 :++ effs2) oeffs ts cs
 caseATsameCS' at1 at2 = weakenCS (caseAT' at1 at2)
 
@@ -248,8 +248,8 @@ type UnionAT# effs1 effs2 oeffs1 oeffs2 =
 unionAT
   :: forall effs1 effs2 oeffs1 oeffs2 cs1 cs2 ts.
      UnionAT# effs1 effs2 oeffs1 oeffs2
-  => AlgTrans effs1 oeffs1 ts cs1
-  -> AlgTrans effs2 oeffs2 ts cs2
+  => AlgTrans effs1 oeffs1 ts cs1                              -- ^
+  -> AlgTrans effs2 oeffs2 ts cs2                              -- ^
   -> AlgTrans (effs1 `Union` effs2) (oeffs1 `Union` oeffs2) ts (AndC cs1 cs2)
 unionAT at1 at2 = caseAT (weakenAT @effs1 at1) (weakenAT @effs2 at2)
 
@@ -263,8 +263,8 @@ type AppendAT# effs1 effs2 oeffs1 oeffs2 =
 appendAT
   :: forall effs1 effs2 oeffs1 oeffs2 cs1 cs2 ts.
      AppendAT# effs1 effs2 oeffs1 oeffs2
-  => AlgTrans effs1 oeffs1 ts cs1
-  -> AlgTrans effs2 oeffs2 ts cs2
+  => AlgTrans effs1 oeffs1 ts cs1                          -- ^
+  -> AlgTrans effs2 oeffs2 ts cs2                          -- ^
   -> AlgTrans (effs1 :++ effs2) (oeffs1 :++ oeffs2) ts (AndC cs1 cs2)
 appendAT at1 at2 = caseAT' (weakenAT @effs1 at1) (weakenAT @effs2 at2)
 
@@ -299,8 +299,8 @@ withFwdsAT'
   :: forall feffs effs oeffs ts cs.
      ( ForwardsC cs feffs ts
      , WithFwds'# effs oeffs feffs )
-  => Proxy feffs
-  -> AlgTrans effs oeffs ts cs
+  => Proxy feffs                                      -- ^
+  -> AlgTrans effs oeffs ts cs                        -- ^
   -> AlgTrans (effs :++ feffs) (oeffs :++ feffs) ts cs
 withFwdsAT' _ at = weakenCS (appendAT at (fwds @feffs))
 
@@ -320,7 +320,9 @@ fuseAT
      FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
   => ( ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2 )
   => AlgTrans effs1 oeffs1 ts1 cs1
+     -- ^ @at1@
   -> AlgTrans effs2 oeffs2 ts2 cs2
+     -- ^ @at2@
   -> AlgTrans (effs1 `Union` effs2)
               ((oeffs1 :\\ effs2) `Union` oeffs2)
               (ts1 :++ ts2)
@@ -337,7 +339,9 @@ fuseAT'
   => ( ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2,
        forall m. cs2 m => cs1 (Apply ts2 m) )
   => AlgTrans effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTrans effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTrans (effs1 `Union` effs2)
               ((oeffs1 :\\ effs2) `Union` oeffs2)
               (ts1 :++ ts2)
@@ -355,7 +359,9 @@ fuseAppAT
   :: forall effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs1 cs2.
      ( CompAT# ts1 ts2, ForwardsC cs1 effs2 ts1, ForwardsC cs2 oeffs1 ts2, KnownEffs oeffs1 )
   => AlgTrans effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTrans effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTrans (effs1 :++ effs2)
               (oeffs1 :++ oeffs2)
               (ts1 :++ ts2)
@@ -383,7 +389,9 @@ pipeAT
      ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
      , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 )
   => AlgTrans effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTrans effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTrans effs1
               ((oeffs1 :\\ effs2) `Union` oeffs2)
               (ts1 :++ ts2)
@@ -419,7 +427,9 @@ passAT
      , ForwardsC cs2 oeffs1 ts2
      , PassAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 )
   => AlgTrans effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTrans effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTrans (effs1 `Union` effs2)
               (oeffs1 `Union` oeffs2)
               (ts1 :++ ts2)
@@ -447,7 +457,9 @@ passAT'
      , ForwardsC cs2 oeffs1 ts2
      , PassAT'# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 )
   => AlgTrans effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTrans effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTrans (effs1 `Union` effs2)
               (oeffs1 `Union` oeffs2)
               (ts1 :++ ts2)
@@ -486,9 +498,13 @@ generalFuseAT
      , ForwardsC cs2 (oeffs1 :\\ ieffs) ts2
      , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 )
   => Proxy feffs
+     -- ^ Effects to be forwarded
   -> Proxy ieffs
+     -- ^ Effects to be intercepted
   -> AlgTrans effs1 oeffs1 ts1 cs1
+     -- ^ @at1@
   -> AlgTrans effs2 oeffs2 ts2 cs2
+     -- ^ @at2@
   -> AlgTrans (effs1 `Union` feffs)
               ((oeffs1 :\\ ieffs) `Union` oeffs2)
               (ts1 :++ ts2)
@@ -511,6 +527,7 @@ generalFuseAT _ _ at1 at2 = AlgTrans $ \oalg ->
 algTrans1C
   :: forall eff oeffs ts cs.
      (forall m. cs m => AlgebraC oeffs m -> CodeQ (eff (Apply ts m) -.> Apply ts m))
+     -- ^
   -> AlgTransC '[eff] oeffs ts cs
 algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg :#$ emptyAlgC
 
@@ -518,7 +535,7 @@ algTrans1C at = AlgTransC \(oalg :: AlgebraC oeffs m) -> at oalg :#$ emptyAlgC
 hideATC
   :: forall effs' effs oeffs ts cs.
      HideAT# effs effs'
-  => AlgTransC effs oeffs ts cs
+  => AlgTransC effs oeffs ts cs     -- ^
   -> AlgTransC (effs :\\ effs') oeffs ts cs
 hideATC at = AlgTransC \oalg -> weakenAlgC (getATC at oalg)
 
@@ -526,7 +543,7 @@ hideATC at = AlgTransC \oalg -> weakenAlgC (getATC at oalg)
 weakenCSC
   :: forall cs' cs effs oeffs ts.
      (forall m. cs' m => cs m)
-  => AlgTransC effs oeffs ts cs
+  => AlgTransC effs oeffs ts cs     -- ^
   -> AlgTransC effs oeffs ts cs'
 weakenCSC at = AlgTransC $ getATC at
 
@@ -535,6 +552,7 @@ weakenCSCMonad
   :: forall ts2 effs oeffs ts.
      (forall m. Monad m => MonadApply ts2 m)
   => AlgTransC effs oeffs ts (CompC ts2 Monad Monad)
+     -- ^
   -> AlgTransC effs oeffs ts Monad
 weakenCSCMonad = weakenCSC
 
@@ -544,8 +562,8 @@ withFwdsATC
   :: forall feffs effs oeffs ts cs.
      ( ForwardsC cs feffs ts
      , WithFwds# effs oeffs feffs )
-  => Proxy feffs
-  -> AlgTransC effs oeffs ts cs
+  => Proxy feffs                                       -- ^
+  -> AlgTransC effs oeffs ts cs                        -- ^
   -> AlgTransC (effs `Union` feffs) (oeffs `Union` feffs) ts cs
 withFwdsATC _ at = AlgTransC $ \oalg ->
   unionAlgC @effs @feffs
@@ -558,8 +576,8 @@ withFwdsATC'
   :: forall feffs effs oeffs ts cs.
      ( ForwardsC cs feffs ts
      , WithFwds'# effs oeffs feffs )
-  => Proxy feffs
-  -> AlgTransC effs oeffs ts cs
+  => Proxy feffs                                   -- ^
+  -> AlgTransC effs oeffs ts cs                    -- ^
   -> AlgTransC (effs :++ feffs) (oeffs :++ feffs) ts cs
 withFwdsATC' _ at = AlgTransC $ \oalg ->
   appendAlgC @effs @feffs
@@ -572,7 +590,9 @@ fuseATC
      FuseAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2
   => ( ForwardsC cs1 effs2 ts1, ForwardsC cs2 (oeffs1 :\\ effs2) ts2 )
   => AlgTransC effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTransC effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTransC (effs1 `Union` effs2)
                ((oeffs1 :\\ effs2) `Union` oeffs2)
                (ts1 :++ ts2)
@@ -585,7 +605,9 @@ fuseAppATC
      ( CompAT# ts1 ts2, ForwardsC cs1 effs2 ts1, ForwardsC cs2 oeffs1 ts2
      , KnownEffs oeffs1 )
   => AlgTransC effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTransC effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTransC (effs1 :++ effs2)
                (oeffs1 :++ oeffs2)
                (ts1 :++ ts2)
@@ -602,7 +624,9 @@ pipeATC
      ( ForwardsC cs2 (oeffs1 :\\ effs2) ts2
      , PipeAT# effs2 oeffs1 oeffs2 ts1 ts2 )
   => AlgTransC effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTransC effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTransC effs1
                ((oeffs1 :\\ effs2) `Union` oeffs2)
                (ts1 :++ ts2)
@@ -620,7 +644,9 @@ passATC
      , ForwardsC cs2 oeffs1 ts2
      , PassAT# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 )
   => AlgTransC effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTransC effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTransC (effs1 `Union` effs2)
                (oeffs1 `Union` oeffs2)
                (ts1 :++ ts2)
@@ -637,7 +663,9 @@ passATC'
      , ForwardsC cs2 oeffs1 ts2
      , PassAT'# effs1 effs2 oeffs1 oeffs2 ts1 ts2 cs2 )
   => AlgTransC effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTransC effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTransC (effs1 `Union` effs2)
                (oeffs1 `Union` oeffs2)
                (ts1 :++ ts2)
@@ -656,9 +684,13 @@ generalFuseATC
      , ForwardsC cs2 (oeffs1 :\\ ieffs) ts2
      , GeneralFuseAT# feffs ieffs effs1 effs2 oeffs1 oeffs2 ts1 ts2 )
   => Proxy feffs
+     -- ^
   -> Proxy ieffs
+     -- ^
   -> AlgTransC effs1 oeffs1 ts1 cs1
+     -- ^
   -> AlgTransC effs2 oeffs2 ts2 cs2
+     -- ^
   -> AlgTransC (effs1 `Union` feffs)
                ((oeffs1 :\\ ieffs) `Union` oeffs2)
                (ts1 :++ ts2)

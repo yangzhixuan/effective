@@ -73,8 +73,11 @@ compR
   :: forall oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
      CompR# ts1 ts2
   => AlgTrans oeffs1 oeffs2 ts2 cs2
+     -- ^ @at@
   -> Runner oeffs1 ts1 a1 a2 cs1
+     -- ^ @r1@
   -> Runner oeffs2 ts2 a2 a3 cs2
+     -- ^ @r2@
   -> Runner oeffs2 (ts1 :++ ts2)
                    a1 a3
                    (CompC ts2 cs1 cs2)
@@ -95,8 +98,11 @@ fuseR
      , Members oeffs1 ((oeffs1 :\\ effs2) :++ effs2)
      , FuseR# effs2 oeffs1 oeffs2 ts1 ts2 )
   => AlgTrans effs2 oeffs2 ts2 cs2
+     -- ^
   -> Runner oeffs1 ts1 a1 a2 cs1
+     -- ^
   -> Runner oeffs2 ts2 a2 a3 cs2
+     -- ^
   -> Runner ((oeffs1 :\\ effs2) `Union` oeffs2)
             (ts1 :++ ts2)
             a1 a3
@@ -120,8 +126,11 @@ fuseAppR
      , KnownEffs oeffs1
      , forall m. Assoc ts1 ts2 m )
   => AlgTrans effs2 oeffs2 ts2 cs2
+     -- ^
   -> Runner oeffs1 ts1 a1 a2 cs1
+     -- ^
   -> Runner oeffs2 ts2 a2 a3 cs2
+     -- ^
   -> Runner (oeffs1 :++ oeffs2)
             (ts1 :++ ts2)
             a1 a3
@@ -137,8 +146,11 @@ fuseRC
      , Members oeffs1 ((oeffs1 :\\ effs2) :++ effs2)
      , FuseR# effs2 oeffs1 oeffs2 ts1 ts2 )
   => AlgTransC effs2 oeffs2 ts2 cs2
+     -- ^
   -> RunnerC oeffs1 ts1 a1 a2 cs1
+     -- ^
   -> RunnerC oeffs2 ts2 a2 a3 cs2
+     -- ^
   -> RunnerC ((oeffs1 :\\ effs2) `Union` oeffs2)
              (ts1 :++ ts2)
              a1 a3
@@ -174,7 +186,9 @@ fuseAppRC
   :: forall effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 cs1 cs2.
      ( ForwardsC cs2 oeffs1 ts2, forall m. Assoc ts1 ts2 m, KnownEffs oeffs1 )
   => RunnerC oeffs1 ts1 a1 a2 cs1
+     -- ^
   -> RunnerC oeffs2 ts2 a2 a3 cs2
+     -- ^
   -> RunnerC (oeffs1  :++ oeffs2)
              (ts1 :++ ts2)
              a1 a3
@@ -198,7 +212,9 @@ passR
      ( ForwardsC cs2 oeffs1 ts2
      , PassR# effs2 oeffs1 oeffs2 ts1 ts2 a1 a2 a3 )
   => Runner oeffs1 ts1 a1 a2 cs1
+     -- ^ @r1@
   -> Runner oeffs2 ts2 a2 a3 cs2
+     -- ^ @r2@
   -> Runner (oeffs1 `Union` oeffs2)
             (ts1 :++ ts2)
             a1 a3
@@ -212,7 +228,7 @@ passR r1 r2 = Runner \(oalg :: Algebra _ m)  ->
 weakenR
   :: forall cs' effs' cs effs ts a b.
      ( forall m. cs' m => cs m, Members effs effs' )
-  => Runner effs  ts a b cs
+  => Runner effs  ts a b cs     -- ^
   -> Runner effs' ts a b cs'
 weakenR r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 
@@ -221,7 +237,7 @@ weakenR r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 weakenREffs
   :: forall effs' cs effs ts a b.
      (Members effs effs')
-  => Runner effs ts a b cs
+  => Runner effs ts a b cs     -- ^
   -> Runner effs' ts a b cs
 weakenREffs r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 
@@ -230,7 +246,7 @@ weakenREffs r1 = Runner \oalg -> getR r1 (weakenAlg oalg)
 weakenRCS
   :: forall cs' cs effs ts a b.
      (forall m. cs' m => cs m)
-  => Runner effs ts a b cs
+  => Runner effs ts a b cs     -- ^
   -> Runner effs ts a b cs'
 weakenRCS r1 = Runner \oalg -> getR r1 oalg
 
@@ -249,6 +265,7 @@ weakenRCSMonad
   :: forall ts2 effs ts a b.
      (forall m. Monad m => MonadApply ts2 m)
   => Runner effs ts a b (CompC ts2 Monad Monad)
+     -- ^
   -> Runner effs ts a b Monad
 weakenRCSMonad = weakenRCS
 
@@ -256,7 +273,7 @@ weakenRCSMonad = weakenRCS
 weakenRCSC
   :: forall cs' cs effs ts a b.
      (forall m. cs' m => cs m)
-  => RunnerC effs ts a b cs
+  => RunnerC effs ts a b cs     -- ^
   -> RunnerC effs ts a b cs'
 weakenRCSC r1 = RunnerC \oalg -> getRC r1 oalg
 
@@ -265,5 +282,6 @@ weakenRCSCMonad
   :: forall ts2 effs ts a b.
      (forall m. Monad m => MonadApply ts2 m)
   => RunnerC effs ts a b (CompC ts2 Monad Monad)
+     -- ^
   -> RunnerC effs ts a b Monad
 weakenRCSCMonad = weakenRCSC
