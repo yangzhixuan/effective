@@ -24,7 +24,7 @@ import Control.Effect.State.Operations
 -- the type constructor @`CodeQ` :: Type -> Type@ for code.
 newtype Gen a = Gen { unGen :: forall r. (a -> CodeQ r) -> CodeQ r }
 
--- | The code-generation monad restricted to generate @m@-values.
+-- | The code-generation monad restricted to generating @m@ values.
 newtype GenM m a = GenM { unGenM :: forall r. (a -> CodeQ (m r)) -> CodeQ (m r) }
 
 -- | The final answer type of @t'GenM' m a@ must be some @m r@ while @t'Gen' a@ doesn't

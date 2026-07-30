@@ -23,7 +23,7 @@ import Control.Effect.Nondet.Operations
 import Control.Monad.Trans.Push as P
 import Control.Monad.Trans.List
 
--- | Algebra  of the non-deterministic operations on t`PushT`.
+-- | Algebra of the non-deterministic operations on t`PushT`.
 pushAT :: AlgTrans '[Empty, Choose, Once] '[] '[PushT] TruthC
 pushAT = AlgTrans $ pushAlg where
   pushAlg

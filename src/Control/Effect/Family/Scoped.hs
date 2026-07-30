@@ -14,7 +14,7 @@ to satisfy the equation:
 
 so the operation @s@ intuitively delimits a boundary between its argument
 @x@ and the rest of the computation @k@. The effect of @s@ is applied only
-to its \'scope\' @x@. Important examples are scoped operations include
+to its \'scope\' @x@. Important examples of scoped operations include
 
 1. exception catching @catch p q@,
 2. semi-deterministic operator @once@ in logic programming,

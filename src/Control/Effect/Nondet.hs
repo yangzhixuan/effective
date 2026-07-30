@@ -6,7 +6,7 @@ Maintainer  : Nicolas Wu, Zhixuan Yang
 Stability   : experimental
 
 This module provides nondeterministic operations and handlers. The interface
-of nondeterminism of @effective@ is a bit subtle. We have the following operations:
+for nondeterminism in @effective@ is a bit subtle. We have the following operations:
 
   1. t`Choose` and t`Empty` directly correspond to the `Alternative` typeclass
      of GHC, and there is an instance
@@ -15,20 +15,20 @@ of nondeterminism of @effective@ is a bit subtle. We have the following operatio
        instance (Member Empty effs, Member Choose effs) => Alternative (Prog effs) where ...
      @
 
-     Moreover, t`Choose` is binary scoped operation because `Alternative` does not require
+     Moreover, t`Choose` is a binary scoped operation because `Alternative` does not require
      distributivity of @>>=@ over t`Choose`.
 
-  2. t`NondetOr` is also nondeterministic choice but it is an /algebraic/ operation.
-     t`Once` is a unary scoped operation, which keeps only the first result of a computaiton.
+  2. t`NondetOr` is also a nondeterministic choice, but it is an /algebraic/ operation.
+     t`Once` is a unary scoped operation, which keeps only the first result of a computation.
 
   3. t`CutFail` fails the computation and also stops exploring more nondeterministic branches.
      t`CutCall` is a unary scoped operation that delimits the scope that t`CutFail` affects.
-     Using these two operation, a `cut` operation in the style of Prolog can be implemented.
+     Using these two operations, a `cut` operation in the style of Prolog can be implemented.
 
 These operations have the following handlers:
 
   1. t`Choose` and t`Empty` are handled using `Control.Effect.Nondet.Alternative.alternative`
-     or its specialisation such as `list` and `Control.Effect.Nondet.Alternative.logic`.
+     or its specialisations, such as `list` and `Control.Effect.Nondet.Alternative.logic`.
 
   2. t`NondetOr` and t`Once`, together with the operations above, are handled
      using handlers from "Control.Effect.Nondet.List" or

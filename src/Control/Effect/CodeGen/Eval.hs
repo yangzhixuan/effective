@@ -144,7 +144,7 @@ stageHM h p =
 
 
 -- | This is an ad-hoc generalisation of `stageHM'` which allows an additional wrapper @f@
--- in the result type, but multiple layers of wrappers @f1 (f2 (... CodeQ b))@ is not supported.
+-- in the result type, but multiple layers of wrappers @f1 (f2 (... CodeQ b))@ are not supported.
 -- There should be a better way to do this.
 stageHM'
   :: forall m f g xeffs yeffs effs oeffs ts a b.

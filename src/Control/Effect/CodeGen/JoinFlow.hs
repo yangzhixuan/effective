@@ -7,9 +7,9 @@ Stability   : experimental
 
 When using the code-generation effect in meta-programs, we frequently use functions from
 "Control.Effect.CodeGen.Split" to split code generation into different branches. Clearly,
-splitting too much would lead to blow up of code size. One simple fix is to use the `reset`
+splitting too much would lead to a blow-up in code size. One simple fix is to use the `reset`
 operation from "Control.Effect.CodeGen.Up", which binds the current result of code generation
-to a let-binding and restart code-generation again (with a single generation branch).
+to a let-binding and restarts code generation (with a single generation branch).
 
 A small flaw of this solution is that it forces all previous generation branches
 to share a single \'join point\', and this sometimes forces us to generate
@@ -18,12 +18,12 @@ code-generation branches, and some of them return values of type @a@ and
 all others return values of type @b@.
 If we have only one join point, the shared join point has to receive a value of
 type @Either a b@, and we need to insert @Left@ and @Right@ in all branches
-to invoke this shared join point. However, there is no reason we can have only
-one single join point, we should just generate two joint points (using
+to invoke this shared join point. However, there is no reason we should have only
+one join point; we should just generate two join points (using
 let-bindings), one receiving @a@-values and the other receiving @b@-values.
 
-This module provides an operation `joinFlow` to do this automatically. This
-technique in this module is described in Section 3.5 of Andras Kovacs's [ICFP
+This module provides an operation `joinFlow` to do this automatically. The
+technique used in this module is described in Section 3.5 of Andras Kovacs's [ICFP
 2024 paper](https://dl.acm.org/doi/10.1145/3674648), where the operation is
 called @join@.
 -}
@@ -72,7 +72,7 @@ instance HFunctor JoinFlow where
   hmap f (JoinFlow o k) = JoinFlow (f o) k
 
 -- | If @x@ is a type isomorphic to @(CodeQ a11, ..., a1n1) + .. + (CodeQ an1, ... , CodeQ amn_m)@,
--- @joinFlow p@ creates a join point for each of the summand (each receiving a value of
+-- @joinFlow p@ creates a join point for each summand (each receiving a value of
 -- the corresponding product type) and resumes the code generation from these join points.
 joinFlow
   :: forall x effs.

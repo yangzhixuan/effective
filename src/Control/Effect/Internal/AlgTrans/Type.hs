@@ -40,7 +40,7 @@ newtype AlgTransC effs oeffs ts cs = AlgTransC {
 
 -- * Constraints
 
--- | The always true constraint.
+-- | The always-true constraint.
 class    TruthC (m :: Type -> Type) where
 instance TruthC m where
 

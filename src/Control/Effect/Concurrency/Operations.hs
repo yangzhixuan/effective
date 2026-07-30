@@ -1,6 +1,6 @@
 {-|
 Module      : Control.Effect.Concurrency.Operations
-Description : The operations the concurrency effect
+Description : The operations for the concurrency effect
 License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
@@ -10,7 +10,7 @@ of process calculi). We have the following operations:
 
   1. an algebraic operation @`act` :: a ~> ()@ for performing an operation
   2. a binary scoped operation @`par`@ for running two processes in parallel
-  3. a unary scoped operation @`act` a@ with an parameter @a@ for restricting
+  3. a unary scoped operation @`res` a@ with a parameter @a@ for restricting
      the action @a@ in the scope.
 
 Any type @a@ satisfying the constraint `Action a` can be used as the type of
@@ -19,7 +19,7 @@ which returns @Nothing@ if the two actions cannot synchronise and returns @Just
 a'@ if the two arguments can synchronise and produce the action @a'@ together.
 
 A canonical choice of the type of actions is `CCSAction`, in which an action can
-only synchronise with its dual actions, producing some silent action together.
+only synchronise with its dual action, producing a silent action together.
 This is exactly how /calculus of communication systems/ works.
 
 Currently this module doesn't have an operation for passing values between
@@ -45,7 +45,7 @@ class Eq a => Action a where
   merge :: a -> a -> Maybe a
 
 -- | Asymmetric actions in the style of Calculus for Communicating Systems (CCS)
--- The silent action stores the name of completed internal action for debugging purposes.
+-- The silent action stores the name of a completed internal action for debugging purposes.
 data CCSAction a = Silent a | Action a | CoAction a deriving (Show, Eq, Ord)
 
 instance Eq a => Action (CCSAction a) where

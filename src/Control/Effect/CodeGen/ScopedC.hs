@@ -18,7 +18,7 @@ import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Lazy as L
 
 -- | The family of _staged scoped_ operations, which are scoped operations with the
--- restriction that the return value must be sum of products of code. See `scpCIso`.
+-- restriction that the return value must be a sum of products of code. See `scpCIso`.
 data ScpC (sig :: Type -> Type) (m :: Type -> Type) (x :: Type) where
   ScpC :: sig (m (CodeQ y)) -> ((CodeQ y) -> x) -> ScpC sig m x
 
@@ -67,8 +67,8 @@ instance Functor sig => Forward (ScpC sig) (ReaderT s) where
     let x = fmap (flip runReaderT r) op
     in Iso.fwd scpCIso alg (Scp x))
 
--- | We can only forward staged scoped operations along t`MaybeT` when we have also
--- the code-generation effects to generate a case splitting. Consequently, this
+-- | We can only forward staged scoped operations along t`MaybeT` when we also have
+-- the code-generation effects to generate a case split. Consequently, this
 -- forwarder doesn't fit into the `Forward` class, but we can use it manually
 -- when needed.
 scpCMaybeFwd :: Functor sig => AlgTrans '[ScpC sig] '[ScpC sig, CodeGen] '[MaybeT] Monad
@@ -83,8 +83,8 @@ scpCExceptFwd = algTrans1 $ \oalg -> Iso.bwd scpCIso (\(Scp op) -> ExceptT $
       y = Iso.fwd scpCIso (callM oalg) (Scp x)
   in do cMb <- y; splitM oalg cMb)
 
--- | We can only forward staged scoped operations along t`MaybeT` when we have also
--- the code-generation effects to generate a case splitting. Consequently, this
+-- | We can only forward staged scoped operations along t`StateT` when we also have
+-- the code-generation effects to generate a case split. Consequently, this
 -- forwarder doesn't fit into the `Forward` class, but we can use it manually
 -- when needed.
 scpCStateFwd :: Functor sig => AlgTrans '[ScpC sig] '[ScpC sig, CodeGen] '[L.StateT (CodeQ s)] Monad

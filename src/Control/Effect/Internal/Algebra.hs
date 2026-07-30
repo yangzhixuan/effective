@@ -108,7 +108,7 @@ type Effect = (Type -> Type) -> (Type -> Type)
 -- @
 -- Algebra_ s [eff1, ..., eff_n] f = forall x. (eff1 f x -> f x, ..., eff_n f x -> f x)
 -- @
--- The parameter @s@ is a data structure (satisfying the contraint `Sequence`) for
+-- The parameter @s@ is a data structure (satisfying the constraint `Sequence`) for
 -- better internal representation of the components of the algebra.
 newtype Algebra_
   (s :: Type -> Type)
@@ -119,7 +119,7 @@ newtype Algebra_
 -- | The default data structure for storing algebras is finger trees.
 type Algebra effs f = Algebra_ FT.Seq effs f
 
--- | Array-based representation is useful for fast accessing after we
+-- | The array-based representation is useful for fast access after we
 -- construct the algebra.
 type AlgebraArray effs f = Algebra_ Arr.SmallArray effs f
 
@@ -195,7 +195,7 @@ viewAlg (Algebra aas) = (headCase aas, Algebra $ tailCase aas)
 toAlgebraArray :: (Sequence s) => Algebra_ s effs m -> AlgebraArray effs m
 toAlgebraArray (Algebra (Case s)) = Algebra (Case (seqToArray s))
 
--- | The @cons@-constructor for algebras. In this library, the character @#@ is associated to
+-- | The @cons@-constructor for algebras. In this library, the character @#@ is associated with
 -- operations on algebras.
 infixr 5 :#
 {-# INLINE (:#) #-}
@@ -214,7 +214,7 @@ pattern (:#.)
 pattern a :#. b <- (viewAlg -> (a,viewAlg -> (b, _))) where
   a :#. b = a :# (b :# emptyAlg)
 
--- | The @cons@-constructor for cases. In this library, the character @%@ is associated to
+-- | The @cons@-constructor for cases. In this library, the character @%@ is associated with
 -- operations on cases.
 infixr 5 :%
 {-# INLINE (:%) #-}
@@ -245,7 +245,7 @@ instance Sequence s => Functor (Case_ s effs f x) where
 -- * Membership of an effect in effect rows
 --------------------------------------------------------------------------------
 
--- | @Member eff effs@ is the constraint that @eff@ is an member of the list @effs@.
+-- | @Member eff effs@ is the constraint that @eff@ is a member of the list @effs@.
 -- This class is inductively instantiated.
 class Member (eff :: Effect) (effs :: [Effect]) where
   -- | The index of @eff@ in @effs@.
@@ -254,7 +254,7 @@ class Member (eff :: Effect) (effs :: [Effect]) where
   -- TODO: We are relying on GHC to optimise @(1 + 1 + ... + 0)@ to a numeral
   -- @n@ statically. A more reliable way is to make the length a type-level
   -- @Nat@ and use @KnownNat@, but this makes the error message slightly more
-  -- complex, and in all tests the current implementation always has @1 + 1 + + -- ... 0@
+  -- complex, and in all tests the current implementation always has @1 + 1 + ... + 0@
   -- folded.
 
 {-# INLINE dispatch #-}
@@ -353,7 +353,7 @@ callKM oalg x k = callM oalg x >>= k
 -- weakening an algebra of @yeffs@ to an algebra of @xeffs@ by 'weakenAlg'.
 type Members xeffs yeffs = (Members_ xeffs yeffs, KnownEffs xeffs)
 
--- | @Members_ effs effs'@ holds when every @eff@ which is a 'Member' of in @effs@
+-- | @Members_ effs effs'@ holds when every @eff@ which is a 'Member' of @effs@
 -- is also a 'Member' of @effs'@.
 type family Members_ (xeffs :: [Effect]) (xyeffs :: [Effect]) :: Constraint where
   Members_ '[]             xyeffs = ()
@@ -364,19 +364,19 @@ data SEffs (effs :: [Effect]) where
   SNil :: SEffs '[]
   SCons :: forall eff effs. SEffs effs -> SEffs (eff ': effs)
 
--- | @KnownEffs xeffs@ when @xeffs@ is a canonical elements of @[Effect]@; that is to say,
+-- | @KnownEffs xeffs@ holds when @xeffs@ is a canonical element of @[Effect]@; that is,
 -- @xeffs@ is built from @[]@ and @:@. This allows us to do induction on @xeffs@.
 class KnownEffs (xeffs :: [Effect]) where
   -- | Runtime representation of @xeffs@. By induction on @singEffs@, the other
   -- members such as @lengthEffs@ can be defined, but we still include them in
   -- this type class so that they can be statically simplified by GHC (GHC doesn't
-  -- simplify recursive definitions but it simplies recursive type instances).
+  -- simplify recursive definitions, but it simplifies recursive type instances).
   singEffs :: SEffs xeffs
 
   -- | The number of effects in @xeffs@
   lengthEffs :: Int
 
-  -- | Weakens an algera that works on @xyeffs@ to work on @xeffs@ when
+  -- | Weakens an algebra that works on @xyeffs@ to work on @xeffs@ when
   -- every effect in @xeffs@ is in @xyeffs@.
   weakenAlg
     :: forall xyeffs s m.
@@ -405,7 +405,7 @@ instance KnownEffs effs => KnownEffs (eff : effs) where
   weakenAlg xyAlg = dispatch xyAlg :# weakenAlg @effs xyAlg
 
 -- | Constructs an algebra for the union containing @xeffs `Union` yeffs@
--- by using an algebra for the union @xeffs@ and aonther for the union @yeffs@.
+-- by using an algebra for the union @xeffs@ and another for the union @yeffs@.
 -- If an effect is in both @xeffs@ and @yeffs@, the algebra for @xeffs@ is used.
 {-# INLINE unionAlg #-}
 unionAlg
@@ -504,7 +504,7 @@ EmptyAlgC #$ galg = galg
 
 appendAlgC = (#$)
 
--- | It is useful in @a :#.$ b :#.$ c :#.$ d@ to end a squence of staged algebras.
+-- | It is useful in @a :#.$ b :#.$ c :#.$ d@ to end a sequence of staged algebras.
 infixr 5 :#.$
 pattern (:#.$) :: CodeQ (eff m -.> m) -> CodeQ (eff' m -.> m) -> AlgebraC ([eff, eff']) m
 pattern a :#.$ b = (a :#$ (b :#$ EmptyAlgC))
@@ -533,7 +533,7 @@ splitAlgC = go singEffs where
   go SNil cbs = (EmptyAlgC, cbs)
   go (SCons s) (ca :#$ cabs) = let (cas, cbs) = go s cabs in ((ca :#$ cas), cbs)
 
--- | Generating a code of an algebra from a staged algebra
+-- | Generate code for an algebra from a staged algebra.
 genAlgebra :: AlgebraC effs f -> CodeQ (Algebra effs f)
 genAlgebra EmptyAlgC = [|| emptyAlg ||]
 genAlgebra (ac :#$ acs) = [|| at $$ac :# $$(genAlgebra acs) ||]

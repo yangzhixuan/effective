@@ -117,7 +117,7 @@ uncensors :: forall w a . Handler '[Censor w] '[] '[] a a
 uncensors = handler' id ((\(Censor (_ :: w -> w) k) -> k) :# emptyAlg)
 
 -- | The @`censors` f@ handler applies an initial function @f@ to the
--- any output produced by `tell`. If a @`censor` f' p@ operation is encountered,
+-- output produced by `tell`. If a @`censor` f' p@ operation is encountered,
 -- @p@ will be censored by the composition @f . f'@, and the `censor` operation
 -- will be consumed.
 censors :: forall w a . (w -> w) -> Handler '[Tell w, Censor w] '[Tell w] '[ReaderT (w -> w)] a a

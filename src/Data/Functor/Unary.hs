@@ -10,7 +10,7 @@ module Data.Functor.Unary where
 import Data.Functor.Identity
 
 -- | `Unary f` says that the functor `f` is the signature for a unary operation
--- with possibly some parameters.
+-- possibly with some parameters.
 class (Functor f) => Unary f where
   -- | Extracting the unique element @x@ stored in @f x@.
   get :: f x -> x

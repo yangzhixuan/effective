@@ -9,16 +9,16 @@ This module contains algebra transformers for t`ResUpT`, the monad transformer t
 used at the meta level for resumption. The monad transformer t`ResUpT` can be downed
 to and upped from the (object-level) resumption monad transformer @ResT@.
 Moreover, for every functor @s@, the monad @ResUpT s n@ supports algebraic
-operations of signature @s@ the same way as @ResT s@.
+operations of signature @s@ in the same way as @ResT s@.
 
 However, we also have operations on @ResT s m@ that are defined by pattern matching
-and recursion, such as @parL@ in "Control.Monad.Trans.CResT". These operations can't
+and recursion, such as @parL@ in "Control.Monad.Trans.CRes". These operations can't
 be implemented on @ResUpT@ because @ResUpT@ doesn't support pattern matching.
 
-An imperfect workaround is to have /restricted version/ of these operations at the meta
+An imperfect workaround is to have a /restricted version/ of these operations at the meta
 level, such as @parUp :: m (CodeQ x) -> m (CodeQ x) -> m (CodeQ x)@ where the return value
 must be code, and t`ResUpT` supports operations like this by downing
-the arguments to the object level and invoke the object-level algebra, and then up
+the arguments to the object level, invoking the object-level algebra, and then upping
 the result back to the meta level. This is of course very unsatisfactory but currently
 I don't know how to do better.
 -}
@@ -77,7 +77,7 @@ parGenIO (Par p q) = GenM $ \k ->
 -- | The operation `par` on `CResT` needs to perform pattern matching on the resumption
 -- monad, but `CResUpT` can't be pattern matched. Therefore here we simply
 -- `down` the two processes and perform `par` at the object level. As a result,
--- the two processes have to return an CodeQ-type.
+-- the two processes have to return a CodeQ type.
 parResUp
   :: forall n m a x.
      ( n $~> m, Monad n, Monad m, Action a )

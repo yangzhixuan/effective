@@ -7,17 +7,17 @@ Maintainer  : Zhixuan Yang
 Stability   : experimental
 
 This module provides the effect of higher-order store, that is, mutable state that
-supports dynamically creation of cells that store values of /any (lifted) type/.
+supports the dynamic creation of cells that store values of /any (lifted) type/.
 This module eliminates the problems mentioned in the sister module "Control.Effect.HOStore.Unsafe"
 using a technique similar to Haskell's @ST@ monad. The reference type t`Ref` and the types of the
 operations t`Put`, t`New`, t`Get` are all indexed by an additional \'world\' index @w@, and the
 handler can only be applied to programs polymorphic in the world parameter.
-Currently, @effective@ doesn't have machinery for such /word-indexed/ handlers and operations, so
+Currently, @effective@ doesn't have machinery for such /world-indexed/ handlers and operations, so
 this module only exports handling functions such as `runHS`, `handleHS`, `handleHSP`, `handleHSM`
 without exporting an actual handler that can be combined with other handlers.  This situation may
 be changed in future versions of @effective@.
 
-The author conjecture with reasonable confidence that the API exposed by this module is safe (i.e.
+The author conjectures with reasonable confidence that the API exposed by this module is safe (i.e.
 reading/writing a reference always succeeds) when this module is used with any algebraic and scoped
 effects (in whatever handling order). But if there are higher-order operations @op@ that are not
 scoped operations and these operations @op@ are handled /after/ higher-order store, one should be
@@ -106,11 +106,11 @@ get r = call (Get r id)
 -- | Internal representation of the store.
 type Mem = M.Map Loc Any
 
--- | The effects of higher-order in world @w@.
+-- | The effects of higher-order store in world @w@.
 type HSEffs w = '[Put w, Get w, New w]
 
 -- | The handler of higher-order store. This is not exported because currently
--- effective does not have a world-indexed handdler API. Users of higher-order
+-- effective does not have a world-indexed handler API. Users of higher-order
 -- store now can only use functions such as `handleHSM` exported by this module.
 hstore :: Handler (HSEffs w) '[] '[St.StateT Mem] a a
 hstore = handler' (flip St.evalStateT M.empty) hstoreAlg
@@ -132,7 +132,7 @@ hstoreAlg =
          St.put mem'
          return (p (Ref @w n)))
 
--- | Running a program with only the effect of higher-order on the empty store, extracting
+-- | Running a program with only the effect of higher-order store on the empty store, extracting
 -- the final pure result.
 runHS, handleHS :: forall a. (forall w. Prog (HSEffs w) a) -> a
 runHS p = handle identity (handleHSP p)

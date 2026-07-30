@@ -5,8 +5,8 @@ License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
 
-This module contains the monad transformer to be used at the meta level to
-the resumption monad transformers.
+This module contains the monad transformer to be used at the meta level for
+resumption monad transformers.
 -}
 
 {-# LANGUAGE TemplateHaskell #-}
@@ -37,7 +37,7 @@ instance Monad (ResUpT l n) where
   p >>= k = ResUpT $ \k1 k2 ->
     runResUpT p (\a -> runResUpT (k a) k1 k2) k2
 
--- | Perform an @l@-action and resumes as the @ResUpT l n a@ wrapped in the functor @l@.
+-- | Perform an @l@-action and resume as the @ResUpT l n a@ wrapped in the functor @l@.
 resUpOp :: Functor l => l (ResUpT l n a) -> ResUpT l n a
 resUpOp l = ResUpT $ \k1 k2 -> k2 (fmap (\p -> runResUpT p k1 k2) l)
 

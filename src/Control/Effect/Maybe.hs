@@ -86,9 +86,9 @@ retryAlg (Catch p q) = MaybeT $
              Just x  -> return (Just x)
   in loop p q
 
--- | The 'retry' handler will interpet @catch p q@  by first trying @p@.
--- If it fails, then @q@ is executed as a recovering clause.
--- If the recovery fails then the computation is failed overall.
+-- | The 'retry' handler will interpret @catch p q@ by first trying @p@.
+-- If it fails, then @q@ is executed as a recovery clause.
+-- If the recovery fails, then the computation fails overall.
 -- If the recovery succeeds, then @catch p q@ is attempted again.
 retry :: Handler [Throw, Catch] '[] '[MaybeT] a (Maybe a)
 retry = Handler (runner' runMaybeT) retryAT

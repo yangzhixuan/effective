@@ -54,7 +54,7 @@ class Forward (eff :: Effect) (t :: (Type -> Type) -> (Type -> Type)) where
     -> (forall x. eff (t m) x -> t m x)
 
   -- | @fwdC@ is the staged version of `fwd` that works on code of algebras. It has a default
-  -- implementation in terms of `fwd` but it is possible more efficient implementations exist
+  -- implementation in terms of `fwd`, but it is possible that more efficient implementations exist
   -- for some @t@.
   fwdC
     :: forall m.
@@ -66,7 +66,7 @@ class Forward (eff :: Effect) (t :: (Type -> Type) -> (Type -> Type)) where
 {-
 -- In theory the following instance is very useful but it causes conflicting
 -- definitions of the associated type family @FwdConstraint@ with the instance
--- @Forward (Alg eff) t@, and I don't know how to workaround it.
+-- @Forward (Alg eff) t@, and I don't know how to work around it.
 
 instance HFunctor eff => Forward eff IdentityT where
   type FwdConstraint eff IdentityT = Functor
@@ -75,7 +75,7 @@ instance HFunctor eff => Forward eff IdentityT where
 
 -- | This class builds a forwarder for @effs@ by recursion over @effs@,
 -- by ensuring that each effect can be forwarded through a given @t@.
--- This is an internal typeclass that the user of @effective@ don't need
+-- This is an internal type class that users of @effective@ don't need
 -- to use explicitly.
 class ForwardEffs effs (t :: (Type -> Type) -> (Type -> Type))  where
   type FwdEffsConstraint effs t :: (Type -> Type) -> Constraint

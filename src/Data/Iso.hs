@@ -18,7 +18,7 @@ data Iso a b = Iso { fwd :: !(a -> b), bwd :: !(b -> a) }
 refl :: Iso a a
 refl = Iso id id
 
--- | Isomorphism are invertible.
+-- | Isomorphisms are invertible.
 sym :: Iso a b -> Iso b a
 sym (Iso f g) = Iso g f
 

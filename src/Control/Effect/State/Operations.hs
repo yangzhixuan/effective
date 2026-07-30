@@ -5,7 +5,7 @@ License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
 
-In this module we define two operatiosn @put@ and @get@ for writing and reading
+In this module we define two operations, @put@ and @get@, for writing and reading
 a mutable state. We use our Template Haskell helper `makeGen` to define these
 two operations, which is equivalent to writing the following code:
 
@@ -31,12 +31,12 @@ put s = call (Alg (Put_ s ()))
 putM :: Member (Put s) effs => Algebra effs m -> s -> m ()
 putM alg s = callM alg (Alg (Put_ s ()))
 
--- | Invoking a named put operatin using a proxy argument.
+-- | Invoking a named put operation using a proxy argument.
 {-# INLINE putP #-}
 putP :: Member (n :@ Put s) effs => Proxy n -> s -> Prog effs ()
 putP p s = callP p (Alg (Put_ s ()))
 
--- | Invoking a named put operatin using explicit type argument (since GHC 9.10.1)
+-- | Invoking a named put operation using an explicit type argument (since GHC 9.10.1)
 {-# INLINE putN #-}
 putN :: forall n -> Member (WithName n (Put s)) effs => s -> Prog effs ()
 putN p s = callN p (Alg (Put_ s ()))
@@ -50,7 +50,7 @@ data Get_ s k where
 -- | Higher-order signature for getting a value from the state.
 type Get s = Alg (Get_ s)
 
--- | Pattern synoym for matching a @get@ operation
+-- | Pattern synonym for matching a @get@ operation
 pattern Get k = Alg (Get_ k)
 
 -- | Invoking the get operation

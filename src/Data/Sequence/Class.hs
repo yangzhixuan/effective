@@ -6,9 +6,9 @@ Maintainer  : Zhixuan Yang
 Stability   : experimental
 
 This module defines a typeclass `Sequence` for data structures that store
-sequences of elements, such as lists, finger trees, arrays. In this library,
+sequences of elements, such as lists, finger trees, and arrays. In this library,
 we store the handling code of effectful operations as a sequence, but we do
- not need to commit to a fixed data structure, so `Sequence` is defined.
+not need to commit to a fixed data structure, so `Sequence` is defined.
 -}
 module Data.Sequence.Class where
 
@@ -37,8 +37,8 @@ class Functor l => Sequence (l :: Type -> Type) where
   -- means that the sequence is @cons a as@.
   view :: l a -> Maybe (a, l a)
 
-  -- | @fst (split l n)@ is the first @n@-elements of @l@. When @l@ doesn't have
-  -- @n@-elements, @fst (split l n)@ should be equal to @l@. @snd (split l n)@
+  -- | @fst (split l n)@ is the first @n@ elements of @l@. When @l@ doesn't have
+  -- @n@ elements, @fst (split l n)@ should be equal to @l@. @snd (split l n)@
   -- should be the rest of the elements in @l@ after @fst (split l n)@.
   split :: l a -> Int -> (l a, l a)
 
@@ -48,7 +48,7 @@ class Functor l => Sequence (l :: Type -> Type) where
   -- | Convert from an array.
   seqFromArray :: A.SmallArray a -> l a
 
-  -- | Convert the squence to a list.
+  -- | Convert the sequence to a list.
   seqToList :: l a -> [a]
 
   -- | Convert from a list.

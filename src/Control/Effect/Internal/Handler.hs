@@ -5,13 +5,13 @@ License     : BSD-3-Clause
 Maintainer  : Nicolas Wu, Zhixuan Yang
 Stability   : experimental
 
-This module contains the definition of handlers in @effective@. An handler
+This module contains the definition of handlers in @effective@. A handler
 consists of an algebra transformer and a runner. The algebra transformer handles
 operations and is the main component of a handler, while a runner is supposed to
-some initialisation or finalisation work.
+do some initialisation or finalisation work.
 
 The function `handle` and its variations apply a handler to a program. Other
-functions in this module are handler combinators that builld handlers from
+functions in this module are handler combinators that build handlers from
 smaller ones.
 
 Handler combinators are the main innovation of this library.
@@ -133,7 +133,7 @@ handler
   -> Handler effs oeffs ts a b
 handler run alg = Handler (Runner run) (AlgTrans alg)
 
--- | Given @hrun@ and @halg@ will construct a @Handler effs oeffs ts fs@. This
+-- | Given @hrun@ and @halg@, constructs a @Handler effs oeffs ts fs@. This
 -- is a simplified version of the @Handler@ constructor where @run@ and @alg@ do
 -- not need output effects.
 {-# INLINE handler' #-}
@@ -257,7 +257,7 @@ interpret1 rephrase = interpret (rephrase :% emptyCase)
 {-# INLINE interpretM #-}
 -- | A generalisation of `interpret` for non-algebraic operations.
 -- The result of @interpretM mrephrase@ is a new @Handler effs oeffs '[] '[]@.
--- This is created by using the supplied @mrephrase@ parameter.
+-- This is created by using the supplied @mrephrase@ parameter
 -- to rephrase @effs@ into an arbitrary monad @m@.
 -- When @mrephrase@ is used, it is given an @oalg :: Algebra oeffs m@
 -- parameter that makes it possible to create a value in @m@.
@@ -298,7 +298,7 @@ interpretM1C mrephrase
   = HandlerC (RunnerC $ \_ -> [|| id ||]) (AlgTransC (\oalgc -> mrephrase oalgc :#$ emptyAlgC ))
 
 -- | Case splitting on the union of two effect rows. Note that `Union` is defined
--- two be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
+-- to be @effs1 ++ (effs2 :\\ effs1)@, so if an effect @e@ is both a member of @effs1@
 -- and @effs2@, it is consumed by the first handler.
 {-# INLINE caseHdl #-}
 caseHdl
@@ -351,8 +351,8 @@ appendHdl (Handler r1 a1) (Handler _ a2) = Handler (weakenR r1) (weakenCS (appen
 -- effects of @effs1@ and those of @effs2@, as well as deal with the effects
 -- @oeffs1@ produced by @h1@ using @h2@ appropriately. More precisely, if a
 -- member of @oeffs1@ is in @effs2@, then it is consumed by @h2@; if it is not
--- in @effs2@, it can only be re-produced by the fused handler and in this case
--- they have to be forwardable by @ts2@. Moreover, the effects @effs2@ are
+-- in @effs2@, it can only be reproduced by the fused handler, and in this case
+-- it has to be forwardable by @ts2@. Moreover, the effects @effs2@ are
 -- handled by @h2@ so they must be forwardable by @ts1@.
 infixr 9 `fuse`, |>
 {-# INLINE fuse #-}
@@ -439,7 +439,7 @@ fuseAppC (HandlerC run1 malg1) (HandlerC run2 malg2)
 (++>$) = fuseAppC
 
 -- | Piping two handlers @h1@ and @h2@ is like 'subtraction of handlers': @h2@ handles
--- the effects produced by @h1@ but it does not any 'upstream effects'. For this reason
+-- the effects produced by @h1@, but it does not handle any 'upstream effects'. For this reason
 -- the operator @\\@ is left associated.
 infixl 9 `pipe`
 {-# INLINE pipe #-}
@@ -657,7 +657,7 @@ handleMFwds
      , Members yeffs xeffs
      , ForwardsM yeffs ts
      , HandleM# effs yeffs )
-  => Proxy yeffs                    -- ^ @yeffs@ can't be infered so must be given explicitly
+  => Proxy yeffs                    -- ^ @yeffs@ can't be inferred, so it must be given explicitly
   -> Algebra xeffs m                -- ^ Algebra @xalg@ for external effects @xeffs@
   -> Handler effs oeffs ts a b      -- ^ Handler @h@
   -> Prog (effs `Union` yeffs) a
@@ -690,9 +690,9 @@ handleMFwdsC _ yalg (HandlerC (RunnerC r) (AlgTransC a)) p =
   ||]
 
 -- | @handleMApp xalg h p@ is a variant of `handleM` where @effs `Union` xeffs@
--- is replaced by '(:++)'.  In most cases, `handleM` used be used but sometimes
+-- is replaced by '(:++)'. In most cases, `handleM` should be used, but sometimes
 -- limitations regarding class constraints in GHC necessitate the use of
--- @handleMApp@ (for example, in `Control.Effect.HOStore.Safe.handleHSM`).
+-- @handleMApp@ (for example, in `Control.Effect.HStore.Safe.handleHSM`).
 
 handleMApp
   :: forall effs oeffs xeffs m ts a b.
@@ -744,7 +744,7 @@ handleP' = handleM' progAlg
 -- | @handlePApp h p@ is a variant of `handleP` where @effs `Union` xeffs@ is
 -- replaced by simply '(:++)'.  In most cases, you should just use `handleP` but
 -- sometimes limitations regarding class constraints in GHC necessitate the use
--- of @handleP'@ (for example, in `Control.Effect.HOStore.Safe.handleHSM`.)
+-- of @handleP'@ (for example, in `Control.Effect.HStore.Safe.handleHSM`.)
 handlePApp
   :: forall effs oeffs xeffs ts a b.
      ( ForwardsM xeffs ts

@@ -7,9 +7,9 @@ Stability   : experimental
 
 This module contains everything related to the code-generation effect for
 staged monadic programming. This effect is useful for writing highly optimised
-effectful programs without any abstract cost incurred by algebraic effects and
-handlers. Programming with the code-generation effect slightly changes the way
-of using the @effective@ library, so it deserves its own dedicated tutorial
+effectful programs without any abstraction overhead incurred by algebraic effects and
+handlers. Programming with the code-generation effect slightly changes how
+the @effective@ library is used, so it deserves its own dedicated tutorial
 (to be written). The rough idea is that instead of handling effectful programs
 of type @Prog effs a@ at runtime, we only use @effective@ at compile time to
 generate (optimised) monadic programs (e.g. of type @StateT (ListT Identity) a@)

@@ -65,7 +65,7 @@ idAT :: forall effs cs. AlgTrans effs effs '[] cs
 idAT = AlgTrans \alg -> alg
 
 -- | In this library, constraints with names ending with a hash will always be
--- satisfied automatically when the parameters are instantied by concrete values.
+-- satisfied automatically when the parameters are instantiated with concrete values.
 -- Users don't need to care about them.
 type CompAT# ts1 ts2 = ( forall m . Assoc ts1 ts2 m )
 
@@ -344,7 +344,7 @@ fuseAT'
               cs2
 fuseAT' at1 at2 = weakenCS (fuseAT at1 at2)
 
--- | `fuseAppAT` is a variant of `fuseAT` has a cruder type but better runtime
+-- | `fuseAppAT` is a variant of `fuseAT` that has a cruder type but better runtime
 -- performance. When @effs1@ and @effs2@ are disjoint and @oeffs1@ and @oeffs2@
 -- are disjoint, the behaviours of @fuseAppAT@ and @fuseAT@ are exactly the
 -- same. `fuseAppAT` is faster than `fuseAT` because `fuseAppAT` avoids
@@ -392,7 +392,7 @@ pipeAT
 --
 -- > pipeAT at1 at2 = generalFuse (Proxy @'[]) (Proxy @effs2) at1 at2
 --
--- But this would result in some always true but complex constraints, so let's
+-- But this would result in some always-true but complex constraints, so let's
 -- give a direct definition:
 pipeAT at1 at2 = AlgTrans $ \oalg ->
   getAT at1 (weakenAlg $
@@ -505,7 +505,7 @@ generalFuseAT _ _ at1 at2 = AlgTrans $ \oalg ->
 --
 -- Combinators for staged algebra transformers mirror those for ordinary algebra
 -- transformers. In the future I hope to find a way to unify the dynamic
--- version and staged version into a single definition.
+-- and staged versions into a single definition.
 
 -- | Staged version of 'algTrans1'
 algTrans1C

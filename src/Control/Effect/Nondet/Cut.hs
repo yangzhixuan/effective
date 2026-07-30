@@ -27,7 +27,7 @@ a new operation, like `try`, which can be interpreted
 as executing `once`, many times etc.
 
 One way to interpret `once` is into the list monad directly.
-An alternative is to interpet `once` into `cutFail` and `cutCall`,
+An alternative is to interpret `once` into `cutFail` and `cutCall`,
 which can then be interpreted using a `CutList`.
 -}
 
@@ -42,7 +42,7 @@ cutListAlg =
   (\CutFail -> CutListT (\cons nil zero -> zero)) :#.
   (\(CutCall xs) -> CutListT (\cons nil zero -> runCutListT xs cons nil nil))
 
--- | An Algebra transformer based on t`CutListT`
+-- | An algebra transformer based on t`CutListT`.
 cutListAT :: AlgTrans [Empty, Choose, NondetOr, CutFail, CutCall] '[] '[CutListT] Monad
 cutListAT = algTrans' cutListAlg
 

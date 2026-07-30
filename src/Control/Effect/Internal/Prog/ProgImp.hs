@@ -1,6 +1,6 @@
 {-|
 Module      : Control.Effect.Internal.ProgImp
-Description : Programs in impredicatie encoding
+Description : Programs in impredicative encoding
 License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
@@ -50,8 +50,8 @@ import GHC.TypeLits (natVal, KnownNat, Nat, type (+))
 import Unsafe.Coerce (unsafeCoerce)
 import Data.Proxy
 
--- | The impredicative-encoding of effectful programs. We work with array-based
--- representation of algebras for fast accessing.
+-- | The impredicative encoding of effectful programs. We work with an array-based
+-- representation of algebras for fast access.
 newtype Prog (effs :: [Effect]) a =
   Prog { runProg :: forall m . Monad m => AlgebraArray effs m -> m a }
 
@@ -71,7 +71,7 @@ unsafeCall n x = Prog $ \(alg :: AlgebraArray effs m) ->
       r p = runProg p alg
   in unsafeCallM n alg (hmap r x)
 
--- | A variant of `call` with an continuation argument given as return values.
+-- | A variant of `call` with a continuation argument given as return values.
 -- Semantically, @callJ = join . `call`@.
 {-# INLINE callJ #-}
 callJ
@@ -81,7 +81,7 @@ callJ
   -> Prog effs a
 callJ = join . call
 
--- | A variant of `call` with an continuation argument given as a function.
+-- | A variant of `call` with a continuation argument given as a function.
 -- Semantically, @callK x k = `call` x >>= k@.
 {-# INLINE callK #-}
 callK
@@ -147,7 +147,7 @@ instance Monad (Prog effs) where
   p >>= k = Prog $ \alg -> runProg p alg >>= (\a -> runProg (k a) alg)
 
 -- | Weaken a program of type @Prog effs a@ so that it can be used in place of a
--- program of type @Prog effs a@, when every @effs@ is a member of @effs'@.
+-- program of type @Prog effs' a@, when every effect in @effs@ is a member of @effs'@.
 {-# INLINE weakenProg #-}
 weakenProg
   :: forall effs effs' a.
@@ -157,7 +157,7 @@ weakenProg
 weakenProg p = Prog $ \alg -> runProg p (weakenAlg alg)
 
 -- | Evaluate a program using the supplied algebra. This is the universal
--- property from initial monad @Prog effs a@ equipped with the algebra @Eff effs
+-- property of the initial monad @Prog effs a@ equipped with the algebra @Eff effs
 -- m -> m@.
 {-# INLINE eval #-}
 eval

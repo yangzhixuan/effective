@@ -45,7 +45,7 @@ codeApp cql@(Code ql) cqr@(Code qr) = Code $
 
 -- * Operations specialised for `CodeQ`.
 --
--- Sometimes GHC has a hard time of inferring the type of operations like
+-- Sometimes GHC has a hard time inferring the type of operations like
 -- @put [|| ... ||]@ because the quotation by default has type @Code m@.
 -- So having some specialised operations is sometimes handy.
 

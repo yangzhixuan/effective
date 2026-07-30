@@ -12,7 +12,7 @@ To handle programs with IO, there are currently two ways:
   1. Use the function `handleIO` or `handleIO'` (both are specialisations
      of `handleMFwds`).
 
-  2. Use the funciton `handle` but have the handler `constIO` at the bottom
+  2. Use the function `handle` but have the handler `constIO` at the bottom
      of the handler stack.
 
 These two ways have no difference in terms of expressivity or performance, and
@@ -95,7 +95,7 @@ evalIO :: Prog '[Alg IO] a -> IO a
 evalIO = eval ioAlg
 
 -- | @`handleIO` h p@ evaluates @p@ using the handler @h@. The handler is
--- allowed to emit the operation @Alg IO@ and the program can used @Alg IO@ too.
+-- allowed to emit the operation @Alg IO@ and the program can use @Alg IO@ too.
 handleIO
   :: forall effs oeffs ts a b.
      ( Monad (Apply ts IO)

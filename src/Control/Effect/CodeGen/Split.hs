@@ -7,7 +7,7 @@ Stability   : experimental
 
 This module contains a typeclass `Split a b` with a member function
 @`genSplit :: CodeQ a -> Gen b`@ for generating a case split of the object
-level @a@-value and resulting in a @b@-value at meta-level in the
+level @a@ value, resulting in a @b@ value at the meta level in the
 code-generation monad.
 -}
 {-# LANGUAGE FunctionalDependencies, BlockArguments, TemplateHaskell #-}

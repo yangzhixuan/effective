@@ -93,7 +93,7 @@ resump :: forall a b . Action a => Handler '[Act a, Par, Res a] '[] '[C.CResT a]
 resump = handler' runAll resumpAlg
 
 -- | Resumption-based handler of concurrency. Non-deterministic choices are resolved
--- with the given list Booleans.
+-- with the given list of Booleans.
 resumpWith :: forall a b . Action a => [Bool] -> Handler '[Act a, Par, Res a] '[] '[C.CResT a] b (ActsMb a b)
 resumpWith choices = handler' (runWith choices) resumpAlg
 
@@ -113,7 +113,7 @@ jresump :: forall a b . Action a => Handler '[Act a, JPar, Res a] '[] '[C.CResT 
 jresump = handler' runAll jresumpAlg
 
 -- | Resumption-based handler of concurrency with joined parallel composition.
--- Non-deterministic choices are resolved with the given list Booleans.
+-- Non-deterministic choices are resolved with the given list of Booleans.
 jresumpWith :: forall a b. Action a => [Bool] -> Handler '[Act a, JPar, Res a] '[] '[C.CResT a] b (ActsMb a b)
 jresumpWith choices = handler' (runWith choices) jresumpAlg
 
@@ -135,7 +135,7 @@ jresumpWithM pb = handler (\oalg -> runWithM (eval oalg pb)) (\_ -> jresumpAlg)
 -- built-in concurrency API of Haskell from "Control.Concurrent". The idea is
 -- that every action @a@ is implemented as a pair of semaphores @s1@ and @s2@,
 -- performing this action @a@ is implemented as @do waitQSem s1; signalQSem s2@,
--- while performing the dual of @a@ is implemented as @do signalSem s1; waitQSem
+-- while performing the dual of @a@ is implemented as @do signalQSem s1; waitQSem
 -- s2@. In this way, performing @a@ and the dual of @a@ are always synchronised.
 
 -- | Mapping an action to two semaphores.
@@ -230,7 +230,7 @@ ccsByQSemC = (interpretMC (\o -> actionAlg o :#.$ resAlg o) \\$ R.readerC [||M.e
     ||]
 
 
--- | Interprets t`Control.Effect.Concurrency.Par` using the native concurrency API.
+-- | Interprets t`Control.Effect.Concurrency.Par` using the native concurrency API
 -- from `Control.Concurrent`.
 parIOAlg :: Algebra '[Par] IO
 parIOAlg = singAlg $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l
@@ -239,7 +239,7 @@ parIOAlg = singAlg $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r)
 parIOAlgC :: AlgebraC '[Par] IO
 parIOAlgC = [|| NT $ \(Par l r) -> Control.Concurrent.forkIO (fmap (const ()) r) >> l ||] :#$ emptyAlgC
 
--- | Interprets t`Control.Effect.Concurrency.JPar` using the native concurrency API.
+-- | Interprets t`Control.Effect.Concurrency.JPar` using the native concurrency API
 -- from "Control.Concurrent". The result from the child thread is passed back to the
 -- main thread using @MVar@.
 jparIOAlg :: Algebra '[JPar] IO

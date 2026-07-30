@@ -5,7 +5,7 @@ License     : BSD-3-Clause
 Maintainer  : Nicolas Wu
 Stability   : experimental
 
-This module defines The family of algebraic operations. For every functor
+This module defines the family of algebraic operations. For every functor
 @sig :: Type -> Type@, an algebraic operation of signature @sig@ on a monad
 @m@ is a function @op :: forall a. sig (m a) -> m a@ satisfying the following
 property:

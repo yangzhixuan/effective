@@ -63,7 +63,7 @@ nondet :: Handler [Empty, NondetOr] '[] '[ListT] a [a]
 nondet = handler' runListT' (emptyAlg :#. nondetOrAlg)
 
 -- | This handler additionally handles t`Once` and the scoped operation `Choose` (the
--- the `Alternative` instance on t`Prog` uses `Choose`).
+-- `Alternative` instance on t`Prog` uses `Choose`).
 backtrack :: Handler [Empty, Choose, NondetOr, Once] '[] '[ListT] a [a]
 backtrack = handler' runListT' (emptyAlg :# chooseAlg :# nondetOrAlg :#. onceAlg)
 
@@ -71,8 +71,8 @@ backtrack = handler' runListT' (emptyAlg :# chooseAlg :# nondetOrAlg :#. onceAlg
 nondet' :: Handler [Empty, Choose, NondetOr] '[] '[ListT] a [a]
 nondet' = handler' runListT' (emptyAlg :# chooseAlg :#. nondetOrAlg)
 
--- | A variant of `backtrack` that does not handle t`Choose`.
--- supporting backtracking.
+-- | A variant of `backtrack` that does not handle t`Choose` but still
+-- supports backtracking.
 backtrack' :: Handler [Empty, NondetOr, Once] '[] '[ListT] a [a]
 backtrack' = handler' runListT' (emptyAlg :# nondetOrAlg :#. onceAlg)
 

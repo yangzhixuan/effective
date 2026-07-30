@@ -5,10 +5,10 @@ License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
 
-This module provides an \'imitater\' effect that clones an existing effect.
+This module provides an \'imitator\' effect that clones an existing effect.
 The effect @WithName name eff@ is simply a newtype wrapper of @eff@, so the
-existing handlers of @eff@ can be transported to be handlers of @WithName name eff@.
-A typical use case of this effect is for having multiple instances of mutable state.
+existing handlers of @eff@ can be transported to handlers of @WithName name eff@.
+A typical use case for this effect is having multiple instances of mutable state.
 -}
 {-# LANGUAGE GeneralizedNewtypeDeriving, QuantifiedConstraints, TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances, CPP #-}
@@ -48,7 +48,7 @@ import Control.Effect.Family.Scoped
 import Data.Kind (Type)
 
 -- | Make a copy of an effect signature and attach a name to it.
--- This is useful when more than one instances of the same effect
+-- This is useful when more than one instance of the same effect
 -- are needed in a program.
 newtype WithName
   name
@@ -78,8 +78,8 @@ type family RenameAll name (effs :: [Effect]) :: [Effect] where
 
 -- | Rename a single member in the input effects.
 --
--- The implementation is based on unsafe coercision but it is actually safe because
--- @Effs effs f x@ and @Effs (Rename name eff effs) f x@ will always have the exactly
+-- The implementation is based on unsafe coercion, but it is actually safe because
+-- @Effs effs f x@ and @Effs (Rename name eff effs) f x@ will always have exactly
 -- the same representation, although GHC doesn't see this.
 renameEff
   :: Proxy name

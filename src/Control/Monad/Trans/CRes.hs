@@ -5,7 +5,7 @@ License     : BSD-3-Clause
 Maintainer  : Zhixuan Yang
 Stability   : experimental
 
-This module contains a special case of the resumption monad from "Control.Monad.Trans.CRes"
+This module contains a special case of the resumption monad from "Control.Monad.Trans.Resump"
 with the step functor being @x ↦ 1 + (x × x) + (a × x)@ for a type @a@ of actions. This
 is used for modelling concurrency.
 -}
@@ -149,7 +149,7 @@ done' x = return (Left x)
 jpar :: (Action a, Monad m) => CResT a m x -> CResT a m y -> CResT a m (x, y)
 jpar x y = (jparL x y <|> jparR x y) <|> (jparCL x y <|> jparCR x y)
 
--- | Joined parallel composition with the left argument acts first.
+-- | Joined parallel composition in which the left argument acts first.
 jparL :: (Action a, Monad m) => CResT a m x -> CResT a m y -> CResT a m (x, y)
 jparL (ResT mxs) y = ResT $
   do xs <- mxs
@@ -159,11 +159,11 @@ jparL (ResT mxs) y = ResT $
        Right FailS         -> fail'
        Right (ChoiceS l r) -> jparL l y <|>: jparL r y
 
--- | Joined parallel composition with the right argument acts first.
+-- | Joined parallel composition in which the right argument acts first.
 jparR :: (Action a, Monad m) => CResT a m x -> CResT a m y -> CResT a m (x, y)
 jparR x y = fmap (\(a,b) -> (b,a)) (jparL y x)
 
--- | Joined parallel composition with the two arguments communicate first, but
+-- | Joined parallel composition in which the two arguments communicate first, but
 -- the monadic effect of the left argument is executed first.
 jparCL :: (Action a, Monad m) => CResT a m x -> CResT a m y -> CResT a m (x, y)
 jparCL lhs rhs = ResT $
@@ -183,7 +183,7 @@ jparCL lhs rhs = ResT $
        Right FailS -> fail'
        Right (ChoiceS l r) -> jparCL l rhs <|>: jparCL r rhs
 
--- | Joined parallel composition with the two arguments communicate first, but
+-- | Joined parallel composition in which the two arguments communicate first, but
 -- the monadic effect of the right argument is executed first.
 jparCR :: (Action a, Monad m) => CResT a m x -> CResT a m y -> CResT a m (x, y)
 jparCR lhs rhs = fmap (\(a,b) -> (b,a)) (jparCL rhs lhs)
@@ -193,8 +193,8 @@ jparCR lhs rhs = fmap (\(a,b) -> (b,a)) (jparCL rhs lhs)
 par :: (Action a, Monad m) => CResT a m x -> CResT a m y -> CResT a m x
 par x y = fmap fst (jpar x y)
 
--- | The process @res a p@ acts like @p@ under a firewall that blocks all communication of
--- @p@ with the external environment via action @a@.
+-- | The process @res a p@ acts like @p@ under a firewall that blocks all communication
+-- between @p@ and the external environment via action @a@.
 res :: (Action a, Monad m) => a -> CResT a m x -> CResT a m x
 res a p = ResT $
   do xs <- unResT p

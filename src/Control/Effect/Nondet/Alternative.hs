@@ -8,7 +8,7 @@ Stability   : experimental
 This module provides operations corresponding to the `Alternative` typeclass of
 Haskell. Two operations t`Empty` and t`Choose` are defined, corresponding to
 `Ap.empty` and `Ap.<|>` of `Alternative` respectively. The monad `Prog effs`
-also instantiate `Alternative`.
+also instantiates `Alternative`.
 
 In this library there is another module "Control.Effect.Nondet" that provides
 some additional operations for nondeterminism. See the documentation in
@@ -66,7 +66,7 @@ import qualified Control.Monad.Logic as Lo
 import qualified Control.Monad.Trans.List as Li
 
 -- | The 'alternative' handler makes use of an 'Alternative' functor @f@
--- as well as a transformer @t@ that produces an 'Alternative' functor @t m@.
+-- as well as a transformer @t@ that produces an 'Alternative' functor @t m@
 -- for any monad @m@ to provide semantics.
 {-# INLINE alternative #-}
 alternative
@@ -128,7 +128,7 @@ logicC = alternativeC [|| Lo.observeAllT ||]
 
 
 -- | Translate (scoped) `Choose` operations to (algebraic) `Nondet` operations.
--- The scopes delimited by `Choose` is ignored.
+-- The scopes delimited by `Choose` are ignored.
 chooseByNondet :: Handler '[Choose] '[NondetOr] '[] a a
 chooseByNondet = interpretM1 (\oalg (Choose p q) -> nondetOrM oalg p q)
 

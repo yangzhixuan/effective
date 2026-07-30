@@ -35,7 +35,7 @@ import qualified Control.Monad.Trans.State.Lazy as Lazy
 state :: s -> Handler [Put s, Get s] '[] '[Lazy.StateT s] a (a, s)
 state s = Handler (runner' $ flip Lazy.runStateT s) stateAT
 
--- | The `state_` handler deals with stateful operations and silenty
+-- | The `state_` handler deals with stateful operations and silently
 -- discards the final state.
 state_ :: s -> Handler [Put s, Get s] '[] '[Lazy.StateT s] a a
 state_ s = Handler (runner' $ flip Lazy.evalStateT s) stateAT

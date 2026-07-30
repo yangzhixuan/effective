@@ -266,7 +266,7 @@ instance PushT Gen $~>> [] where
 --
 -- > forall t. isSOP t => (a -> n t -> n t) -> n t -> n t
 --
--- But this seems a bit over-engineering so it is not done, at least for now.
+-- But this seems a bit over-engineered, so it is not done, at least for now.
 
 instance (Monad n, Monad m, n $~>> m) => PushT n $~>> ListT m where
   downJoin :: forall x. PushT n (CodeQ (ListT m x)) -> CodeQ (ListT m x)

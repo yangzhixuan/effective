@@ -7,10 +7,10 @@ Stability   : experimental
 
 For an object-level monad @m@ and a meta-level monad @n@, a function
 @forall x. CodeQ (m x) -> n (CodeQ x)@ is called an @m@-up operation on @n@.
-Such an operation serves the purpose of \'reflecting\' object-level program
-back into meta level. This is needed when we want to generate object-level
-programs that calls other object-level programs.
-For example, suppose we want to generate the following function @q@:
+Such an operation serves the purpose of \'reflecting\' an object-level program
+back into the meta level. This is needed when we want to generate object-level
+programs that call other object-level programs.
+For example, suppose we want to generate the following function @p@:
 
 > p :: StateT Int Identity Int
 > p = do put 0; q; get
@@ -183,7 +183,7 @@ upReader = interpretAT1 $ \(Alg (UpOp la k)) ->
 -- ** Up-operations for recursively defined monad transformers
 --
 -- Following the pattern for the monad transformers above, it might be tempting to write the
--- following up-operation for @ListT@, but this is wrong because it generates infinitely branches
+-- following up-operation for @ListT@, but this is wrong because it generates infinitely many branches
 -- of pattern matching.
 --
 -- > upNdet :: AlgTrans '[UpOp (ND.ListT l)] '[UpOp l, ND.Choose, ND.Empty, CodeGen] '[] Monad
@@ -196,8 +196,8 @@ upReader = interpretAT1 $ \(Alg (UpOp la k)) ->
 -- >                               return (k ca) ND.<|> go (Alg (UpOp cm k))
 -- >   in go
 --
--- Since at the meta level we can't never know how many choices there are in an object-level
--- @ListT@. It seems that we are never able to up an object-level @ListT@ to an meta-level
+-- At the meta level, we can never know how many choices there are in an object-level
+-- @ListT@. It seems that we are never able to up an object-level @ListT@ to a meta-level
 -- @ListT@.
 --
 -- However, we can solve this problem by observing that we don't actually need to know at
@@ -209,7 +209,7 @@ upReader = interpretAT1 $ \(Alg (UpOp la k)) ->
 -- >   { runPushT :: forall t. (a -> n (CodeQ t) -> n (CodeQ t)) -> n (CodeQ t) -> n (CodeQ t) }
 -- >
 --
--- which is the Church-encoding of t`ListT` with the final answer type restricted to be code.
+-- which is the Church encoding of t`ListT` with the final answer type restricted to be code.
 -- This t`PushT` supports non-deterministic operations just like regular Church-encoded t`ListT`
 -- but it also supports @up@ and @down@ with @ListT@.
 
@@ -264,7 +264,7 @@ upPush = AlgTrans $ \oalg ->
 
 -- | The up-operation for the resumption monad transformer. The situation is similar to
 -- that of t`ListT` and t`PushT`. The meta-level correspondent of the resumption monad t`ResT`
--- has to be t`ResUpT` a restricted Church-encoded version of the resumption monad.
+-- has to be t`ResUpT`, a restricted Church-encoded version of the resumption monad.
 -- Moreover, we also need a meta-level version @l@ of the object-level step functor @s@.
 upResAlg
   :: forall m n s l a.
@@ -295,7 +295,7 @@ upRes = algTrans1 (\oalg -> bwd upIso (upResAlg oalg))
 
 -- | @`down` :: n (CodeQ x) -> CodeQ (m x)@ is not an operation but a co-operation for @n@,
 -- so we can't have syntactic down-operations in effectful meta-programs, but we can
--- have the following `reset` operation that is handled to `up . down` by `resetAT`.
+-- have the following `reset` operation that is handled as `up . down` by `resetAT`.
 -- This effectively merges different branches of code generation and thus is useful
 -- for keeping code size under control.
 -- The module "Control.Effect.CodeGen.Join" serves for the same purpose but generates
@@ -349,10 +349,10 @@ resetAT' = algTrans1 $ \(oalg :: Algebra '[UpOp m, CodeGen] n) (Reset p k) ->
 --
 -- > sig (FreeUp m (CodeQ x)) -> FreeUp m (CodeQ x)
 --
--- by first downing the arguments to the object level and invoke the object-level
--- scoped operation, and then up result back. This is not ideal because we have missed
--- the opportunity of optimising scoped operation by staging, and also at the meta-level
--- we don't have really scoped operations @sig (FreeUp m n x) -> FreeUp m n x@ but
+-- by first downing the arguments to the object level and invoking the object-level
+-- scoped operation, and then upping the result. This is not ideal because we have missed
+-- the opportunity to optimise the scoped operation by staging, and also at the meta level
+-- we don't really have scoped operations @sig (FreeUp m n x) -> FreeUp m n x@ but
 -- only operations @sig (FreeUp m (CodeQ x)) -> FreeUp m (CodeQ x)@.
 
 -- | @FreeUpT m n@ is the monad of interleaving the monad @n@ with object-level @m@-programs.
@@ -397,7 +397,7 @@ freeUpScpAlg objalg op = freeUpOpAlg objalg op
 -- * Caching the last CodeQ-operations at tail positions
 --
 -- As discussed in the documentation for `($~>>)`, we want to avoid generating unnecessary
--- eta-expansion caused by @down . up@ at tail positions. The class `($~>>)` provided the
+-- eta-expansion caused by @down . up@ at tail positions. The class `($~>>)` provides the
 -- function @`downTail` :: n (Either (CodeQ x) (CodeQ (m x))) -> CodeQ (m x)@ to achieve this
 -- but with just this we need to manually modify our meta-program to change tail @up m@
 -- to @return (Right m)@ and all other ordinary returns to @return . Left@.
@@ -415,7 +415,7 @@ newtype CacheT m n a = CacheT { unCacheT :: n (CacheS m n a) }
 -- | The constructor `Hit` means that it is a computation @n (CodeQ a)@ coming from upping
 -- a piece of code @CodeQ (m a)@. The reason that we store both @CodeQ (m a)@ and @n (CodeQ a)@
 -- is that we are only interested in caching up-operations in tail positions, so when an
--- an up-operation is no longer at the tail position after a @(>>=)@, we want to turn
+-- up-operation is no longer at the tail position after a @(>>=)@, we want to turn
 -- it back into a normal @n@-computation.
 data CacheS m n a where
   Hit :: CodeQ (m a) -> n (CodeQ a) -> CacheS m n (CodeQ a)

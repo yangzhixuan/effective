@@ -6,7 +6,7 @@ Maintainer  : Zhixuan Yang
 Stability   : experimental
 
 This module provides an unsafe implementation of the effect of higher-order store,
-that is, mutable state that supports dynamically creation of cells that store values
+that is, mutable state that supports the dynamic creation of cells that store values
 of /any (lifted) type/.  This implementation is unsafe because references from
 different executions may be wrongly mixed. For example,
 
@@ -23,7 +23,7 @@ test = handle hstore goWrong
 Running @handle hstore goWrong@ will crash because the reference @iRef@ is from
 the outer @handle hstore@ but it is mistakenly used by the inner program.
 
-Another way of how things can go wrong is when there is 'multiple-shot algebraic effects':
+Another way things can go wrong is when there are multiple-shot algebraic effects:
 
 @
 import qualified Control.Effect.State as St
@@ -46,10 +46,10 @@ test :: [Int]
 test = handle (hstore |> nondet |> St.state_ @(Maybe (Ref Int)) Nothing) goWrong2
 @
 
-This goes wrong because higher-order store is handled before non-determinstic
-choices, so different branches of choice have independent memory store, but
-in the first branch, a reference locally to this branch is stored in a global state,
-and this reference is de-referenced in the second branch, which has a separate
+This goes wrong because higher-order store is handled before nondeterministic
+choices, so different choice branches have independent memory stores, but
+in the first branch, a reference local to this branch is stored in a global state,
+and this reference is dereferenced in the second branch, which has a separate
 memory store.
 
 As a rule of thumb for safety, when using the effect handler from this module,

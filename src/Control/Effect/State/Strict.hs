@@ -52,7 +52,7 @@ stateATC = AlgTransC $ \_ -> [|| NT $ putAlg ||] :#$ [|| NT $ getAlg ||] :#$ emp
 state :: s -> Handler [Put s, Get s] '[] '[Strict.StateT s] a (a, s)
 state s = Handler (runner' $ flip Strict.runStateT s) stateAT
 
--- | The `state_` handler deals with stateful operations and silenty
+-- | The `state_` handler deals with stateful operations and silently
 -- discards the final state.
 {-# INLINE state_ #-}
 state_ :: s -> Handler [Put s, Get s] '[] '[Strict.StateT s] a a

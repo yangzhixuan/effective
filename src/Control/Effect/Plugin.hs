@@ -285,7 +285,7 @@ disambiguateAll pd _ allGivens allWanteds = timed pd $ do
 -- | If there is no instance matching the wanted constraint but a unique instance
 -- that can be unified with the wanted constraint, we commit to this instance eagerly.
 --
--- For exmaple, the wanted constraint may be @StateT s Gen $~> StateT s' Identity@
+-- For example, the wanted constraint may be @StateT s Gen $~> StateT s' Identity@
 -- for some unification variables @s@ and @s'@, and it doesn't match the instance
 -- @StateT (Up s) n $~> StateT s m@, but this instance is likely to be the only
 -- instance that can be unified with the wanted constraint. In this case we commit
@@ -598,7 +598,7 @@ extendEffGivens wanteds givens = loop givens . nubType $ map (.sigs) wanteds
               _ -> []
         in loop (extractGivens fullEs ++ acc) rest
 
--- | Check if a constraint in an implicit parameter. We discard all of them
+-- | Check if a constraint is an implicit parameter. We discard all of them
 -- since they will not affect resolution of @:>@ constraints.
 isIP :: Ct -> Bool
 isIP = \case
