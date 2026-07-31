@@ -93,8 +93,7 @@ instance ForwardEffs '[] t where
   fwdEffsC :: AlgTransC '[] '[] '[t] TruthC
   fwdEffsC = AlgTransC $ \_ -> emptyAlgC
 
-instance ( HFunctor eff
-         , Forward eff t
+instance ( Forward eff t
          , ForwardEffs effs t
          )
          => ForwardEffs (eff ': effs) t where

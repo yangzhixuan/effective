@@ -203,8 +203,7 @@ interpretAT rephrase = AlgTrans (\oalg -> algebraFromCase (fmap (eval oalg) reph
 -- | A special case of `interpretAT` for one effect @eff@.
 interpretAT1
   :: forall eff oeffs.
-     HFunctor eff
-  => (forall m x. eff m x -> Prog oeffs x) -- ^ Effect rephrasing function
+     (forall m x. eff m x -> Prog oeffs x) -- ^ Effect rephrasing function
   -> AlgTrans '[eff] oeffs '[] Monad
 interpretAT1 rephrase = AlgTrans (\oalg -> singAlg (eval oalg . rephrase))
 

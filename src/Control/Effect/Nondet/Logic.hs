@@ -39,15 +39,15 @@ import Control.Monad.Logic hiding (once)
 import qualified Control.Monad.Logic as L
 
 {-# INLINE emptyAlg #-}
-emptyAlg :: forall m a. Monad m => Empty (LogicT m) a -> LogicT m a
+emptyAlg :: forall m a. Empty (LogicT m) a -> LogicT m a
 emptyAlg Empty = empty
 
 {-# INLINE chooseAlg #-}
-chooseAlg :: Monad m => Choose (LogicT m) a -> LogicT m a
+chooseAlg :: Choose (LogicT m) a -> LogicT m a
 chooseAlg (Choose xs ys) = xs <|> ys
 
 {-# INLINE nondetOrAlg #-}
-nondetOrAlg :: forall m a. Monad m => NondetOr (LogicT m) a -> LogicT m a
+nondetOrAlg :: forall m a. NondetOr (LogicT m) a -> LogicT m a
 nondetOrAlg (NondetOr xs ys) = pure xs <|> pure ys
 
 {-# INLINE onceAlg #-}
